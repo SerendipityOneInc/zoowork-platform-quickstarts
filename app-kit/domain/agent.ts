@@ -5,7 +5,7 @@
  * is imported by the frontend settings panel):
  *
  *   1. AGENT_INSTRUCTION — the DEFAULT persona. The kit writes it as the agent's
- *      `AGENTS.md` persona doc (the ZooClaw API upserts it into agent_docs; the worker assembles
+ *      `AGENTS.md` persona doc (the ZooWork API upserts it into agent_docs; the worker assembles
  *      it into the prompt). It is the initial value of the editable "system prompt" field
  *      in the UI; whatever the UI sends wins per session (applied as a PUT when changed).
  *
@@ -27,7 +27,7 @@ export const AGENT_INSTRUCTION = 'You are a helpful AI assistant. Answer clearly
 export const AGENT_MODEL = 'litellm/claude-sonnet-5'
 
 /**
- * Attachments ship DISABLED: Zooclaw's Files API is a text-content JSON contract and is
+ * Attachments ship DISABLED: Zoowork's Files API is a text-content JSON contract and is
  * marked *Not production-wired* (no shared workspace yet), so there is nowhere to stage
  * binary uploads. The display plumbing (store + bubble rendering) stays intact — flip
  * this on and implement RouteVars.uploadFile when the platform lands file staging.
@@ -67,7 +67,7 @@ export const TOOLS: ToolToggle[] = [
 ]
 
 /**
- * Build the agent's `tool_policy` from the UI toggles. the ZooClaw API semantics: `{}` means the
+ * Build the agent's `tool_policy` from the UI toggles. the ZooWork API semantics: `{}` means the
  * FULL tool manifest; a non-empty object is interpreted as an OpenClaw allow/deny policy.
  * All toggles on → `{}` (full manifest). Any toggle off → `{ deny: [names...] }` so every
  * un-toggled tool keeps working. [verify] the deny-key spelling against the OpenClaw
@@ -81,7 +81,7 @@ export function buildToolPolicy(tools: Record<string, boolean>, registry: ToolTo
 /**
  * Placeholder shown in the settings panel's "Skill" field, and the shape a skill pin takes.
  *
- * Zooclaw skills are REGISTRY resources (`skl_...` ids with ready versions), not git URLs:
+ * Zoowork skills are REGISTRY resources (`skl_...` ids with ready versions), not git URLs:
  * upload/publish happens through platform tooling (POST /v1/skills + versions), and an
  * agent *pins* a skill by id. The user pastes a `skl_...` id; the kit installs it on the
  * user's agent via `PUT /v1/agents/{agent_id}/skills/{skill_id}` (unpinned → follows
@@ -89,12 +89,12 @@ export function buildToolPolicy(tools: Record<string, boolean>, registry: ToolTo
  */
 export const SKILL_ID_PLACEHOLDER = 'skl_...'
 
-/** The per-agent config the UI edits and the kit applies to the user's Zooclaw agent.
+/** The per-agent config the UI edits and the kit applies to the user's Zoowork agent.
  *  `tools` maps a ToolToggle.key → enabled. */
 export interface AgentConfig {
   systemPrompt: string
   tools: Record<string, boolean>
-  /** A Zooclaw skill registry id (see SKILL_ID_PLACEHOLDER) installed on the user's agent
+  /** A Zoowork skill registry id (see SKILL_ID_PLACEHOLDER) installed on the user's agent
    *  (unpinned, follows latest). Optional — empty/absent installs no skill. */
   skillId?: string
 }

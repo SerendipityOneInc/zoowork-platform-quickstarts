@@ -86,7 +86,7 @@ export function ChatPanel({
     <div className="chat">
       {chat.length === 0 ? (
         <div className="chat-welcome">
-          <h1>Zooclaw App Kit</h1>
+          <h1>Zoowork App Kit</h1>
           <p className="muted">agent-native starter</p>
           <p>Send a message to start. The <em>Panel</em> on the right is a debug view: every raw frame, as it arrives.</p>
         </div>

@@ -15,7 +15,7 @@ import { Sidebar } from './components/Sidebar.tsx'
 import { Bench } from '../domain/view.tsx'
 
 // Brand shown in the sidebar (and the mobile bar). A vertical sets its own.
-const BRAND = 'Zooclaw App Kit'
+const BRAND = 'Zoowork App Kit'
 const TAG = 'starter'
 
 export function App() {

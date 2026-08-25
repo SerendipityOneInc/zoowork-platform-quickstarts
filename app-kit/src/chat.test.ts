@@ -2,7 +2,7 @@
  * Contract test for the derive core (streaming-experience-contract I0): a refresh
  * (frames in one batch) must rebuild the exact view the live tail (frames fed
  * incrementally) produced — never losing, reordering, or rewriting earlier bubbles.
- * Also locks the Zooclaw control-frame split: `__zooclaw_session` / `__zooclaw`
+ * Also locks the Zoowork control-frame split: `__zoowork_session` / `__zoowork`
  * derive NO chat bubble but stay visible to the DebugPanel's frame labeling.
  * Pure functions only; no quota burned.
  */
@@ -20,11 +20,11 @@ const ask = (a: { actionId: number; messageId: string; question: string; options
 const shape = (bs: ChatBubble[]) => bs.map((b) => ({ role: b.role, text: b.text, error: b.error }))
 
 const FRAMES = [
-  frame(1, { __zooclaw_session: 'sess_123' }),
+  frame(1, { __zoowork_session: 'sess_123' }),
   frame(2, assistant('Hello')),
   frame(3, assistant('Hello')), // duplicate of seq 2 → collapsed
   frame(4, { type: 'user', message: { content: [{ type: 'tool_result', tool_use_id: 'x', content: 'DOMAIN-ONLY' }] } }),
-  frame(5, { __zooclaw: 'thinking', payload: { text: 'pondering…' } }),
+  frame(5, { __zoowork: 'thinking', payload: { text: 'pondering…' } }),
   frame(6, assistant('World')),
   frame(7, { __error: 'boom' }),
 ]
@@ -54,19 +54,19 @@ test('surfaces user / assistant / error; ignores control frames and domain tool_
   ])
 })
 
-test('the __zooclaw_session marker derives NO bubble (there is no public session URL)', () => {
-  const bubbles = deriveChat([prompt([frame(1, { __zooclaw_session: 'sess_abc' })])])
+test('the __zoowork_session marker derives NO bubble (there is no public session URL)', () => {
+  const bubbles = deriveChat([prompt([frame(1, { __zoowork_session: 'sess_abc' })])])
   assert.deepEqual(shape(bubbles), [{ role: 'user', text: 'hi', error: undefined }])
 })
 
-test('__zooclaw passthroughs are chat-invisible but labeled for the debug panel', () => {
-  const passthrough = { __zooclaw: 'agent.custom_event', payload: { anything: true } }
+test('__zoowork passthroughs are chat-invisible but labeled for the debug panel', () => {
+  const passthrough = { __zoowork: 'agent.custom_event', payload: { anything: true } }
   const bubbles = deriveChat([prompt([frame(1, passthrough)])])
   assert.deepEqual(shape(bubbles), [{ role: 'user', text: 'hi', error: undefined }])
   // The DebugPanel's frame vocabulary still surfaces both control frames.
   assert.equal(frameLabel(passthrough), 'agent.custom_event')
-  assert.equal(frameLabel({ __zooclaw: 'thinking', payload: { text: 'hm' } }), 'thinking')
-  assert.equal(frameLabel({ __zooclaw_session: 'sess_abc' }), 'zooclaw_session')
+  assert.equal(frameLabel({ __zoowork: 'thinking', payload: { text: 'hm' } }), 'thinking')
+  assert.equal(frameLabel({ __zoowork_session: 'sess_abc' }), 'zoowork_session')
 })
 
 test('non-object, empty-text, and unknown frames are skipped', () => {

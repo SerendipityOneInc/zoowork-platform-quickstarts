@@ -31,7 +31,7 @@ const SendIcon = () => (
 /** Composer: one rounded shell holding a borderless auto-growing textarea, a quiet attach button, and
  *  a send button. Enter sends, Shift+Enter newlines. Image/file attachments via the 📎, paste, or
  *  drag-drop upload IMMEDIATELY (preview + loading; send is gated until uploads finish) and ride on
- *  the next turn. While ATTACHMENTS_ENABLED is false (Zooclaw has no file staging yet) every
+ *  the next turn. While ATTACHMENTS_ENABLED is false (Zoowork has no file staging yet) every
  *  attachment ENTRY POINT is off — button hidden, paste/drag-drop inert — but the code paths stay
  *  compiled so flipping the flag re-enables them without a rewrite. The text flow is untouched. */
 export function Composer({ onSend, busy }: { onSend: (text: string, atts?: SentAttachment[]) => void; busy: boolean }) {

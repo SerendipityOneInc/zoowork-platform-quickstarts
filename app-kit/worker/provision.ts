@@ -1,34 +1,34 @@
 /**
- * Per-user Zooclaw Agent provisioning + config reconciliation (kit backbone). Lazily
- * provisions ONE Managed Agent per user (cached in zooclaw_agents by email), walks the
+ * Per-user Zoowork Agent provisioning + config reconciliation (kit backbone). Lazily
+ * provisions ONE Managed Agent per user (cached in zoowork_agents by email), walks the
  * documented bring-up order — create → start (the gateway seeds platform credentials at
  * create) — and then keeps the
  * agent's declared config (persona AGENTS.md + tool_policy) and its skill pin converged
  * with the session's AgentConfig.
  *
- * the ZooClaw API PUTs bump config_version on EVERY call (they are not idempotent in the
+ * the ZooWork API PUTs bump config_version on EVERY call (they are not idempotent in the
  * resource-semantics sense — the API reference → Retry rules), so the kit
- * fingerprints what it applied (`<coreHash>|<skillId>` in the zooclaw_agents row) and
+ * fingerprints what it applied (`<coreHash>|<skillId>` in the zoowork_agents row) and
  * only writes actual drift.
  *
- * Takes a Store + ZooclawClient (both injected), so it's unit-testable with a fake client
- * + the in-memory store — only the real the ZooClaw API HTTP needs a live deployment.
+ * Takes a Store + ZooworkClient (both injected), so it's unit-testable with a fake client
+ * + the in-memory store — only the real ZooWork API HTTP needs a live deployment.
  */
 import type { Store } from '../server/store.ts'
 // TYPE-ONLY (erased — verbatimModuleSyntax). `AgentSource` is a WIRE value: it ships in the
 // GET /agent body and the panel renders it, so the API layer declares it and this file, which
 // merely decides it, reads it from there.
 import type { AgentSource } from '../server/routes.ts'
-import { ZooclawError, type ZooclawClient, type AgentResource, type AgentRecord, type Ownership } from '@zooclaw-agents/sdk'
+import { ZooworkError, type ZooworkClient, type AgentResource, type AgentRecord, type Ownership } from '@zoowork-ai/sdk'
 import { AGENT_INSTRUCTION, AGENT_MODEL, buildToolPolicy, type AgentConfig } from '../domain/agent.ts'
 
 /** Platform wiring for provisioning, from Worker env (worker/env.ts). */
 export interface ProvisionConfig {
-  /** The org anchor for every agent this deployment creates (ZOOCLAW_ORG_ID). */
+  /** The org anchor for every agent this deployment creates (ZOOWORK_ORG_ID). */
   orgId: string
   /** Optional Environment to pin at create (omit → the system default ready version). */
   environmentId?: string
-  /** FIXED-AGENT MODE (ZOOCLAW_AGENT_ID): use this pre-built agent for everyone and
+  /** FIXED-AGENT MODE (ZOOWORK_AGENT_ID): use this pre-built agent for everyone and
    *  provision nothing. See `agentFor` for what that skips and why. */
   fixedAgentId?: string
   /** AGENT_PICKER: may a signed-in user bind this deployment to an agent of their own
@@ -77,7 +77,7 @@ export type AgentResolution =
  * panel's "which agent am I on?" route, so all three agree by construction.
  */
 export async function resolveAgent(store: Store, email: string, cfg: ProvisionConfig, pinnedAgentId?: string | null): Promise<AgentResolution> {
-  // 1. This conversation already has an agent. Nothing may override it: its Zooclaw session
+  // 1. This conversation already has an agent. Nothing may override it: its Zoowork session
   //    lives on THAT agent, and a follow-up sent elsewhere gets `session not found`.
   if (pinnedAgentId) return { agentId: pinnedAgentId, source: 'conversation', managed: false }
   // 2. The user's own pick. Skipped entirely when the picker is disabled, so flipping
@@ -89,11 +89,11 @@ export async function resolveAgent(store: Store, email: string, cfg: ProvisionCo
   // 3. The deployment-wide fixed agent.
   if (cfg.fixedAgentId) return { agentId: cfg.fixedAgentId, source: 'env-fixed', managed: false }
   // 4. The kit's own per-user agent (null until the first turn provisions it).
-  const own = await store.getZooclawAgent(email)
+  const own = await store.getZooworkAgent(email)
   return { agentId: own?.agentId ?? null, source: 'per-user', managed: true }
 }
 
-/** The verified-user → ownership-anchor mapping. the ZooClaw API treats these as opaque data
+/** The verified-user → ownership-anchor mapping. the ZooWork API treats these as opaque data
  *  (NOT auth claims); the kit uses the Access-verified email directly as the owner uid,
  *  prefixed so a shared org's uids are recognizable. */
 export function ownershipFor(email: string, orgId: string): Ownership {
@@ -136,7 +136,7 @@ export function createResourceFor(email: string, cfg: ProvisionConfig): AgentRes
     name: `app-kit: ${email || 'anon'}`,
     model: { primary: AGENT_MODEL },
     persona: { docs: [{ name: 'AGENTS.md', content: AGENT_INSTRUCTION }] },
-    labels: { app: 'zooclaw-app-kit', user: email },
+    labels: { app: 'zoowork-app-kit', user: email },
     tool_policy: {},
     sandbox: { scope: 'agent' },
     ...(cfg.environmentId ? { environment_id: cfg.environmentId } : {}),
@@ -158,8 +158,8 @@ export function configSections(desired: AgentConfig): Record<string, unknown> {
  * id installs it (unpinned → follows latest ready), clearing it uninstalls the previous
  * one. Throws on transport failure; the caller treats config as best-effort.
  */
-export async function ensureAgentConfig(store: Store, client: ZooclawClient, email: string, agentId: string, desired: AgentConfig): Promise<string[]> {
-  const row = await store.getZooclawAgent(email)
+export async function ensureAgentConfig(store: Store, client: ZooworkClient, email: string, agentId: string, desired: AgentConfig): Promise<string[]> {
+  const row = await store.getZooworkAgent(email)
   const applied = parseMark(row?.configHash ?? null)
   const wantCore = hashAgentConfig(desired)
   const wantSkill = desired.skillId?.trim() ?? ''
@@ -171,7 +171,7 @@ export async function ensureAgentConfig(store: Store, client: ZooclawClient, ema
     applied.core = wantCore
     // Record the core write immediately: if the skill step below fails, the next turn
     // must NOT replay this (config_version-bumping) PUT.
-    await store.setZooclawAgentConfig(email, configMark(applied.core, applied.skill))
+    await store.setZooworkAgentConfig(email, configMark(applied.core, applied.skill))
   }
 
   if (applied.skill !== wantSkill) {
@@ -182,7 +182,7 @@ export async function ensureAgentConfig(store: Store, client: ZooclawClient, ema
       await client.deleteAgentSkill(agentId, applied.skill)
       changed.push(`skill:-${applied.skill}`)
     }
-    await store.setZooclawAgentConfig(email, configMark(applied.core, wantSkill))
+    await store.setZooworkAgentConfig(email, configMark(applied.core, wantSkill))
   }
 
   return changed
@@ -194,22 +194,22 @@ export async function ensureAgentConfig(store: Store, client: ZooclawClient, ema
  *
  *  - The stable per-email key converges CONCURRENT first-turns onto one agent.
  *  - But the same key can also REPLAY a create whose agent was since soft-deleted on
- *    the ZooClaw API (replay returns the original — dead — agent_id), and any drift in the
+ *    the ZooWork API (replay returns the original — dead — agent_id), and any drift in the
  *    create body (a vertical edited AGENT_INSTRUCTION/AGENT_MODEL, environment added)
  *    turns the replay into 409 idempotency_conflict. Both are permanent without key
  *    rotation, so on either signal we retry ONCE with a unique key. The unique-key path
  *    can race a concurrent first-turn into two agents; the D1 INSERT-OR-IGNORE row is
  *    the tiebreaker and the loser agent is simply never used again.
  */
-async function createFreshAgent(client: ZooclawClient, email: string, cfg: ProvisionConfig): Promise<AgentRecord> {
+async function createFreshAgent(client: ZooworkClient, email: string, cfg: ProvisionConfig): Promise<AgentRecord> {
   const body = { resource: createResourceFor(email, cfg), ownership: ownershipFor(email, cfg.orgId) }
-  const freshKey = (): string => `zooclaw-app-kit:agent:${email || 'anon'}:${crypto.randomUUID()}`
+  const freshKey = (): string => `zoowork-app-kit:agent:${email || 'anon'}:${crypto.randomUUID()}`
 
   let created: AgentRecord
   try {
-    created = await client.createAgent(body, `zooclaw-app-kit:agent:${email || 'anon'}`)
+    created = await client.createAgent(body, `zoowork-app-kit:agent:${email || 'anon'}`)
   } catch (e) {
-    if (e instanceof ZooclawError && e.status === 409 && e.type === 'idempotency_conflict') {
+    if (e instanceof ZooworkError && e.status === 409 && e.type === 'idempotency_conflict') {
       created = await client.createAgent(body, freshKey())
     } else {
       throw e
@@ -222,7 +222,7 @@ async function createFreshAgent(client: ZooclawClient, email: string, cfg: Provi
   } catch (e) {
     // 404 here means the "created" agent doesn't exist: the stable key replayed a
     // soft-deleted create. Mint a genuinely new agent under a unique key.
-    if (e instanceof ZooclawError && e.status === 404) {
+    if (e instanceof ZooworkError && e.status === 404) {
       created = await client.createAgent(body, freshKey())
       await client.startAgent(created.agent_id)
     } else {
@@ -247,13 +247,13 @@ async function createFreshAgent(client: ZooclawClient, email: string, cfg: Provi
  *     Config tab.
  *
  *   PER-USER — the kit's own agent. Reuse path verifies the cached id still exists on THIS
- *     the ZooClaw API (a 404 → drop the row and re-provision; any other error is rethrown so
+ *     the ZooWork API (a 404 → drop the row and re-provision; any other error is rethrown so
  *     a blip never discards a good agent) and re-starts it if it isn't running. Fresh path:
  *     create → start (createFreshAgent). Only here is config applied.
  */
 export async function agentFor(
   store: Store,
-  client: ZooclawClient,
+  client: ZooworkClient,
   email: string,
   cfg: ProvisionConfig,
   config?: AgentConfig,
@@ -271,9 +271,9 @@ export async function agentFor(
       agentId = resolved.agentId
       if (agent.status?.desired_state !== 'running') await client.startAgent(agentId)
     } catch (e) {
-      if (e instanceof ZooclawError && e.status === 404) {
-        console.log(`[provision] cached agent ${resolved.agentId} not found on this the ZooClaw API — reprovisioning`)
-        await store.deleteZooclawAgent(email)
+      if (e instanceof ZooworkError && e.status === 404) {
+        console.log(`[provision] cached agent ${resolved.agentId} not found on this ZooWork API — reprovisioning`)
+        await store.deleteZooworkAgent(email)
       } else {
         throw e
       }
@@ -282,9 +282,9 @@ export async function agentFor(
 
   if (!agentId) {
     const created = await createFreshAgent(client, email, cfg)
-    await store.saveZooclawAgent(email, created.agent_id, null)
+    await store.saveZooworkAgent(email, created.agent_id, null)
     // Re-read so concurrent first-turns converge on the winning (INSERT-OR-IGNORE) row.
-    const canonical = await store.getZooclawAgent(email)
+    const canonical = await store.getZooworkAgent(email)
     agentId = canonical?.agentId ?? created.agent_id
   }
 

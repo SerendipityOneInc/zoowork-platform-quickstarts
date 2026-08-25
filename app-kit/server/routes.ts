@@ -13,7 +13,7 @@
  *   DELETE /binding             → drop the binding (back to fixed / per-user)
  *   GET  /tasks                 → the caller's sessions (conversations)
  *   POST /tasks                 → create conversation + first turn
- *   POST /tasks/:id/prompts     → follow-up turn (same Zooclaw session)
+ *   POST /tasks/:id/prompts     → follow-up turn (same Zoowork session)
  *   GET  /tasks/:id/content     → prompts + their frames (for reload, with self-heal)
  *   GET  /prompts/:id/stream    → SSE of frames until the turn ends (tail the store)
  *   POST /prompts/:id/cancel    → cancel the running turn
@@ -33,7 +33,7 @@ import { tailFrames } from './tail.ts'
 /** Single default project (no project picker in this build). */
 export const DEFAULT_PROJECT_ID = 'default'
 
-/** An uploaded file's handle (opaque id + display filename). Owned by this layer: Zooclaw
+/** An uploaded file's handle (opaque id + display filename). Owned by this layer: Zoowork
  *  has no production file-staging API (domain/agent.ts ATTACHMENTS_ENABLED), so the shape
  *  exists for the display channel (bubble chips + renditions) and the future uploadFile. */
 export interface FileRef {
@@ -44,7 +44,7 @@ export interface FileRef {
 /**
  * One deployment variable, reported to the browser as PRESENCE ONLY.
  *
- * There is no `value` field and there must never be one: ZOOCLAW_API_KEY authenticates the
+ * There is no `value` field and there must never be one: ZOOWORK_API_KEY authenticates the
  * Worker as an entire organization, so shipping any variable's value to the browser is a
  * tenant-wide compromise. The Worker builds these rows from its declared variable registry
  * (worker/env.ts KIT_ENV_VARS); server/routes.test.ts asserts the shape so the field cannot
@@ -56,7 +56,7 @@ export interface EnvVarStatus {
   configured: boolean
   /** Carries a credential (`wrangler secret put`), as opposed to a plain wrangler var. */
   secret: boolean
-  /** One line: what it changes, and where that lands in the ZooClaw API. */
+  /** One line: what it changes, and where that lands in the ZooWork API. */
   effect: string
 }
 
@@ -75,9 +75,9 @@ export interface EnvVarStatus {
  */
 export interface RuntimeConfig {
   runtime: {
-    /** How the Worker reaches the ZooClaw API. `unconfigured` → no ZOOCLAW_API_KEY, so no call can be made. */
+    /** How the Worker reaches the ZooWork API. `unconfigured` → no ZOOWORK_API_KEY, so no call can be made. */
     transport: 'gateway' | 'unconfigured'
-    /** `fixed-agent` (ZOOCLAW_AGENT_ID: one shared agent, kit provisions nothing) or per-user provisioning.
+    /** `fixed-agent` (ZOOWORK_AGENT_ID: one shared agent, kit provisions nothing) or per-user provisioning.
      *  This is the deployment DEFAULT — a user binding (below) overrides it for that user. */
     provisioning: 'fixed-agent' | 'per-user'
     /** AGENT_PICKER: may a signed-in user bind an agent of their own? A capability flag, not
@@ -90,9 +90,9 @@ export interface RuntimeConfig {
     embedGate: boolean
     /** domain/agent.ts ATTACHMENTS_ENABLED — ships false while the Files API is unwired. */
     attachments: boolean
-    /** Resolved base URL every ZooClaw API call goes to. */
+    /** Resolved base URL every ZooWork API call goes to. */
     apiBaseUrl: string
-    apiBaseUrlFrom: 'ZOOCLAW_API_URL' | 'sdk-default'
+    apiBaseUrlFrom: 'ZOOWORK_API_URL' | 'sdk-default'
   }
   env: EnvVarStatus[]
 }
@@ -111,8 +111,8 @@ export interface RuntimeConfig {
  *   conversation — pinned on the conversation's first turn (tasks.agent_id). Sessions are
  *                  agent-scoped, so an open conversation must never move.
  *   binding      — the user picked one of their own agents (agent_bindings, AGENT_PICKER).
- *   env-fixed    — ZOOCLAW_AGENT_ID: one pre-built agent shared by the whole deployment.
- *   per-user     — the kit provisioned it (zooclaw_agents), one per email.
+ *   env-fixed    — ZOOWORK_AGENT_ID: one pre-built agent shared by the whole deployment.
+ *   per-user     — the kit provisioned it (zoowork_agents), one per email.
  */
 export type AgentSource = 'conversation' | 'binding' | 'env-fixed' | 'per-user'
 
@@ -125,7 +125,7 @@ export type AgentSource = 'conversation' | 'binding' | 'env-fixed' | 'per-user'
 export interface AgentSummary {
   agentId: string
   name: string | null
-  /** `declared.labels.workspace_id` — the first path segment of a ZooClaw chat URL, which is
+  /** `declared.labels.workspace_id` — the first path segment of a ZooWork chat URL, which is
    *  how a user recognises their agent. NOT every agent carries one, so it may be null. */
   workspaceId: string | null
   /** `status.desired_state` — `running` means it can take a message right now. */
@@ -187,7 +187,7 @@ export interface RouteVars {
     opts?: { agentConfig?: AgentConfig },
   ) => Promise<boolean>
   cancelTurn: (promptId: string) => Promise<boolean>
-  /** Answer a blocked `ask_user_question` on this conversation's Zooclaw session (posted as
+  /** Answer a blocked `ask_user_question` on this conversation's Zoowork session (posted as
    *  a user.tool_confirmation event) and nudge the runner to resume — the continuation
    *  streams into the SAME prompt's frames (the turn never left 'running' while blocked,
    *  so its stream is still attached). */
@@ -200,7 +200,7 @@ export interface RouteVars {
   recoverPrompt: (taskId: string, promptId: string) => Promise<boolean>
   /** Upload one file for agent-side staging; returns its FileRef. Ships as a throwing stub
    *  (worker/index.ts) behind the ATTACHMENTS_ENABLED=false gate below — implement it when
-   *  Zooclaw lands production file staging. */
+   *  Zoowork lands production file staging. */
   uploadFile: (file: { name: string; type: string; bytes: ArrayBuffer }) => Promise<FileRef>
 
   // ── agent directory + binding (worker/provision.ts owns the rules) ────────
@@ -283,7 +283,7 @@ async function describeEffectiveAgent(c: { var: RouteVars }): Promise<EffectiveA
   if (!eff.agentId) return base // per-user, not provisioned yet — nothing upstream to ask about
   try {
     const found = await getAgentSummary(eff.agentId)
-    if (!found) return { ...base, lookupError: { status: 404, message: 'this agent no longer exists on the configured ZooClaw API' } }
+    if (!found) return { ...base, lookupError: { status: 404, message: 'this agent no longer exists on the configured ZooWork API' } }
     return { ...base, name: found.name ?? base.name, desiredState: found.desiredState }
   } catch (e) {
     return { ...base, lookupError: { status: 0, message: (e as Error).message } }
@@ -339,16 +339,16 @@ app.delete('/binding', async (c) => {
 })
 
 /** A 404 that says what was looked up — and, for the one mistake this UI invites, what the
- *  user probably pasted instead. The first segment of a ZooClaw chat URL is a WORKSPACE id
+ *  user probably pasted instead. The first segment of a ZooWork chat URL is a WORKSPACE id
  *  (an app-layer install record), not the `agt_…` engine id this route wants. */
 function notFoundBody(agentId: string): { error: string; code: string; agentId: string; hint?: string } {
   return {
-    error: `no agent ${agentId} on the configured ZooClaw API`,
+    error: `no agent ${agentId} on the configured ZooWork API`,
     code: 'agent_not_found',
     agentId,
     ...(agentId.startsWith('agt_')
       ? {}
-      : { hint: 'this does not look like an agent id — the first segment of a ZooClaw chat URL is a workspace id, not the agt_… id' }),
+      : { hint: 'this does not look like an agent id — the first segment of a ZooWork chat URL is a workspace id, not the agt_… id' }),
   }
 }
 
@@ -363,7 +363,7 @@ app.post('/tasks', async (c) => {
   if (!prompt?.trim()) return c.json({ error: 'prompt is required' }, 400)
 
   // The conversation's agent config (system prompt + tool toggles + skill pin) is applied to the
-  // user's Zooclaw agent on the first turn. Built only when the client sends it; otherwise the
+  // user's Zoowork agent on the first turn. Built only when the client sends it; otherwise the
   // runner uses its default. `skillId` is folded in only when present, so callers that never send
   // it keep the old 2-field shape (the worker installs it via PUT .../skills/{id} — see
   // worker/provision.ts).
@@ -429,10 +429,10 @@ app.post('/files', async (c) => {
   // Eager upload of ONE attachment (multipart): `file` (the original, staged for the agent) plus
   // optional `thumb`/`large` WebP renditions, persisted keyed by the returned file id for the
   // chat bubble + lightbox. Returns the FileRef the next turn rides on.
-  // GATED FIRST, before touching the body: Zooclaw Files is a text-content contract with no
+  // GATED FIRST, before touching the body: Zoowork Files is a text-content contract with no
   // production staging, so the kit ships with uploads off (domain/agent.ts ATTACHMENTS_ENABLED)
   // and this route refuses without reading a byte of the form into Worker memory.
-  if (!ATTACHMENTS_ENABLED) return c.json({ error: 'attachments disabled: Zooclaw Files is not production-wired' }, 501)
+  if (!ATTACHMENTS_ENABLED) return c.json({ error: 'attachments disabled: Zoowork Files is not production-wired' }, 501)
   const { uploadFile, store, userEmail } = c.var
   const form = await c.req.formData()
   const file = form.get('file')
@@ -457,7 +457,7 @@ app.post('/files', async (c) => {
 
 app.get('/files/:fileId', async (c) => {
   // Authed image serve: stream a stored WebP rendition (thumb|large) for the bubble/lightbox.
-  // Scoped to the uploader's email — the worker holds ONE the ZooClaw API service token, so this check
+  // Scoped to the uploader's email — the worker holds ONE ZooWork API service token, so this check
   // is the real per-user gate (mirrors ChatGPT serving images through an authed backend, not a
   // CDN URL).
   const { store, userEmail } = c.var

@@ -116,7 +116,7 @@ export async function listSessions(): Promise<SessionSummary[]> {
 }
 
 /** A reference to an uploaded file (temp-file id + normalized name). Part of the
- *  disabled-attachments seam (domain/agent.ts ATTACHMENTS_ENABLED): Zooclaw has no file
+ *  disabled-attachments seam (domain/agent.ts ATTACHMENTS_ENABLED): Zoowork has no file
  *  staging yet, so nothing rides the wire today — the shape is kept so flipping the flag
  *  back on is a worker-side change, not a frontend rewrite. */
 export interface FileRef { id: string; filename: string }
@@ -130,7 +130,7 @@ export const fileUrl = (fileId: string, size: 'thumb' | 'large'): string => `${B
 export const toAttachment = (m: AttachmentMeta): Attachment => ({ ...m, thumbUrl: fileUrl(m.fileId, 'thumb'), largeUrl: fileUrl(m.fileId, 'large') })
 
 /** Eager-upload ONE file (multipart) via the worker. Disabled-attachments seam: the worker's
- *  uploadFile stub throws until Zooclaw lands file staging (see ATTACHMENTS_ENABLED in
+ *  uploadFile stub throws until Zoowork lands file staging (see ATTACHMENTS_ENABLED in
  *  domain/agent.ts) — the composer never calls this while the flag is off. */
 export async function uploadFile(file: File, renditions: { thumb: Blob; large: Blob } | null): Promise<FileRef> {
   const fd = new FormData()
@@ -145,7 +145,7 @@ export async function uploadFile(file: File, renditions: { thumb: Blob; large: B
 }
 
 /** Create a session + first turn. `config` (system prompt + tool toggles + skill id) is applied to
- *  the user's Zooclaw agent on this first turn; follow-ups reuse it. `skillId` (a `skl_...`
+ *  the user's Zoowork agent on this first turn; follow-ups reuse it. `skillId` (a `skl_...`
  *  registry id) only rides the wire when set — empty/whitespace means "no skill", sent as nothing. */
 export const createTask = (prompt: string, config?: AgentConfig, files?: FileRef[]): Promise<{ taskId: string; promptId: string }> =>
   postJson('/tasks', {

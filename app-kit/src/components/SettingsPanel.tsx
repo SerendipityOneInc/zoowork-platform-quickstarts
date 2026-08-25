@@ -2,18 +2,18 @@ import { AGENT_INSTRUCTION, SKILL_ID_PLACEHOLDER, TOOLS, defaultAgentConfig, typ
 
 /**
  * Agent settings: the system prompt + built-in tool toggles + skill id. The kit applies
- * these to the user's Zooclaw agent on the FIRST turn of a session (system prompt →
+ * these to the user's Zoowork agent on the FIRST turn of a session (system prompt →
  * persona AGENTS.md, toggles → tool_policy, skill id → installed agent skill; all
  * drift-gated in worker/provision.ts), so changes take effect on the NEXT new chat. A
  * live session keeps the config it was created with.
  *
  * `disabledReason` is the honesty gate. The Worker writes config ONLY to an agent the kit
- * created; when the effective agent is borrowed (a user binding, or ZOOCLAW_AGENT_ID) every
+ * created; when the effective agent is borrowed (a user binding, or ZOOWORK_AGENT_ID) every
  * PUT is skipped, so an editable form here would be a form whose changes go nowhere — and
  * were they to land, they would rewrite somebody else's agent. Pass the reason and the fields
  * go read-only with it stated.
  *
- * This is kit UI (configuring the Zooclaw agent), distinct from domain/view.tsx (the
+ * This is kit UI (configuring the Zoowork agent), distinct from domain/view.tsx (the
  * business pane). It edits a plain AgentConfig; the caller owns state + persistence.
  *
  * The field ids below are jump targets: the "Where these land" block NAMES each knob and

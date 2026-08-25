@@ -340,7 +340,7 @@ body {
 .cfg-pill.warn { color: var(--warn); background: var(--warn-soft); }
 .cfg-env-effect { font-size: 11.5px; line-height: 1.45; margin-top: 2px; }
 
-/* live conversation ids — click to copy (there is no public Zooclaw console to link to) */
+/* live conversation ids — click to copy (there is no public Zoowork console to link to) */
 .cfg-id { display: flex; align-items: center; gap: 10px; padding: 7px 0; }
 .cfg-id + .cfg-id { border-top: 1px solid var(--border); }
 .cfg-id .cfg-value { margin-left: auto; text-align: right; }

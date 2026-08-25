@@ -8,16 +8,16 @@ importers:
 
   .:
     dependencies:
-      '@zooclaw-agents/sdk':
-        specifier: ^0.2.0
-        version: 0.2.0
+      '@zoowork-ai/sdk':
+        specifier: ^0.4.0
+        version: 0.4.0
 
 packages:
 
-  '@zooclaw-agents/sdk@0.2.0':
-    resolution: {integrity: sha512-HKc6TVFv2pLk7GbGzPiww21QB12OsGpD5n/RXX1Hb1pU2pVWgWUZCJgLnHy75Mnkg8jUVpuEyMV0O+6m22HXow==}
+  '@zoowork-ai/sdk@0.4.0':
+    resolution: {integrity: sha512-c170pRosV1UIXRRIlRrAorDRjo7haIriBgpGBCeVWrDa8LyKnX1vA1ZJhdFkGkTB3vDLMlbJ2cfi78g4HX99OQ==}
     engines: {node: '>=20'}
 
 snapshots:
 
-  '@zooclaw-agents/sdk@0.2.0': {}
+  '@zoowork-ai/sdk@0.4.0': {}

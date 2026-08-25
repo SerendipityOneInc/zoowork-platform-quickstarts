@@ -81,7 +81,7 @@ export function IdRow({ label, value, empty }: { label: string; value: string | 
 }
 
 /** The click-to-copy id button on its own — raw ids ARE the debugging affordance here, since
- *  there is no public ZooClaw console to link a session or agent to. */
+ *  there is no public ZooWork console to link a session or agent to. */
 export function CopyId({ value }: { value: string }) {
   const [copied, setCopied] = useState(false)
   return (

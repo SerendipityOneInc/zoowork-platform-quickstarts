@@ -6,7 +6,7 @@
  * `store-<driver>.ts` and call sites don't change.
  *
  * Three tables model the turn lifecycle:
- *   tasks   — one conversation (keyed to a Zooclaw session id once created)
+ *   tasks   — one conversation (keyed to a Zoowork session id once created)
  *   prompts — one agent turn within a task
  *   frames  — one stream-json line of agent output, ordered by seq
  *
@@ -18,9 +18,9 @@ export interface Task {
   id: string
   project_id: string
   status: string
-  /** The Zooclaw session backing this conversation (null until the first turn creates it). */
+  /** The Zoowork session backing this conversation (null until the first turn creates it). */
   session_id: string | null
-  /** The Zooclaw agent this conversation is PINNED to, written when its first turn resolves
+  /** The Zoowork agent this conversation is PINNED to, written when its first turn resolves
    *  one (null for conversations that predate the column). Sessions are agent-scoped, so
    *  rebinding must not move an existing conversation to a different agent — its session id
    *  would not exist there. See migrations/0002. */
@@ -37,17 +37,17 @@ export interface TaskSummary {
   title: string
 }
 
-/** A user's provisioned Zooclaw Agent (zooclaw_agents row). `configHash` fingerprints the
+/** A user's provisioned Zoowork Agent (zoowork_agents row). `configHash` fingerprints the
  *  last agent config (persona + tool policy + skill pin) this kit applied, driving the
  *  "config changed → PUT the drift" check WITHOUT gratuitous PUTs (every API PUT
  *  bumps config_version even when nothing changed — see the API reference). */
-export interface ZooclawAgentRow {
+export interface ZooworkAgentRow {
   agentId: string
   configHash: string | null
 }
 
-/** A user's manually BOUND agent (agent_bindings row) — one they already own in the ZooClaw
- *  app, borrowed by this deployment. Distinct from ZooclawAgentRow on purpose: this agent
+/** A user's manually BOUND agent (agent_bindings row) — one they already own in the ZooWork
+ *  app, borrowed by this deployment. Distinct from ZooworkAgentRow on purpose: this agent
  *  belongs to its author, so the kit only ever reads it. Nothing here is drift-gated
  *  because nothing here is ever written upstream (worker/provision.ts). */
 export interface AgentBindingRow {
@@ -70,7 +70,7 @@ export interface Frame {
 
 /** A prompt's display attachment (metadata only; the WebP rendition BLOBs are fetched
  *  separately by the authed serve route, keyed by fileId). NOTE: the upload path ships
- *  DISABLED (Zooclaw Files is not production-wired) — the display plumbing stays so a
+ *  DISABLED (Zoowork Files is not production-wired) — the display plumbing stays so a
  *  vertical can re-enable it when the platform lands shared workspaces. */
 export interface AttachmentMeta {
   fileId: string
@@ -90,22 +90,22 @@ export interface Store {
 
   /** The user's manually bound agent, if they picked one (see AgentBindingRow). */
   getAgentBinding(userEmail: string): Promise<AgentBindingRow | undefined>
-  /** Upsert the binding (last write wins — unlike saveZooclawAgent, rebinding is the point). */
+  /** Upsert the binding (last write wins — unlike saveZooworkAgent, rebinding is the point). */
   saveAgentBinding(userEmail: string, agentId: string, agentName: string | null): Promise<void>
   /** Drop the binding → the next new conversation falls back to env-fixed or per-user. */
   deleteAgentBinding(userEmail: string): Promise<void>
 
-  getZooclawAgent(userEmail: string): Promise<ZooclawAgentRow | undefined>
+  getZooworkAgent(userEmail: string): Promise<ZooworkAgentRow | undefined>
   /** Idempotent (INSERT OR IGNORE): first writer per email wins, losers no-op. */
-  saveZooclawAgent(userEmail: string, agentId: string, configHash: string | null): Promise<void>
+  saveZooworkAgent(userEmail: string, agentId: string, configHash: string | null): Promise<void>
   /** Record the config fingerprint just applied to the user's agent. */
-  setZooclawAgentConfig(userEmail: string, configHash: string): Promise<void>
+  setZooworkAgentConfig(userEmail: string, configHash: string): Promise<void>
   /** Forget a user's cached agent so the next turn re-provisions. Used when the cached
-   *  agent no longer exists on the configured the ZooClaw API (it 404s) — a row left over from a
-   *  different environment/token names an id this the ZooClaw API can't see. Required because
-   *  saveZooclawAgent is INSERT-OR-IGNORE (email is the PK), so it cannot overwrite a
+   *  agent no longer exists on the configured ZooWork API (it 404s) — a row left over from a
+   *  different environment/token names an id this ZooWork API can't see. Required because
+   *  saveZooworkAgent is INSERT-OR-IGNORE (email is the PK), so it cannot overwrite a
    *  stale row; the row must be deleted first. */
-  deleteZooclawAgent(userEmail: string): Promise<void>
+  deleteZooworkAgent(userEmail: string): Promise<void>
 
   createPrompt(id: string, taskId: string, prompt: string): Promise<void>
   getPrompt(id: string): Promise<Prompt | undefined>

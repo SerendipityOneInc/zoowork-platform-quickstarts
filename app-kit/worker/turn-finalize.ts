@@ -2,7 +2,7 @@
  * Pure finalize-decisions for TaskDO.alarm(), factored out so they're unit-testable
  * without instantiating a Durable Object (which imports `cloudflare:workers`).
  *
- * Zooclaw twist: `run.finished` IS the turn's terminal event (the driver reports it), but a
+ * Zoowork twist: `run.finished` IS the turn's terminal event (the driver reports it), but a
  * window can end without seeing it — the SSE connection dropped, or the window timer fired
  * mid-turn. The session's `status` (a coarse at-rest flag, `idle` when nothing is
  * processing) is the backstop for exactly those windows. Two races follow, and these
@@ -33,7 +33,7 @@ export const CANCELED_STATUSES = new Set(['canceled', 'cancelled'])
 /**
  * Pick the session's at-rest signal out of a `getSession` body — `run_status`, NOT `status`.
  *
- * On `getSession` the ZooClaw API returns `status: null` for every session and puts the outcome in
+ * On `getSession` the ZooWork API returns `status: null` for every session and puts the outcome in
  * `run_status` (staging-verified 2026-08-07; SDK 0.0.4 types both, and its JSDoc says to prefer
  * `run_status`). Reading `status` made the whole backstop below dead code: it was always nullish,
  * so a window that ended without `run.finished` never finalized on an at-rest session and instead
@@ -56,7 +56,7 @@ export function turnStatusForRun(outcome: string | undefined): string {
 }
 
 /** Consecutive failed alarm windows tolerated before the turn is declared dead. One
- *  the ZooClaw API/D1 hiccup between windows must NOT kill a turn whose agent is still running. */
+ *  the ZooWork API/D1 hiccup between windows must NOT kill a turn whose agent is still running. */
 export const MAX_WINDOW_ERRORS = 3
 
 /** HTTP statuses that can never succeed on replay — finalize immediately instead of
@@ -72,9 +72,9 @@ export interface RetryInput {
   errors: number
   now: number
   hardDeadline: number
-  /** HTTP status of the caught ZooclawError, when it was one (undefined for network/other). */
+  /** HTTP status of the caught ZooworkError, when it was one (undefined for network/other). */
   status?: number
-  /** the ZooClaw API's error.type, when present. */
+  /** the ZooWork API's error.type, when present. */
   errorType?: string
 }
 
@@ -92,7 +92,7 @@ export function shouldRetryWindowError(i: RetryInput): boolean {
 /**
  * Turn expiry is two-tier: past the soft deadline we only keep waiting when the session
  * POSITIVELY reports itself alive (a running-ish status) — long tool turns routinely
- * outlive the soft window. An unreachable the ZooClaw API or an at-rest status gets no benefit
+ * outlive the soft window. An unreachable ZooWork API or an at-rest status gets no benefit
  * of the doubt, and the hard deadline caps everything so a hung backend can't pin
  * 'running' forever.
  */

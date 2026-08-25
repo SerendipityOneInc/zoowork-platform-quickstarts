@@ -1,8 +1,8 @@
 /**
- * agentFor / ensureAgentConfig tests with a fake ZooclawClient + the in-memory store —
+ * agentFor / ensureAgentConfig tests with a fake ZooworkClient + the in-memory store —
  * zero quota. Pins the provisioning orchestration the docs make order-sensitive: create
  * (stable Idempotency-Key) → start (the gateway seeds platform credentials at create);
- * cache reuse without touching the ZooClaw API writes; the 404-stale self-heal;
+ * cache reuse without touching the ZooWork API writes; the 404-stale self-heal;
  * and the drift-gated config PUT (every API PUT bumps config_version, so an
  * unchanged config must produce ZERO PUTs).
  */
@@ -10,7 +10,7 @@ import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import { agentFor, ensureAgentConfig, hashAgentConfig, configMark, ownershipFor, resolveAgent, type ProvisionConfig } from './provision.ts'
 import { createMemStore } from '../server/store-mem.ts'
-import { ZooclawError, type ZooclawClient } from '@zooclaw-agents/sdk'
+import { ZooworkError, type ZooworkClient } from '@zoowork-ai/sdk'
 import { AGENT_MODEL, type AgentConfig } from '../domain/agent.ts'
 
 const CFG: ProvisionConfig = { orgId: 'org_1' }
@@ -30,9 +30,9 @@ interface FakeOpts {
   createIds?: string[]
 }
 
-/** Call-recording the ZooClaw API double. `calls` is the ordered op log the tests assert on —
+/** Call-recording ZooWork API double. `calls` is the ordered op log the tests assert on —
  *  order IS the contract (create before start; config after bring-up). */
-function fakeZooclawApi(opts: FakeOpts = {}) {
+function fakeZooworkApi(opts: FakeOpts = {}) {
   const calls: string[] = []
   const bodies: Record<string, unknown> = {}
   const startErrors = [...(opts.startErrors ?? [])]
@@ -73,7 +73,7 @@ function fakeZooclawApi(opts: FakeOpts = {}) {
     async deleteAgentSkill(_agentId: string, skillId: string) {
       calls.push(`unskill:${skillId}`)
     },
-  } as unknown as ZooclawClient
+  } as unknown as ZooworkClient
   return { client, calls, bodies, idemKeys, idemKey: () => idemKeys[idemKeys.length - 1] }
 }
 
@@ -84,7 +84,7 @@ function fakeZooclawApi(opts: FakeOpts = {}) {
 async function storeWithEverything() {
   const store = createMemStore()
   await store.saveAgentBinding('u@x.com', 'agt-bound', 'Bound One')
-  await store.saveZooclawAgent('u@x.com', 'agt-own', 'hash')
+  await store.saveZooworkAgent('u@x.com', 'agt-own', 'hash')
   return store
 }
 const PICKER: ProvisionConfig = { ...CFG, agentPicker: true, fixedAgentId: 'agt-env' }
@@ -100,7 +100,7 @@ test('resolveAgent: the conversation pin outranks every other source', async () 
   })
 })
 
-test('resolveAgent: a user binding outranks ZOOCLAW_AGENT_ID and the kit’s own agent', async () => {
+test('resolveAgent: a user binding outranks ZOOWORK_AGENT_ID and the kit’s own agent', async () => {
   const store = await storeWithEverything()
   assert.deepEqual(await resolveAgent(store, 'u@x.com', PICKER), {
     agentId: 'agt-bound',
@@ -144,18 +144,18 @@ test('a BOUND agent is used and never written: zero API calls, and the kit’s o
   // The safety property the whole feature rests on. The bound agent belongs to a real user;
   // a config PUT here would silently rewrite their persona and bump config_version.
   const store = await storeWithEverything()
-  const { client, calls } = fakeZooclawApi()
+  const { client, calls } = fakeZooworkApi()
   const config: AgentConfig = { systemPrompt: 'kit prompt', tools: {}, skillId: 'skl_x' }
 
   const got = await agentFor(store, client, 'u@x.com', PICKER, config)
   assert.deepEqual(got, { agentId: 'agt-bound', source: 'binding', managed: false })
   assert.deepEqual(calls, []) // no create, no credentials, no start, and above all no put-config
-  assert.deepEqual(await store.getZooclawAgent('u@x.com'), { agentId: 'agt-own', configHash: 'hash' })
+  assert.deepEqual(await store.getZooworkAgent('u@x.com'), { agentId: 'agt-own', configHash: 'hash' })
 })
 
 test('a CONVERSATION-pinned agent is used as-is, whatever the user has since bound', async () => {
   const store = await storeWithEverything()
-  const { client, calls } = fakeZooclawApi()
+  const { client, calls } = fakeZooworkApi()
   const got = await agentFor(store, client, 'u@x.com', PICKER, undefined, { pinnedAgentId: 'agt-pinned' })
   assert.deepEqual(got, { agentId: 'agt-pinned', source: 'conversation', managed: false })
   assert.deepEqual(calls, [])
@@ -163,7 +163,7 @@ test('a CONVERSATION-pinned agent is used as-is, whatever the user has since bou
 
 test('fixed-agent mode still provisions and configures nothing', async () => {
   const store = createMemStore()
-  const { client, calls } = fakeZooclawApi()
+  const { client, calls } = fakeZooworkApi()
   const got = await agentFor(store, client, 'u@x.com', { ...CFG, fixedAgentId: 'agt-env' }, { systemPrompt: 'x', tools: {} })
   assert.deepEqual(got, { agentId: 'agt-env', source: 'env-fixed', managed: false })
   assert.deepEqual(calls, [])
@@ -171,14 +171,14 @@ test('fixed-agent mode still provisions and configures nothing', async () => {
 
 test('fresh path: create (stable idempotency key) → start → row saved', async () => {
   const store = createMemStore()
-  const { client, calls, bodies, idemKey } = fakeZooclawApi()
+  const { client, calls, bodies, idemKey } = fakeZooworkApi()
 
   const { agentId } = await agentFor(store, client, 'u@x.com', CFG)
   assert.equal(agentId, 'agt-new')
   // The gateway seeds platform credentials at create — the kit only creates and starts.
   assert.deepEqual(calls, ['create', 'start'])
   // deterministic per email — this is what converges concurrent first-turns to ONE agent
-  assert.equal(idemKey(), 'zooclaw-app-kit:agent:u@x.com')
+  assert.equal(idemKey(), 'zoowork-app-kit:agent:u@x.com')
 
   const create = bodies.create as { resource: Record<string, unknown>; ownership: unknown }
   assert.equal(create.resource.name, 'app-kit: u@x.com')
@@ -190,13 +190,13 @@ test('fresh path: create (stable idempotency key) → start → row saved', asyn
   assert.deepEqual(create.ownership, ownershipFor('u@x.com', 'org_1'))
   assert.deepEqual(ownershipFor('u@x.com', 'org_1'), { owner_uid: 'email:u@x.com', org_id: 'org_1' })
 
-  assert.deepEqual(await store.getZooclawAgent('u@x.com'), { agentId: 'agt-new', configHash: null })
+  assert.deepEqual(await store.getZooworkAgent('u@x.com'), { agentId: 'agt-new', configHash: null })
 })
 
 test('reuse path: cached agent exists and desired running → no create / credential / start calls', async () => {
   const store = createMemStore()
-  await store.saveZooclawAgent('u@x.com', 'agt-1', null)
-  const { client, calls } = fakeZooclawApi({ desiredState: 'running' })
+  await store.saveZooworkAgent('u@x.com', 'agt-1', null)
+  const { client, calls } = fakeZooworkApi({ desiredState: 'running' })
 
   const { agentId } = await agentFor(store, client, 'u@x.com', CFG)
   assert.equal(agentId, 'agt-1')
@@ -205,48 +205,48 @@ test('reuse path: cached agent exists and desired running → no create / creden
 
 test('reuse path: desired_state stopped → startAgent (credentials are NOT rewritten preemptively)', async () => {
   const store = createMemStore()
-  await store.saveZooclawAgent('u@x.com', 'agt-1', null)
-  const { client, calls } = fakeZooclawApi({ desiredState: 'stopped' })
+  await store.saveZooworkAgent('u@x.com', 'agt-1', null)
+  const { client, calls } = fakeZooworkApi({ desiredState: 'stopped' })
 
   await agentFor(store, client, 'u@x.com', CFG)
   assert.deepEqual(calls, ['get:agt-1', 'start']) // credential PUTs append secret versions — heal-only
 })
 
-test('stale path: cached agent 404s on this the ZooClaw API → row deleted → fresh create', async () => {
+test('stale path: cached agent 404s on this ZooWork API → row deleted → fresh create', async () => {
   const store = createMemStore()
-  await store.saveZooclawAgent('u@x.com', 'agt-dead', 'stale-hash')
-  const { client, calls } = fakeZooclawApi({ getAgentError: new ZooclawError(404, 'not found', 'not_found') })
+  await store.saveZooworkAgent('u@x.com', 'agt-dead', 'stale-hash')
+  const { client, calls } = fakeZooworkApi({ getAgentError: new ZooworkError(404, 'not found', 'not_found') })
 
   const { agentId } = await agentFor(store, client, 'u@x.com', CFG)
   assert.equal(agentId, 'agt-new')
   assert.deepEqual(calls, ['get:agt-dead', 'create', 'start'])
-  // delete-then-save: saveZooclawAgent is INSERT-OR-IGNORE, so the stale row had to go first
-  assert.equal((await store.getZooclawAgent('u@x.com'))?.agentId, 'agt-new')
+  // delete-then-save: saveZooworkAgent is INSERT-OR-IGNORE, so the stale row had to go first
+  assert.equal((await store.getZooworkAgent('u@x.com'))?.agentId, 'agt-new')
 })
 
 test('idempotency_conflict on the stable create key → one retry with a fresh unique key', async () => {
   // The stable key replays against a drifted create body (the kit’s defaults changed
   // since the original create) — permanent 409 without rotation.
   const store = createMemStore()
-  const { client, calls, idemKeys } = fakeZooclawApi({
-    createErrors: [new ZooclawError(409, 'idempotency key reuse', 'idempotency_conflict')],
+  const { client, calls, idemKeys } = fakeZooworkApi({
+    createErrors: [new ZooworkError(409, 'idempotency key reuse', 'idempotency_conflict')],
   })
 
   const { agentId } = await agentFor(store, client, 'u@x.com', CFG)
   assert.equal(agentId, 'agt-new') // the retry's agent (ids are consumed per SUCCESSFUL create)
   assert.deepEqual(calls.slice(0, 2), ['create', 'create'])
-  assert.equal(idemKeys[0], 'zooclaw-app-kit:agent:u@x.com')
+  assert.equal(idemKeys[0], 'zoowork-app-kit:agent:u@x.com')
   assert.notEqual(idemKeys[1], idemKeys[0]) // rotated
-  assert.ok(idemKeys[1]!.startsWith('zooclaw-app-kit:agent:u@x.com:'))
+  assert.ok(idemKeys[1]!.startsWith('zoowork-app-kit:agent:u@x.com:'))
 })
 
 test('stable-key replay of a soft-deleted create (bring-up 404s) → recreate under a fresh key', async () => {
   // The replay "succeeds" but returns the original — dead — agent_id; the start
   // 404s. Without key rotation this is an unbreakable reprovision loop.
   const store = createMemStore()
-  const { client, calls, idemKeys } = fakeZooclawApi({
+  const { client, calls, idemKeys } = fakeZooworkApi({
     createIds: ['agt-dead-replay', 'agt-live'],
-    startErrors: [new ZooclawError(404, 'agent not found', 'not_found')],
+    startErrors: [new ZooworkError(404, 'agent not found', 'not_found')],
   })
 
   const { agentId } = await agentFor(store, client, 'u@x.com', CFG)
@@ -258,26 +258,26 @@ test('stable-key replay of a soft-deleted create (bring-up 404s) → recreate un
     'start',
   ])
   assert.notEqual(idemKeys[1], idemKeys[0])
-  assert.equal((await store.getZooclawAgent('u@x.com'))?.agentId, 'agt-live')
+  assert.equal((await store.getZooworkAgent('u@x.com'))?.agentId, 'agt-live')
 })
 
 test('a transient (non-404) probe error rethrows and keeps the cached row', async () => {
-  // A the ZooClaw API blip must not orphan a good agent: no delete, no re-provision.
+  // A ZooWork API blip must not orphan a good agent: no delete, no re-provision.
   const store = createMemStore()
-  await store.saveZooclawAgent('u@x.com', 'agt-keep', null)
-  const { client, calls } = fakeZooclawApi({ getAgentError: new ZooclawError(500, 'internal', 'internal_error') })
+  await store.saveZooworkAgent('u@x.com', 'agt-keep', null)
+  const { client, calls } = fakeZooworkApi({ getAgentError: new ZooworkError(500, 'internal', 'internal_error') })
 
   await assert.rejects(agentFor(store, client, 'u@x.com', CFG), /internal/)
   assert.deepEqual(calls, ['get:agt-keep'])
-  assert.equal((await store.getZooclawAgent('u@x.com'))?.agentId, 'agt-keep')
+  assert.equal((await store.getZooworkAgent('u@x.com'))?.agentId, 'agt-keep')
 })
 
 test('a start conflict on the reuse path rethrows — no blind retry', async () => {
   const store = createMemStore()
-  await store.saveZooclawAgent('u@x.com', 'agt-1', null)
-  const { client, calls } = fakeZooclawApi({
+  await store.saveZooworkAgent('u@x.com', 'agt-1', null)
+  const { client, calls } = fakeZooworkApi({
     desiredState: 'stopped',
-    startErrors: [new ZooclawError(409, 'environment locked', 'environment_locked')],
+    startErrors: [new ZooworkError(409, 'environment locked', 'environment_locked')],
   })
 
   await assert.rejects(agentFor(store, client, 'u@x.com', CFG), /environment locked/)
@@ -286,8 +286,8 @@ test('a start conflict on the reuse path rethrows — no blind retry', async () 
 
 test('config drift: PUT sections + record hash; unchanged config → ZERO PUTs; changed prompt → PUT again', async () => {
   const store = createMemStore()
-  await store.saveZooclawAgent('u@x.com', 'agt-1', null)
-  const { client, calls, bodies } = fakeZooclawApi()
+  await store.saveZooworkAgent('u@x.com', 'agt-1', null)
+  const { client, calls, bodies } = fakeZooworkApi()
   const config: AgentConfig = { systemPrompt: 'be terse', tools: { web_search: false } }
 
   const changed = await ensureAgentConfig(store, client, 'u@x.com', 'agt-1', config)
@@ -296,7 +296,7 @@ test('config drift: PUT sections + record hash; unchanged config → ZERO PUTs; 
     persona: { docs: [{ name: 'AGENTS.md', content: 'be terse' }] },
     tool_policy: { deny: ['web_search'] },
   })
-  assert.equal((await store.getZooclawAgent('u@x.com'))?.configHash, configMark(hashAgentConfig(config), ''))
+  assert.equal((await store.getZooworkAgent('u@x.com'))?.configHash, configMark(hashAgentConfig(config), ''))
 
   calls.length = 0
   assert.deepEqual(await ensureAgentConfig(store, client, 'u@x.com', 'agt-1', config), [])
@@ -308,8 +308,8 @@ test('config drift: PUT sections + record hash; unchanged config → ZERO PUTs; 
 
 test('config drift: skill tracking is independent — clearing the skill uninstalls it without a core re-PUT', async () => {
   const store = createMemStore()
-  await store.saveZooclawAgent('u@x.com', 'agt-1', null)
-  const { client, calls } = fakeZooclawApi()
+  await store.saveZooworkAgent('u@x.com', 'agt-1', null)
+  const { client, calls } = fakeZooworkApi()
   const withSkill: AgentConfig = { systemPrompt: 'p', tools: {}, skillId: 'skl_x' }
 
   await ensureAgentConfig(store, client, 'u@x.com', 'agt-1', withSkill)
@@ -319,7 +319,7 @@ test('config drift: skill tracking is independent — clearing the skill uninsta
   const changed = await ensureAgentConfig(store, client, 'u@x.com', 'agt-1', { systemPrompt: 'p', tools: {} })
   assert.deepEqual(changed, ['skill:-skl_x'])
   assert.deepEqual(calls, ['unskill:skl_x'])
-  assert.equal((await store.getZooclawAgent('u@x.com'))?.configHash, configMark(hashAgentConfig(withSkill), ''))
+  assert.equal((await store.getZooworkAgent('u@x.com'))?.configHash, configMark(hashAgentConfig(withSkill), ''))
 })
 
 test('config drift: a failed skill write must NOT force the (succeeded) core PUT to replay next turn', async () => {
@@ -327,7 +327,7 @@ test('config drift: a failed skill write must NOT force the (succeeded) core PUT
   // skill-route failure afterwards must not leave the whole mark unrecorded, or every
   // new conversation replays the persona/tool PUT (a config_version bump each time).
   const store = createMemStore()
-  await store.saveZooclawAgent('u@x.com', 'agt-1', null)
+  await store.saveZooworkAgent('u@x.com', 'agt-1', null)
   const calls: string[] = []
   const client = {
     async updateAgent() {
@@ -336,15 +336,15 @@ test('config drift: a failed skill write must NOT force the (succeeded) core PUT
     },
     async putAgentSkill() {
       calls.push('skill')
-      throw new ZooclawError(500, 'skill route down', 'internal_error')
+      throw new ZooworkError(500, 'skill route down', 'internal_error')
     },
-  } as unknown as ZooclawClient
+  } as unknown as ZooworkClient
   const config: AgentConfig = { systemPrompt: 'p', tools: {}, skillId: 'skl_x' }
 
   await assert.rejects(ensureAgentConfig(store, client, 'u@x.com', 'agt-1', config), /skill route down/)
   assert.deepEqual(calls, ['put-config', 'skill'])
   // Core hash recorded, skill not — the retry re-attempts ONLY the skill install.
-  assert.equal((await store.getZooclawAgent('u@x.com'))?.configHash, configMark(hashAgentConfig(config), ''))
+  assert.equal((await store.getZooworkAgent('u@x.com'))?.configHash, configMark(hashAgentConfig(config), ''))
   calls.length = 0
   await assert.rejects(ensureAgentConfig(store, client, 'u@x.com', 'agt-1', config), /skill route down/)
   assert.deepEqual(calls, ['skill']) // no core re-PUT
@@ -352,8 +352,8 @@ test('config drift: a failed skill write must NOT force the (succeeded) core PUT
 
 test('config drift: a skillId pins the skill on the agent (unpinned → follow latest ready)', async () => {
   const store = createMemStore()
-  await store.saveZooclawAgent('u@x.com', 'agt-1', null)
-  const { client, calls, bodies } = fakeZooclawApi()
+  await store.saveZooworkAgent('u@x.com', 'agt-1', null)
+  const { client, calls, bodies } = fakeZooworkApi()
 
   const changed = await ensureAgentConfig(store, client, 'u@x.com', 'agt-1', { systemPrompt: 'p', tools: {}, skillId: 'skl_x' })
   assert.deepEqual(changed, ['persona', 'tool_policy', 'skill:skl_x'])
@@ -365,12 +365,12 @@ test('agentFor: a config PUT failure is non-fatal and leaves the fingerprint unr
   // The turn must not fail because config application blipped — the agent just keeps its
   // previous config, and the unrecorded hash forces a retry next turn.
   const store = createMemStore()
-  await store.saveZooclawAgent('u@x.com', 'agt-1', null)
-  const { client } = fakeZooclawApi({ updateAgentError: new Error('the ZooClaw API down') })
+  await store.saveZooworkAgent('u@x.com', 'agt-1', null)
+  const { client } = fakeZooworkApi({ updateAgentError: new Error('ZooWork API down') })
 
   const { agentId } = await agentFor(store, client, 'u@x.com', CFG, { systemPrompt: 'p', tools: {} })
   assert.equal(agentId, 'agt-1')
-  assert.equal((await store.getZooclawAgent('u@x.com'))?.configHash, null)
+  assert.equal((await store.getZooworkAgent('u@x.com'))?.configHash, null)
 })
 
 test('hashAgentConfig: stable under tools key order; the skill pin is NOT part of the core hash', () => {

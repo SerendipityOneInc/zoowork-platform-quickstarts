@@ -9,7 +9,7 @@ import { taskIdAtom } from '../store/ui.ts'
  * pick `{ selectedOptions, customResponse? }`, or a form's `{ values }`) for a blocked
  * `ask_user_question` and let the turn resume. There is nothing to stream here: the blocked
  * prompt never left 'running', so its SSE is still attached (send() or the reload-reattach);
- * the worker posts a user.tool_confirmation to the Zooclaw session + nudges the runner, and
+ * the worker posts a user.tool_confirmation to the Zoowork session + nudges the runner, and
  * the agent's reply lands on that same stream. The card's optimistic "answered" state is the
  * component's concern.
  */

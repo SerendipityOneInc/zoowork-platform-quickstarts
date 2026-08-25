@@ -1,11 +1,11 @@
 /**
  * Turn driver — the streaming crown (streaming-experience-contract; hardening #1). The
- * single place a Zooclaw session event becomes frames. Split per the spec:
+ * single place a Zoowork session event becomes frames. Split per the spec:
  *
  *  - `translate(ev)` is PURE: one session event → stored frame(s). No I/O, no cross-event
  *    state. Its frame shapes are exactly what `deriveChat` (generic chat) and a vertical's
  *    domain derive both read, so there is one frame vocabulary, not three.
- *  - `driveTurn(...)` is the stateful driver: it pulls events from `@zooclaw-agents/sdk`
+ *  - `driveTurn(...)` is the stateful driver: it pulls events from `@zoowork-ai/sdk`
  *    (server-side cursor resume; session-scoped stream), translates each, pushes to an
  *    INJECTED sink (the DO injects "emit → store"; a probe injects "push → array"), and
  *    accumulates shown text so the caller can decide drain/backfill. It returns the newest
@@ -31,7 +31,7 @@
  * is per-SESSION and unbounded (it does not close at turn end), so the caller still runs a
  * status poll, but that is now a BACKSTOP for a dropped window, not the primary signal.
  */
-import { assistantText, isRunFinished, runOutcome, thinkingText, toolCall, type SessionEvent, type ZooclawClient } from '@zooclaw-agents/sdk'
+import { assistantText, isRunFinished, runOutcome, thinkingText, toolCall, type SessionEvent, type ZooworkClient } from '@zoowork-ai/sdk'
 import { normText } from '../frame-text.ts'
 
 /** A frame's stored `data` payload (always an object in practice). */
@@ -107,7 +107,7 @@ export const recordEmitted = (ref: { value: string }, text: string): void => {
  *  - input echoes (`user.message`, `user.interrupt`, …) — the unified stream carries the
  *    session's own inputs back; the kit already rendered the prompt from its store, so an
  *    echo is stream traffic, not new content.
- * They still ride through as `__zooclaw` debug frames so the debug pane can show the raw
+ * They still ride through as `__zoowork` debug frames so the debug pane can show the raw
  * stream; the chat derivation ignores any frame whose keys are all `__`-prefixed.
  */
 export function translate(ev: SessionEvent): FrameData[] {
@@ -118,7 +118,7 @@ export function translate(ev: SessionEvent): FrameData[] {
     }
     case 'agent.thinking': {
       const text = thinkingText(ev)
-      return text.trim() ? [{ __zooclaw: 'thinking', payload: { text } }] : []
+      return text.trim() ? [{ __zoowork: 'thinking', payload: { text } }] : []
     }
     case 'agent.tool': {
       const call = toolCall(ev)
@@ -138,7 +138,7 @@ export function translate(ev: SessionEvent): FrameData[] {
           },
         ]
       }
-      return [{ __zooclaw: 'tool_blocked', payload: { toolCallId: call.toolCallId, toolName: call.toolName } }]
+      return [{ __zoowork: 'tool_blocked', payload: { toolCallId: call.toolCallId, toolName: call.toolName } }]
     }
     case 'agent.error': {
       // The one durable event that is a failure message meant for the user; everything else
@@ -147,11 +147,11 @@ export function translate(ev: SessionEvent): FrameData[] {
       return msg ? [{ __error: msg }] : []
     }
     default:
-      return [{ __zooclaw: ev.eventType, payload: ev.payload }]
+      return [{ __zoowork: ev.eventType, payload: ev.payload }]
   }
 }
 
-export async function driveTurn(client: ZooclawClient, agentId: string, sessionId: string, sink: FrameSink, opts: DriveOpts = {}): Promise<TurnEnd> {
+export async function driveTurn(client: ZooworkClient, agentId: string, sessionId: string, sink: FrameSink, opts: DriveOpts = {}): Promise<TurnEnd> {
   const emitted = opts.emittedText ?? { value: '' }
   const skipThrough = opts.skipThrough ?? 0
   let lastSeq = skipThrough

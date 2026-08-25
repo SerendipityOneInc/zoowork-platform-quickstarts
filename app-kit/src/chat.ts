@@ -5,8 +5,8 @@
  * those from the raw frames in its OWN derive (for a full
  * frame → domain-state machine) and never forks this core.
  *
- * Zooclaw control frames are chat-invisible by design: `{ __zooclaw_session }` (the DO's
- * session marker — there is no public console URL to link to) and `{ __zooclaw, payload }`
+ * Zoowork control frames are chat-invisible by design: `{ __zoowork_session }` (the DO's
+ * session marker — there is no public console URL to link to) and `{ __zoowork, payload }`
  * (typed-event passthroughs, e.g. thinking) derive NO bubble; the DebugPanel is where
  * they surface.
  *
@@ -22,7 +22,7 @@ import type { Attachment, PromptContent } from './api.ts'
  *  the tool call's `agent.tool` `phase: 'blocked'` — but it speaks approvals
  *  (`approvalId` + a resolution) rather than this card's `messageId`/`actionId` pair, so
  *  wiring it is a mapping decision, not a missing event. The card + answer path stay wired
- *  so translating it in server/zooclaw/turn-driver.ts lights this up with no UI change. */
+ *  so translating it in server/zoowork/turn-driver.ts lights this up with no UI change. */
 export interface Ask {
   actionId: number
   messageId: string
@@ -80,10 +80,10 @@ export function deriveChat(prompts: PromptContent[]): ChatBubble[] {
       const data = f.data
       if (!isObj(data)) continue
 
-      // Zooclaw control frames — chat renders NOTHING for them. `__zooclaw_session` is the DO's
-      // turn marker (no public URL exists for a Zooclaw session, so there is no link bubble);
-      // `__zooclaw` passthroughs (thinking / unclassified typed events) are debug-pane material.
-      if (typeof data.__zooclaw_session === 'string' || typeof data.__zooclaw === 'string') continue
+      // Zoowork control frames — chat renders NOTHING for them. `__zoowork_session` is the DO's
+      // turn marker (no public URL exists for a Zoowork session, so there is no link bubble);
+      // `__zoowork` passthroughs (thinking / unclassified typed events) are debug-pane material.
+      if (typeof data.__zoowork_session === 'string' || typeof data.__zoowork === 'string') continue
       // A blocked ask: the agent paused to ask. Render a question card (options / free-text /
       // form). NOTE: no backend path emits `__ask` yet (inbound HITL unwired — see the Ask
       // interface note); this branch is the ready-made consumer for when the the API

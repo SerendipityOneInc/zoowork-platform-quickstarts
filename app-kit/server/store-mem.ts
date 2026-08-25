@@ -10,7 +10,7 @@
  *  - `appendFrame` round-trips data through JSON, mirroring D1 storing it as a JSON string
  *    (so a stored frame is a structural clone, never a live reference).
  */
-import type { Store, Task, Prompt, TaskSummary, ZooclawAgentRow, AgentBindingRow, Frame, AttachmentMeta } from './store.ts'
+import type { Store, Task, Prompt, TaskSummary, ZooworkAgentRow, AgentBindingRow, Frame, AttachmentMeta } from './store.ts'
 
 interface TaskRow extends Task {
   ord: number
@@ -25,7 +25,7 @@ export function createMemStore(): Store {
   const tasks = new Map<string, TaskRow>()
   const prompts = new Map<string, PromptRow>()
   const frames = new Map<string, Frame[]>()
-  const agents = new Map<string, ZooclawAgentRow>()
+  const agents = new Map<string, ZooworkAgentRow>()
   const bindings = new Map<string, AgentBindingRow>()
   const attachments = new Map<string, { userEmail: string; filename: string; contentType: string; thumb: ArrayBuffer | null; large: ArrayBuffer | null }>()
   const promptFiles = new Map<string, string[]>()
@@ -91,19 +91,19 @@ export function createMemStore(): Store {
       bindings.delete(userEmail)
     },
 
-    async getZooclawAgent(userEmail) {
+    async getZooworkAgent(userEmail) {
       const a = agents.get(userEmail)
       return a ? { agentId: a.agentId, configHash: a.configHash } : undefined
     },
-    async saveZooclawAgent(userEmail, agentId, configHash) {
+    async saveZooworkAgent(userEmail, agentId, configHash) {
       if (agents.has(userEmail)) return // INSERT OR IGNORE: first writer wins
       agents.set(userEmail, { agentId, configHash })
     },
-    async setZooclawAgentConfig(userEmail, configHash) {
+    async setZooworkAgentConfig(userEmail, configHash) {
       const a = agents.get(userEmail)
       if (a) a.configHash = configHash
     },
-    async deleteZooclawAgent(userEmail) {
+    async deleteZooworkAgent(userEmail) {
       agents.delete(userEmail)
     },
 

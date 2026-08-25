@@ -2,14 +2,14 @@
  * Did a turn's chat answer actually land — and render — in storage? The UI reads
  * frames from the store (GET /content) and only renders assistant *text* frames.
  * A turn can finalize with its answer missing entirely (never persisted); this pure
- * helper detects that so the content route can self-heal from the Zooclaw session
+ * helper detects that so the content route can self-heal from the Zoowork session
  * transcript (streaming-experience-contract R3, case 2). Assistant text shape mirrors
  * the turn driver's emitted text frame:
  *   { type:'assistant', message:{ content:[{ type:'text', text }] } }
  *
  * The former case-1 helpers (relay `result`-channel text stored but unrendered) were
  * There is no result channel, so an unclassified
- * event lands as a `__zooclaw` passthrough with no reliable "this is the final answer"
+ * event lands as a `__zoowork` passthrough with no reliable "this is the final answer"
  * signal, so there is nothing safe to backfill from locally. See the R3 row in
  * the streaming notes in README.md.
  */

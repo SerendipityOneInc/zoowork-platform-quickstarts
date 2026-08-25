@@ -7,12 +7,12 @@ here was verified against a live deployment on 2026-08-11, not read off a spec.
 
 ## Mental model
 
-The server holds one secret and one token. `ZOOCLAW_API_KEY` authenticates the whole
+The server holds one secret and one token. `ZOOWORK_API_KEY` authenticates the whole
 organization, so it can never reach the browser — that is the entire reason a server
 exists in a template with no database. The token is a per-session stream resume cursor
 (`cursors` in `server.mjs`), so a new turn streams only new events.
 
-Everything else lives in ZooClaw. The browser stores a session id in `localStorage`; the
+Everything else lives in ZooWork. The browser stores a session id in `localStorage`; the
 transcript is fetched back from the platform on reload. There is nothing to persist.
 
 ---
@@ -110,7 +110,7 @@ signals.
 
 | | |
 |---|---|
-| `401` | key missing or invalid. Match on `ZooclawError.status`, never on message text. |
+| `401` | key missing or invalid. Match on `ZooworkError.status`, never on message text. |
 | `404` on an agent id you hold | almost always cross-organization: the key and the agent belong to different orgs. Tenant isolation hides existence rather than returning 403, so 404 does **not** mean "deleted". |
 | `409 agent_not_running` | preflight was skipped, or the agent was stopped after boot. |
 
@@ -123,7 +123,7 @@ signals.
   for a sidebar with titles, without a database. It was left out to keep this template at
   one conversation.
 - **Do not add a database before you need one.** Sessions, transcripts and titles all live
-  in ZooClaw already. [`app-kit/`](../app-kit/) adds storage because it also adds auth,
+  in ZooWork already. [`app-kit/`](../app-kit/) adds storage because it also adds auth,
   multi-user agents and refresh-safe streaming — reach for it then, not sooner.
 - **Long-lived SSE at scale is untested.** Rate limits, concurrency caps and how the
   gateway treats connections held for many minutes have not been measured. One tab per

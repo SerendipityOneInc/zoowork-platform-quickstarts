@@ -1,34 +1,34 @@
 /**
  * Worker runtime bindings (see wrangler.jsonc). Shared by the Worker entry and the
- * Durable Object. The the ZooClaw API service token + the two platform credentials are the only
+ * Durable Object. The the ZooWork API service token + the two platform credentials are the only
  * secrets the backbone needs; auth is Cloudflare Access by default (a vertical can swap
  * to its own IdP / iframe handoff in worker/auth.ts).
  *
- * SECURITY: ZOOCLAW_API_KEY authenticates this Worker as your whole organization. It must
+ * SECURITY: ZOOWORK_API_KEY authenticates this Worker as your whole organization. It must
  * never be sent to the browser, logged, or embedded in a client bundle.
  */
-import { createZooclawClient, DEFAULT_BASE_URL, type ZooclawClient } from '@zooclaw-agents/sdk'
+import { createZooworkClient, DEFAULT_BASE_URL, type ZooworkClient } from '@zoowork-ai/sdk'
 import { ATTACHMENTS_ENABLED } from '../domain/agent.ts'
 import type { RuntimeConfig } from '../server/routes.ts'
 
 export interface Env {
-  /** D1 database (tasks/prompts/frames + zooclaw_agents). */
+  /** D1 database (tasks/prompts/frames + zoowork_agents). */
   DB: D1Database
   /** Durable Object namespace for the per-task turn runner. */
   TASK_DO: DurableObjectNamespace<import('./task-do.ts').TaskDO>
   /** Static SPA assets (the vite build/). */
   ASSETS: Fetcher
 
-  // ── Zooclaw API: pick ONE of the two auth modes below ────────────────────
+  // ── Zoowork API: pick ONE of the two auth modes below ────────────────────
   //
   // PUBLIC PATH (preferred). The claw-interface gateway authenticates an org service
-  // token (`zct_…`), enforces tenancy, and proxies to the ZooClaw API. Publicly reachable — no
+  // token (`zct_…`), enforces tenancy, and proxies to the ZooWork API. Publicly reachable — no
   // tunnel. This is what a customer deployment uses.
   /** Optional gateway base override. The SDK defaults to the public gateway, so leave
    *  this unset unless you are targeting a different deployment. */
-  ZOOCLAW_API_URL?: string
-  /** Org service token, `zct_…` (secret: `wrangler secret put ZOOCLAW_API_KEY`). */
-  ZOOCLAW_API_KEY?: string
+  ZOOWORK_API_URL?: string
+  /** Org service token, `zct_…` (secret: `wrangler secret put ZOOWORK_API_KEY`). */
+  ZOOWORK_API_KEY?: string
   /**
    * Org anchor stamped on agents this deployment creates (`ownership.org_id`).
    *
@@ -37,9 +37,9 @@ export interface Env {
    * create sent `probe-org` and came back with the key's real org). Leave it unset in
    * gateway mode.
    */
-  ZOOCLAW_ORG_ID?: string
+  ZOOWORK_ORG_ID?: string
   /** Optional Environment id to pin at agent create (omit → system default). */
-  ZOOCLAW_ENVIRONMENT_ID?: string
+  ZOOWORK_ENVIRONMENT_ID?: string
   /**
    * FIXED-AGENT MODE. When set, every user of this deployment talks to THIS pre-built
    * agent and the kit provisions nothing — no create, no config PUT (see
@@ -49,18 +49,18 @@ export interface Env {
    * config (each conversation still gets its own isolated session, so they don't share
    * memory). Leave unset for the real per-user provisioning path.
    */
-  ZOOCLAW_AGENT_ID?: string
+  ZOOWORK_AGENT_ID?: string
 
   /**
    * AGENT PICKER, **on by default**. Lets a signed-in user bind this deployment to an agent
-   * they already own in the ZooClaw app (the panel's Agent tab), overriding ZOOCLAW_AGENT_ID
+   * they already own in the ZooWork app (the panel's Agent tab), overriding ZOOWORK_AGENT_ID
    * and per-user provisioning for their NEW conversations.
    *
    * On by default because this kit is a TEMPLATE for learning the SDK: pointing it at an
    * agent you already built is the fastest way to see `listAgents()` / `getAgent()` /
    * `startAgent()` do something real, and making that a hidden opt-in would bury the lesson.
    *
-   * Set `AGENT_PICKER=off` when a vertical ships this to end users. ZOOCLAW_API_KEY is an
+   * Set `AGENT_PICKER=off` when a vertical ships this to end users. ZOOWORK_API_KEY is an
    * ORG token, so with the picker on ANY signed-in user can list and borrow ANY agent in the
    * organization — fine while you are the only user, not something to hand a customer. Off
    * is enforced on both sides: the routes 403 and provisioning ignores bindings already
@@ -82,11 +82,11 @@ export interface Env {
   DEV_EMAIL?: string
 }
 
-/** True when this deployment talks to the public gateway rather than the ZooClaw API directly.
+/** True when this deployment talks to the public gateway rather than the ZooWork API directly.
  *  Gateway mode changes ONE behavior beyond auth: the gateway owns credential injection
  *  and blocks `credentials/*` (404), so provisioning must not write them (provision.ts). */
 export function isGatewayMode(env: Env): boolean {
-  return !!env.ZOOCLAW_API_KEY
+  return !!env.ZOOWORK_API_KEY
 }
 
 /** May a signed-in user bind their own agent? On unless explicitly switched off — see
@@ -117,7 +117,7 @@ export type ConfigurableEnvKey = Exclude<keyof Env, 'DB' | 'TASK_DO' | 'ASSETS'>
 export interface EnvVarDoc {
   /** The variable name, exactly as it appears in .dev.vars / wrangler.jsonc. */
   name: ConfigurableEnvKey
-  /** One line: what changes when it is set, and where that lands in the ZooClaw API. */
+  /** One line: what changes when it is set, and where that lands in the ZooWork API. */
   effect: string
   /** True when the value is (or carries) a credential — `wrangler secret put`, never
    *  wrangler.jsonc. The kit reports these as presence only; see describeRuntime. */
@@ -127,23 +127,23 @@ export interface EnvVarDoc {
 /** The source of truth. Exhaustive over ConfigurableEnvKey by construction — omit a key
  *  and `tsc` fails here; invent one that is not in `Env` and it fails here too. */
 const KIT_ENV_VAR_DOCS: Record<ConfigurableEnvKey, Omit<EnvVarDoc, 'name'>> = {
-  ZOOCLAW_API_KEY: {
-    effect: 'Org service token. Rides as the Bearer on every ZooClaw API call; its presence selects gateway mode.',
+  ZOOWORK_API_KEY: {
+    effect: 'Org service token. Rides as the Bearer on every ZooWork API call; its presence selects gateway mode.',
     secret: true,
   },
-  ZOOCLAW_API_URL: {
-    effect: 'Base URL for every ZooClaw API call. Unset, the SDK targets the public gateway.',
+  ZOOWORK_API_URL: {
+    effect: 'Base URL for every ZooWork API call. Unset, the SDK targets the public gateway.',
     secret: false,
   },
-  ZOOCLAW_ORG_ID: {
+  ZOOWORK_ORG_ID: {
     effect: 'ownership.org_id on created agents. Discarded in gateway mode — the gateway substitutes the key’s own tenant.',
     secret: false,
   },
-  ZOOCLAW_ENVIRONMENT_ID: {
+  ZOOWORK_ENVIRONMENT_ID: {
     effect: 'resource.environment_id at agent create. The pin locks after the first sandbox — later changes return 409 environment_locked.',
     secret: false,
   },
-  ZOOCLAW_AGENT_ID: {
+  ZOOWORK_AGENT_ID: {
     effect: 'Fixed-agent mode: everyone talks to this agent and the kit provisions nothing — no create, no config PUT.',
     secret: false,
   },
@@ -185,7 +185,7 @@ function isConfigured(env: Env, name: ConfigurableEnvKey): boolean {
  * The non-secret description of THIS deployment, served by `GET /api/app/config`.
  *
  * SECURITY: variable VALUES never appear in the result — every declared variable is
- * reduced to `configured: true | false`. ZOOCLAW_API_KEY authenticates the Worker as the
+ * reduced to `configured: true | false`. ZOOWORK_API_KEY authenticates the Worker as the
  * whole organization, so a leak here is a tenant-wide compromise; the one value that does
  * cross the wire is the resolved API base URL, which is a public endpoint and the single
  * thing a user cannot otherwise tell about their deployment. server/routes.test.ts locks
@@ -194,18 +194,18 @@ function isConfigured(env: Env, name: ConfigurableEnvKey): boolean {
 export function describeRuntime(env: Env): RuntimeConfig {
   return {
     runtime: {
-      // The kit builds a client only from ZOOCLAW_API_KEY (see zooclawClient), so gateway
+      // The kit builds a client only from ZOOWORK_API_KEY (see zooworkClient), so gateway
       // is the only reachable transport; without the key nothing can talk to the API at all.
       transport: isGatewayMode(env) ? 'gateway' : 'unconfigured',
-      provisioning: env.ZOOCLAW_AGENT_ID ? 'fixed-agent' : 'per-user',
+      provisioning: env.ZOOWORK_AGENT_ID ? 'fixed-agent' : 'per-user',
       // A capability flag, not a value: it says whether the Agent tab's picker is live, and
       // the routes enforce the same boolean. Safe to publish — it leaks no variable content.
       agentPicker: agentPickerEnabled(env),
       identity: env.DEV_EMAIL ? 'dev-email' : env.CF_ACCESS_TEAM_DOMAIN && env.CF_ACCESS_AUD ? 'cloudflare-access' : 'unconfigured',
       embedGate: !!env.EMBED_KEY,
       attachments: ATTACHMENTS_ENABLED,
-      apiBaseUrl: env.ZOOCLAW_API_URL || DEFAULT_BASE_URL,
-      apiBaseUrlFrom: env.ZOOCLAW_API_URL ? 'ZOOCLAW_API_URL' : 'sdk-default',
+      apiBaseUrl: env.ZOOWORK_API_URL || DEFAULT_BASE_URL,
+      apiBaseUrlFrom: env.ZOOWORK_API_URL ? 'ZOOWORK_API_URL' : 'sdk-default',
     },
     env: KIT_ENV_VARS.map((v) => ({ name: v.name, effect: v.effect, secret: v.secret, configured: isConfigured(env, v.name) })),
   }
@@ -215,26 +215,26 @@ export function describeRuntime(env: Env): RuntimeConfig {
 export function provisionConfig(env: Env): import('./provision.ts').ProvisionConfig {
   return {
     // Ignored in gateway mode; the gateway substitutes the API key's own tenant.
-    orgId: env.ZOOCLAW_ORG_ID ?? 'gateway-assigned',
+    orgId: env.ZOOWORK_ORG_ID ?? 'gateway-assigned',
     agentPicker: agentPickerEnabled(env),
-    ...(env.ZOOCLAW_ENVIRONMENT_ID ? { environmentId: env.ZOOCLAW_ENVIRONMENT_ID } : {}),
-    ...(env.ZOOCLAW_AGENT_ID ? { fixedAgentId: env.ZOOCLAW_AGENT_ID } : {}),
+    ...(env.ZOOWORK_ENVIRONMENT_ID ? { environmentId: env.ZOOWORK_ENVIRONMENT_ID } : {}),
+    ...(env.ZOOWORK_AGENT_ID ? { fixedAgentId: env.ZOOWORK_AGENT_ID } : {}),
   }
 }
 
 /**
  * The one place the kit constructs an SDK client, and the one place the two auth modes
- * differ. The SDK's `ZooclawAuth` is a union, so nothing downstream of here knows which
+ * differ. The SDK's `ZooworkAuth` is a union, so nothing downstream of here knows which
  * mode is in play — swapping modes is this function and the env, nothing else.
  */
-export function zooclawClient(env: Env): ZooclawClient {
-  if (env.ZOOCLAW_API_KEY) {
-    // ZOOCLAW_API_URL is optional: the SDK already defaults to the public gateway. Set it
+export function zooworkClient(env: Env): ZooworkClient {
+  if (env.ZOOWORK_API_KEY) {
+    // ZOOWORK_API_URL is optional: the SDK already defaults to the public gateway. Set it
     // only to target a different deployment.
-    return createZooclawClient({
-      apiKey: env.ZOOCLAW_API_KEY,
-      ...(env.ZOOCLAW_API_URL ? { baseUrl: env.ZOOCLAW_API_URL } : {}),
+    return createZooworkClient({
+      apiKey: env.ZOOWORK_API_KEY,
+      ...(env.ZOOWORK_API_URL ? { baseUrl: env.ZOOWORK_API_URL } : {}),
     })
   }
-  throw new Error('ZOOCLAW_API_KEY is required. Put your organization API key (zct_...) in .dev.vars, or set it with `wrangler secret put ZOOCLAW_API_KEY`.')
+  throw new Error('ZOOWORK_API_KEY is required. Put your organization API key (zct_...) in .dev.vars, or set it with `wrangler secret put ZOOWORK_API_KEY`.')
 }
