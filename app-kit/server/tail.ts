@@ -9,8 +9,8 @@
  * swap unchanged (only the SSE carrier and the Store driver change).
  *
  * The seq here is the KIT'S OWN frame seq (assigned by the DO as it appends to the
- * Store), deliberately numeric and unrelated to the ZooClaw session-event lane — that
- * lane resumes on opaque server-minted cursor tokens (server/zooclaw/turn-driver.ts) and
+ * Store), deliberately numeric and unrelated to the ZooWork session-event lane — that
+ * lane resumes on opaque server-minted cursor tokens (server/zoowork/turn-driver.ts) and
  * its seqs never reach this file.
  */
 import type { Store } from './store.ts'
