@@ -1,6 +1,6 @@
 -- zoowork-app-kit schema (D1). Plain SQLite DDL — D1 runs it verbatim.
 -- Three tables mirror the turn model (see server/store.ts):
---   tasks   — one conversation (the backing Zooclaw session id lives here)
+--   tasks   — one conversation (the backing ZooWork session id lives here)
 --   prompts — one agent turn within a task
 --   frames  — one stream-json line of agent output, ordered by seq
 -- Plus zoowork_agents (one provisioned ZooWork Agent per user; tenant = email) and the
@@ -11,7 +11,7 @@ CREATE TABLE IF NOT EXISTS tasks (
   id         TEXT PRIMARY KEY,
   project_id TEXT NOT NULL,
   status     TEXT NOT NULL DEFAULT 'running',
-  -- The Zooclaw session backing this conversation. NULL until the first turn creates it
+  -- The ZooWork session backing this conversation. NULL until the first turn creates it
   -- (sessions are minted lazily by the DO — see worker/task-do.ts).
   session_id TEXT,
   user_email TEXT,
@@ -50,7 +50,7 @@ CREATE TABLE IF NOT EXISTS zoowork_agents (
 );
 
 -- Image attachment display channel. The UPLOAD path ships disabled (domain/agent.ts
--- ATTACHMENTS_ENABLED: Zooclaw Files is not production-wired), but the display schema
+-- ATTACHMENTS_ENABLED: ZooWork Files is not production-wired), but the display schema
 -- stays so a vertical can re-enable uploads without a migration.
 -- `attachments`: one row per uploaded file id. Keeps two WebP renditions as BLOBs — a
 --   small inline thumbnail + a larger lightbox image. Kept in D1 on purpose: both

@@ -1,5 +1,5 @@
 -- Agent binding: let a user point this deployment at an agent they already own in the
--- ZooClaw app, instead of the env-fixed one or a kit-provisioned one.
+-- ZooWork App, instead of the env-fixed one or a kit-provisioned one.
 --
 -- Two independent pieces, both required:
 --
