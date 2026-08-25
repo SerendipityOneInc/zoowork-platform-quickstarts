@@ -1,7 +1,7 @@
 <!doctype html>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>ZooClaw chat</title>
+<title>ZooWork chat</title>
 
 <style>
   :root {
@@ -54,7 +54,7 @@
 </style>
 
 <header>
-  <b>ZooClaw chat</b>
+  <b>ZooWork chat</b>
   <span>· your agent, over the API</span>
   <span style="margin-left:auto"><a href="#" id="reset" style="color:inherit">new conversation</a></span>
 </header>
@@ -75,7 +75,7 @@
   const send = document.getElementById('send')
 
   // The session id is the only thing the browser stores. The transcript itself lives in
-  // ZooClaw and is fetched back on reload — there is no database in this template.
+  // ZooWork and is fetched back on reload — there is no database in this template.
   const KEY = 'zoowork-chat-session'
   let session = localStorage.getItem(KEY)
 

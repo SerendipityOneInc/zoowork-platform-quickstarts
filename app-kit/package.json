@@ -1,22 +1,22 @@
 {
-  "name": "zooclaw-app-kit",
+  "name": "zoowork-app-kit",
   "version": "0.1.0",
-  "description": "zooclaw-app-kit — a reusable, business-free host-side template for agent-native apps on Zooclaw the ZooClaw API (Cloudflare Workers + D1 + Durable Objects). Fill domain/, ship.",
+  "description": "zoowork-app-kit — a reusable, business-free host-side template for agent-native apps on the ZooWork API (Cloudflare Workers + D1 + Durable Objects). Fill domain/, ship.",
   "private": true,
   "type": "module",
   "packageManager": "pnpm@10.27.0",
   "scripts": {
     "typecheck": "tsc --noEmit",
-    "test": "node --import tsx --test src/*.test.ts server/*.test.ts server/zooclaw/*.test.ts worker/*.test.ts domain/*.test.ts",
+    "test": "node --import tsx --test src/*.test.ts server/*.test.ts server/zoowork/*.test.ts worker/*.test.ts domain/*.test.ts",
     "build": "vite build",
     "dev": "concurrently -n vite,worker -c blue,green \"vite\" \"pnpm dev:worker\"",
     "dev:worker": "wrangler dev --port ${KIT_WORKER_PORT:-8787}",
-    "db:migrate:local": "wrangler d1 migrations apply zooclaw-app-kit --local",
-    "db:migrate": "wrangler d1 migrations apply zooclaw-app-kit --remote"
+    "db:migrate:local": "wrangler d1 migrations apply zoowork-app-kit --local",
+    "db:migrate": "wrangler d1 migrations apply zoowork-app-kit --remote"
   },
   "dependencies": {
     "@tanstack/react-query": "^5.101.0",
-    "@zooclaw-agents/sdk": "^0.2.0",
+    "@zoowork-ai/sdk": "^0.4.0",
     "hono": "^4.12.10",
     "jose": "^6.2.3",
     "jotai": "^2.20.1",

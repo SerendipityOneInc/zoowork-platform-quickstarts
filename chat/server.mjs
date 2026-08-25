@@ -1,6 +1,6 @@
 // The whole backend. Three routes, no framework, no database.
 //
-// It exists for one reason: ZOOCLAW_API_KEY authenticates your entire organization, so it
+// It exists for one reason: ZOOWORK_API_KEY authenticates your entire organization, so it
 // must never reach a browser. Everything here is the smallest correct way to keep it here
 // while still letting a page talk to your agent.
 
@@ -10,14 +10,14 @@ import { fileURLToPath } from 'node:url'
 import { dirname, join } from 'node:path'
 
 import {
-  createZooclawClient,
-  ZooclawError,
+  createZooworkClient,
+  ZooworkError,
   assistantText,
   isRunFinished,
   messageText,
   runOutcome,
   toolCall,
-} from '@zooclaw-agents/sdk'
+} from '@zoowork-ai/sdk'
 
 const HERE = dirname(fileURLToPath(import.meta.url))
 
@@ -25,8 +25,8 @@ const HERE = dirname(fileURLToPath(import.meta.url))
 
 await loadDotEnv(join(HERE, '.env'))
 
-const API_KEY = process.env.ZOOCLAW_API_KEY
-const AGENT_ID = process.env.ZOOCLAW_AGENT_ID
+const API_KEY = process.env.ZOOWORK_API_KEY
+const AGENT_ID = process.env.ZOOWORK_AGENT_ID
 const PORT = Number(process.env.PORT || 3000)
 
 if (!API_KEY || !AGENT_ID) {
@@ -34,15 +34,15 @@ if (!API_KEY || !AGENT_ID) {
     `\nMissing configuration.\n\n` +
       `  cp .env.example .env\n\n` +
       `then fill in:\n` +
-      `  ZOOCLAW_API_KEY   ${API_KEY ? 'ok' : 'MISSING — your org key, starts with zct_'}\n` +
-      `  ZOOCLAW_AGENT_ID  ${AGENT_ID ? 'ok' : 'MISSING — your agent id, starts with agt_'}\n\n` +
-      `Both are copied from the ZooClaw workspace UI.\n`
+      `  ZOOWORK_API_KEY   ${API_KEY ? 'ok' : 'MISSING — your org key, starts with zct_'}\n` +
+      `  ZOOWORK_AGENT_ID  ${AGENT_ID ? 'ok' : 'MISSING — your agent id, starts with agt_'}\n\n` +
+      `Both are copied from the ZooWork workspace UI.\n`
   )
   process.exit(1)
 }
 
 // baseUrl is optional — the SDK already points at the public gateway.
-const zc = createZooclawClient({ apiKey: API_KEY, baseUrl: process.env.ZOOCLAW_BASE_URL })
+const zc = createZooworkClient({ apiKey: API_KEY, baseUrl: process.env.ZOOWORK_BASE_URL })
 
 // ─── preflight ───────────────────────────────────────────────────────────────
 
@@ -71,7 +71,7 @@ async function ensureRunning(agentId) {
 // ─── conversation state ──────────────────────────────────────────────────────
 
 // The only thing this server remembers: each session's stream resume token, so a new
-// turn streams only new events. Everything else lives in ZooClaw — the browser holds a
+// turn streams only new events. Everything else lives in ZooWork — the browser holds a
 // session id, and the transcript is fetched back from the platform on reload.
 const cursors = new Map()
 
@@ -223,16 +223,16 @@ async function streamTurn(sessionId, resume, send) {
 // ─── plumbing ────────────────────────────────────────────────────────────────
 
 function describe(e) {
-  if (e instanceof ZooclawError) {
-    if (e.status === 401) return 'ZooClaw rejected the API key (401). Check ZOOCLAW_API_KEY in .env.'
+  if (e instanceof ZooworkError) {
+    if (e.status === 401) return 'ZooWork rejected the API key (401). Check ZOOWORK_API_KEY in .env.'
     if (e.status === 404) return 'Not found (404). Most often the agent id belongs to a different organization than the key.'
     if (e.type === 'agent_not_running') return 'The agent is not running (409). Restart this server — it starts the agent on boot.'
-    return `ZooClaw error ${e.status}${e.type ? ` ${e.type}` : ''}: ${e.message}`
+    return `ZooWork error ${e.status}${e.type ? ` ${e.type}` : ''}: ${e.message}`
   }
   // A transport failure arrives as the two words 'fetch failed'; the real reason is on .cause.
   if (e?.name === 'TypeError' && /fetch failed/i.test(e.message ?? '')) {
     const why = e.cause?.message ?? e.cause?.code ?? 'no route to the gateway'
-    return `Could not reach the ZooClaw gateway (${why}). Check your network, VPN or proxy, and ZOOCLAW_BASE_URL if you set one.`
+    return `Could not reach the ZooWork gateway (${why}). Check your network, VPN or proxy, and ZOOWORK_BASE_URL if you set one.`
   }
   return e?.message ?? String(e)
 }

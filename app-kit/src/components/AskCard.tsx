@@ -36,7 +36,7 @@ function asFormInput(input: unknown): AskFormInput | null {
 
 /**
  * AskCard — renders a blocked `ask_user_question` and submits the answer that resumes the turn.
- * Three shapes the agent can ask, all answered as one arbitrary-JSON `answer` (the worker + Zooclaw
+ * Three shapes the agent can ask, all answered as one arbitrary-JSON `answer` (the worker + Zoowork
  * treat it opaquely — see useAnswer): a single-select (submit on click → `{ selectedOptions: [i] }`),
  * a multi-select (toggle then Send → `{ selectedOptions, customResponse? }`), or a `{ type: 'form' }`
  * input (fields → `{ values }`). A free-text box is always offered alongside options as the universal

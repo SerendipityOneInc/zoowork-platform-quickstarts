@@ -10,6 +10,6 @@
     "dev": "node server.mjs"
   },
   "dependencies": {
-    "@zooclaw-agents/sdk": "^0.2.0"
+    "@zoowork-ai/sdk": "^0.4.0"
   }
 }

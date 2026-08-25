@@ -17,7 +17,7 @@ import { IdRow, Knob, Section, jumpTo } from './panel-bits.tsx'
  *   Config  — the agent config the kit applies: persona, tool toggles, skill pin. Read-only
  *             for a borrowed agent, because that agent belongs to somebody else.
  *   Runtime — how this deployment is wired (transport, identity, variables). Redeploy to change.
- *   Debug   — the raw frame stream, including the `__zooclaw` passthroughs chat hides.
+ *   Debug   — the raw frame stream, including the `__zoowork` passthroughs chat hides.
  *
  * Agent leads: everything else in the pane is qualified by WHICH agent you are on, and until
  * this tab existed that answer was buried in a marker frame. Each section names the SDK
@@ -94,7 +94,7 @@ function AgentTab({ prompts }: { prompts: PromptContent[] }) {
  * The agent config editor, plus where each field lands upstream.
  *
  * The editor is DISABLED unless the effective agent is one the kit created. That is not
- * decoration: for a borrowed agent (bound or ZOOCLAW_AGENT_ID) the Worker deliberately skips
+ * decoration: for a borrowed agent (bound or ZOOWORK_AGENT_ID) the Worker deliberately skips
  * every config PUT (worker/provision.ts), so an editable-looking form would be a form whose
  * changes silently do nothing — and if it did work, it would rewrite somebody else's agent.
  */
@@ -118,7 +118,7 @@ function ConfigTab({ hasConversation }: { hasConversation: boolean }) {
             ? null
             : eff.data?.source === 'binding'
               ? 'You are using an agent of your own, so its configuration belongs to it — the kit reads this agent and never writes it. Reset the binding in the Agent tab to edit the kit’s own agent instead.'
-              : 'This deployment pins one pre-built agent (ZOOCLAW_AGENT_ID). Its configuration belongs to whoever built it, and the kit never writes it.'
+              : 'This deployment pins one pre-built agent (ZOOWORK_AGENT_ID). Its configuration belongs to whoever built it, and the kit never writes it.'
         }
       />
 
@@ -169,7 +169,7 @@ function RuntimeTab() {
     <div className="cfg">
       <Section
         title="Runtime"
-        sdk="createZooclawClient()"
+        sdk="createZooworkClient()"
         caption="How this deployment is wired. Read-only — it comes from the Worker's environment, so changing it means a redeploy."
       >
         {runtime.isPending && <div className="muted">Loading…</div>}
@@ -209,13 +209,13 @@ function RuntimeRows({ config }: { config: RuntimeConfig }) {
       <Knob
         name="Transport"
         value={r.transport === 'gateway' ? 'gateway (org service token)' : 'unconfigured'}
-        where="ZOOCLAW_API_KEY"
-        lands="Bearer on every ZooClaw API call; the gateway enforces tenancy"
+        where="ZOOWORK_API_KEY"
+        lands="Bearer on every ZooWork API call; the gateway enforces tenancy"
       />
       <Knob
         name="Provisioning"
         value={r.provisioning === 'fixed-agent' ? 'fixed agent (shared by everyone)' : 'per user (created on first use)'}
-        where="ZOOCLAW_AGENT_ID"
+        where="ZOOWORK_AGENT_ID"
         lands={
           r.provisioning === 'fixed-agent'
             ? 'nothing is provisioned — no create, no credentials, no config PUT'
@@ -232,7 +232,7 @@ function RuntimeRows({ config }: { config: RuntimeConfig }) {
         name="API base URL"
         value={r.apiBaseUrl}
         mono
-        where={r.apiBaseUrlFrom === 'ZOOCLAW_API_URL' ? 'ZOOCLAW_API_URL' : 'SDK default'}
+        where={r.apiBaseUrlFrom === 'ZOOWORK_API_URL' ? 'ZOOWORK_API_URL' : 'SDK default'}
         lands="the origin every agent / session / event call is sent to"
       />
       <Knob
@@ -275,7 +275,7 @@ function RuntimeRows({ config }: { config: RuntimeConfig }) {
 }
 
 /**
- * This conversation's Zooclaw identity, read from the `__zooclaw_session` marker frame the
+ * This conversation's Zoowork identity, read from the `__zoowork_session` marker frame the
  * turn runner emits once per session (worker/task-do.ts) — the same source the Debug tab
  * shows inline. Conversations started before the marker carried `agent_id` report a session
  * with no agent.
@@ -294,8 +294,8 @@ export function conversationIdentity(prompts: PromptContent[]): {
     for (const f of p.frames) {
       if (!f.data || typeof f.data !== 'object') continue
       const d = f.data as Record<string, unknown>
-      if (typeof d.__zooclaw_session !== 'string') continue
-      sessionId = d.__zooclaw_session
+      if (typeof d.__zoowork_session !== 'string') continue
+      sessionId = d.__zoowork_session
       if (typeof d.agent_id === 'string') agentId = d.agent_id
     }
   }
@@ -337,10 +337,10 @@ function FramesTab({ prompts }: { prompts: PromptContent[] }) {
 function FrameRow({ seq, data }: { seq: number; data: unknown }) {
   const [open, setOpen] = useState(false)
   // The session marker gets its id shown inline (selectable/copyable) — there is no
-  // public Zooclaw console to link to, so the raw id IS the debugging affordance.
+  // public Zoowork console to link to, so the raw id IS the debugging affordance.
   const sessionId =
-    data && typeof data === 'object' && typeof (data as Record<string, unknown>).__zooclaw_session === 'string'
-      ? ((data as Record<string, unknown>).__zooclaw_session as string)
+    data && typeof data === 'object' && typeof (data as Record<string, unknown>).__zoowork_session === 'string'
+      ? ((data as Record<string, unknown>).__zoowork_session as string)
       : null
   return (
     <div className="debug-frame">
@@ -359,10 +359,10 @@ function FrameRow({ seq, data }: { seq: number; data: unknown }) {
 export function frameLabel(data: unknown): string {
   if (!data || typeof data !== 'object') return typeof data
   const d = data as Record<string, unknown>
-  if (typeof d.__zooclaw_session === 'string') return 'zooclaw_session'
+  if (typeof d.__zoowork_session === 'string') return 'zoowork_session'
   if (typeof d.__error === 'string') return 'error'
   if (d.__ask && typeof d.__ask === 'object') return 'ask_user_question'
-  if (typeof d.__zooclaw === 'string') return String(d.__zooclaw)
+  if (typeof d.__zoowork === 'string') return String(d.__zoowork)
   if (d.type === 'assistant') {
     const content = (d.message as { content?: unknown } | undefined)?.content
     if (Array.isArray(content) && content.some((b) => (b as { type?: string }).type === 'tool_use')) return 'assistant · tool_use'

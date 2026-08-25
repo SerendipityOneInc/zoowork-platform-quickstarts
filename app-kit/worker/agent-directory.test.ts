@@ -7,7 +7,7 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import { isBuilderTestRun, labelsOf, toAgentSummary, toDirectory } from './agent-directory.ts'
-import type { AgentRecord } from '@zooclaw-agents/sdk'
+import type { AgentRecord } from '@zoowork-ai/sdk'
 
 const agent = (agent_id: string, name: string, labels: Record<string, unknown>, desired = 'running'): AgentRecord =>
   ({ agent_id, declared: { name, labels }, labels, status: { desired_state: desired } }) as unknown as AgentRecord
@@ -26,7 +26,7 @@ const TEST_RUN = agent('agt_testrun', '平价穿搭复刻助手', {
   pack_test_run_id: 'ptr_734f6973078e4189bf2aded903a4bb5e',
 })
 /** What worker/provision.ts createResourceFor stamps on the kit's own per-user agent. */
-const KIT_OWN = agent('agt_kit', 'app-kit: u@x.com', { app: 'zooclaw-app-kit', user: 'u@x.com' }, 'stopped')
+const KIT_OWN = agent('agt_kit', 'app-kit: u@x.com', { app: 'zoowork-app-kit', user: 'u@x.com' }, 'stopped')
 
 test('toAgentSummary keeps only what the picker renders', () => {
   assert.deepEqual(toAgentSummary(INSTALLED), {

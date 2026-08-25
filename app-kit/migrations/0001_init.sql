@@ -1,9 +1,9 @@
--- zooclaw-app-kit schema (D1). Plain SQLite DDL — D1 runs it verbatim.
+-- zoowork-app-kit schema (D1). Plain SQLite DDL — D1 runs it verbatim.
 -- Three tables mirror the turn model (see server/store.ts):
 --   tasks   — one conversation (the backing Zooclaw session id lives here)
 --   prompts — one agent turn within a task
 --   frames  — one stream-json line of agent output, ordered by seq
--- Plus zooclaw_agents (one provisioned Zooclaw Agent per user; tenant = email) and the
+-- Plus zoowork_agents (one provisioned ZooWork Agent per user; tenant = email) and the
 -- attachment display channel (attachments + prompt_files). Single migration on purpose:
 -- this is a fresh template with no deployed databases, so there is no history to preserve.
 
@@ -38,11 +38,11 @@ CREATE TABLE IF NOT EXISTS frames (
   PRIMARY KEY (prompt_id, seq)
 );
 
--- One row per user: their Zooclaw Agent (provisioned lazily on first turn — see
+-- One row per user: their ZooWork Agent (provisioned lazily on first turn — see
 -- worker/provision.ts). `config_hash` fingerprints the last agent config this kit
 -- applied, so a turn only PUTs actual drift (every API PUT bumps config_version
 -- even when nothing changed — see the API reference).
-CREATE TABLE IF NOT EXISTS zooclaw_agents (
+CREATE TABLE IF NOT EXISTS zoowork_agents (
   user_email  TEXT PRIMARY KEY,
   agent_id    TEXT NOT NULL,
   config_hash TEXT,

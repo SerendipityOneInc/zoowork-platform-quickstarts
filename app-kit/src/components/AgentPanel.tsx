@@ -1,6 +1,6 @@
 /**
  * The Agent tab: WHICH agent this deployment is talking to, and — when the deployment allows
- * it — a picker to change that to an agent the user already owns in the ZooClaw app.
+ * it — a picker to change that to an agent the user already owns in the ZooWork app.
  *
  * The picker has two modes, and both are first-class:
  *
@@ -11,7 +11,7 @@
  *          validated through `getAgent()` before it can be saved.
  *
  * Saving binds for the NEXT new chat only. Open conversations stay on the agent they
- * started with — their Zooclaw session exists only there (migrations/0002).
+ * started with — their Zoowork session exists only there (migrations/0002).
  *
  * Nothing in this tab ever writes an agent's configuration. A borrowed agent belongs to
  * whoever built it; the kit only reads it, and the Config tab goes read-only to say so.
@@ -25,7 +25,7 @@ import { CopyId, Section, StatePill } from './panel-bits.tsx'
 /** How the effective agent was chosen, in the panel's words. */
 const SOURCE_LABEL: Record<EffectiveAgent['source'], { badge: string; blurb: string }> = {
   binding: { badge: 'bound', blurb: 'You picked this agent. It belongs to you, so the kit only uses it — it never writes its configuration.' },
-  'env-fixed': { badge: 'env fixed', blurb: 'ZOOCLAW_AGENT_ID pins one pre-built agent for everyone on this deployment. The kit provisions nothing and writes no configuration.' },
+  'env-fixed': { badge: 'env fixed', blurb: 'ZOOWORK_AGENT_ID pins one pre-built agent for everyone on this deployment. The kit provisions nothing and writes no configuration.' },
   'per-user': { badge: 'per-user', blurb: 'The kit creates and owns one agent per signed-in user, and applies the Config tab to it on the first turn of each chat.' },
   conversation: { badge: 'pinned', blurb: 'This conversation is pinned to the agent it started on.' },
 }
@@ -55,7 +55,7 @@ export function AgentPanel() {
           sdk="listAgents() · getAgent()"
           caption={
             pickerOn
-              ? 'Point this deployment at an agent you already built in the ZooClaw app. Saved choices apply to the next new chat.'
+              ? 'Point this deployment at an agent you already built in the ZooWork app. Saved choices apply to the next new chat.'
               : undefined
           }
         >
@@ -116,7 +116,7 @@ function PickerDisabled() {
   return (
     <p className="cfg-note">
       This deployment has closed the picker (<code>AGENT_PICKER=off</code>), so everyone uses the agent it was configured with. It is on by
-      default in the kit; a vertical shipping to end users turns it off because <code>ZOOCLAW_API_KEY</code> authenticates the whole
+      default in the kit; a vertical shipping to end users turns it off because <code>ZOOWORK_API_KEY</code> authenticates the whole
       organization — with it on, any signed-in user can list and borrow any agent in the org.
     </p>
   )

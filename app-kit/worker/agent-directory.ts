@@ -1,10 +1,10 @@
 /**
- * Turning the ZooClaw API's agent projections into the picker's directory: trim, then drop
+ * Turning the ZooWork API's agent projections into the picker's directory: trim, then drop
  * the rows that are noise. Pure functions, no client, no Env — so the one rule in here that
  * REMOVES data from a user's list is unit-testable (worker/index.ts is not: it re-exports
  * the Durable Object and imports `cloudflare:workers`).
  */
-import type { AgentRecord } from '@zooclaw-agents/sdk'
+import type { AgentRecord } from '@zoowork-ai/sdk'
 import type { AgentDirectory, AgentSummary } from '../server/routes.ts'
 
 /** Declared labels, with the top-level copy as a fallback — the projection carries both. */

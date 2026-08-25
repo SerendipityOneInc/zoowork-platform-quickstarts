@@ -1,6 +1,6 @@
 /**
  * Turn-driver tests: the pure translate truth table (one frame vocabulary for every
- * downstream renderer), then driveTurn against a fake ZooclawClient.
+ * downstream renderer), then driveTurn against a fake ZooworkClient.
  *
  * The event fixtures below are real payload shapes, captured from a live session
  * stream. An earlier version of this file asserted a guessed vocabulary — `agent.message`,
@@ -18,7 +18,7 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import { translate, driveTurn, type FrameData, type FrameSink } from './turn-driver.ts'
-import type { SessionEvent, ZooclawClient } from '@zooclaw-agents/sdk'
+import type { SessionEvent, ZooworkClient } from '@zoowork-ai/sdk'
 
 const ev = (seq: number, eventType: string, payload: Record<string, unknown> = {}): SessionEvent => ({ seq, eventType, payload })
 
@@ -28,10 +28,10 @@ const assistant = (seq: number, text: string): SessionEvent => ev(seq, 'agent.as
  *  the fixture strings just need to be recognizable, not derivable. */
 const tok = (e: SessionEvent, cursor: string): SessionEvent => ({ ...e, cursor })
 
-/** ZooclawClient double exposing ONLY streamEvents (all driveTurn touches). Each call
+/** ZooworkClient double exposing ONLY streamEvents (all driveTurn touches). Each call
  *  serves the next window's events and records the resume token it was handed — and
  *  proves the deprecated `after` lane is never selected. */
-function fakeClient(...windows: SessionEvent[][]): { client: ZooclawClient; cursors: (string | undefined)[] } {
+function fakeClient(...windows: SessionEvent[][]): { client: ZooworkClient; cursors: (string | undefined)[] } {
   const cursors: (string | undefined)[] = []
   let w = 0
   const client = {
@@ -41,7 +41,7 @@ function fakeClient(...windows: SessionEvent[][]): { client: ZooclawClient; curs
       for (const e of windows[w] ?? []) yield e
       w++
     },
-  } as unknown as ZooclawClient
+  } as unknown as ZooworkClient
   return { client, cursors }
 }
 
@@ -49,7 +49,7 @@ function arraySink(): { frames: FrameData[]; sink: FrameSink } {
   const frames: FrameData[] = []
   return { frames, sink: { emit: (d) => void frames.push(d) } }
 }
-const kindsOf = (frames: FrameData[]): unknown[] => frames.map((d) => d.type ?? d.__zooclaw ?? (d.__error !== undefined ? '__error' : undefined))
+const kindsOf = (frames: FrameData[]): unknown[] => frames.map((d) => d.type ?? d.__zoowork ?? (d.__error !== undefined ? '__error' : undefined))
 
 test('translate: assistant text comes out of payload.message.content[]', () => {
   assert.deepEqual(translate(assistant(1, 'hi')), [{ type: 'assistant', message: { content: [{ type: 'text', text: 'hi' }] } }])
@@ -60,7 +60,7 @@ test('translate: assistant text comes out of payload.message.content[]', () => {
 })
 
 test('translate: thinking is a debug frame, not chat content', () => {
-  assert.deepEqual(translate(ev(1, 'agent.thinking', { contentIndex: 0, text: 'hmm' })), [{ __zooclaw: 'thinking', payload: { text: 'hmm' } }])
+  assert.deepEqual(translate(ev(1, 'agent.thinking', { contentIndex: 0, text: 'hmm' })), [{ __zoowork: 'thinking', payload: { text: 'hmm' } }])
   assert.deepEqual(translate(ev(1, 'agent.thinking', { text: ' ' })), [])
 })
 
@@ -74,7 +74,7 @@ test('translate: one tool call is two events paired by toolCallId', () => {
   // `blocked` means waiting on an approval — the call has NOT run, so it must not render a
   // result. An `end` still follows once the approval resolves.
   assert.deepEqual(translate(ev(3, 'agent.tool', { phase: 'blocked', toolCallId: 'toolu_01', toolName: 'bash' })), [
-    { __zooclaw: 'tool_blocked', payload: { toolCallId: 'toolu_01', toolName: 'bash' } },
+    { __zoowork: 'tool_blocked', payload: { toolCallId: 'toolu_01', toolName: 'bash' } },
   ])
 })
 
@@ -85,11 +85,11 @@ test('translate: agent.error is the one durable failure message for the user', (
 test('translate: plumbing events ride through as debug frames, never as content', () => {
   // agent.item is an ordering barrier / provider capture — internal, never user-visible.
   assert.deepEqual(translate(ev(1, 'agent.item', { kind: 'assistant_segment', phase: 'start', segment: 1 })), [
-    { __zooclaw: 'agent.item', payload: { kind: 'assistant_segment', phase: 'start', segment: 1 } },
+    { __zoowork: 'agent.item', payload: { kind: 'assistant_segment', phase: 'start', segment: 1 } },
   ])
-  assert.deepEqual(translate(ev(2, 'agent.lifecycle', { phase: 'start' })), [{ __zooclaw: 'agent.lifecycle', payload: { phase: 'start' } }])
+  assert.deepEqual(translate(ev(2, 'agent.lifecycle', { phase: 'start' })), [{ __zoowork: 'agent.lifecycle', payload: { phase: 'start' } }])
   // unknown vocabulary degrades the same way instead of throwing (Developer Preview)
-  assert.deepEqual(translate(ev(3, 'agent.newthing', { a: 1 })), [{ __zooclaw: 'agent.newthing', payload: { a: 1 } }])
+  assert.deepEqual(translate(ev(3, 'agent.newthing', { a: 1 })), [{ __zoowork: 'agent.newthing', payload: { a: 1 } }])
 })
 
 test('driveTurn: a full turn streams in order and ends on run.finished', async () => {
@@ -208,7 +208,7 @@ test('driveTurn: a mid-stream error returns the partial progress WITH the error,
       yield tok(assistant(1, 'partial answer'), 'tok-1')
       throw boom
     },
-  } as unknown as ZooclawClient
+  } as unknown as ZooworkClient
   const { frames, sink } = arraySink()
   const emitted = { value: '' }
 

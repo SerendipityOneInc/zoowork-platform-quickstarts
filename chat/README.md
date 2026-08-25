@@ -1,6 +1,6 @@
 # chat
 
-> A template in [ZooClaw Quickstarts](../README.md). The smallest thing that talks to your agent.
+> A template in [ZooWork Quickstarts](../README.md). The smallest thing that talks to your agent.
 
 Two values, two commands, a chat box. No database, no build step, no framework — about
 250 lines you can read in one sitting.
@@ -9,7 +9,7 @@ Two values, two commands, a chat box. No database, no build step, no framework �
 
 ```bash
 cd chat                   # every command below runs in this directory
-cp .env.example .env      # paste your ZOOCLAW_API_KEY and ZOOCLAW_AGENT_ID
+cp .env.example .env      # paste your ZOOWORK_API_KEY and ZOOWORK_AGENT_ID
 npm install
 npm run dev               # http://localhost:3000
 ```
@@ -19,7 +19,7 @@ ships with Node; `pnpm install` / `pnpm dev` work too if you have it.
 
 Port 3000 busy, or running `skill-lab` at the same time? `PORT=3001 npm run dev`.
 
-Both values are copied from the ZooClaw workspace UI: the API key from your org admin,
+Both values are copied from the ZooWork workspace UI: the API key from your org admin,
 the agent id (`agt_…`) from your agent's detail dialog.
 
 That is the whole setup. The agent is one you already built — this template creates
@@ -30,7 +30,7 @@ nothing and configures nothing.
 - **Talks to your agent.** One conversation, multi-turn. The platform holds the context,
   so follow-ups never re-send history.
 - **Rebuilds on reload.** The browser stores only a session id; the transcript is fetched
-  back from ZooClaw. Nothing is stored on the server.
+  back from ZooWork. Nothing is stored on the server.
 - **Says what the agent is doing.** `thinking…`, `using web_search…` — driven by real
   events, not a fake typing animation (see below).
 - **Keeps your key server-side.** That is the only reason `server.mjs` exists.
@@ -47,9 +47,11 @@ oversights — they are the next template's problem. When you need them, read
 entire message. There is no delta stream to subscribe to, so a typing cursor would be a
 lie — the template shows what the agent is actually doing instead.
 
-**Your own messages are not in the event log.** Its 19 event types are all `run.*` and
-`agent.*`. Rebuilding a transcript from `listEvents` gives you assistant bubbles and
-nothing else. The transcript lives on `getSession(…, { history: true })`.
+**The event log is bidirectional.** What you post echoes back as `user.message` events —
+with a `processedAt` that flips from `null` to a timestamp once the agent consumes it —
+alongside the agent's `agent.assistant` replies. One filtered `listAllEvents` call rebuilds
+the whole two-sided transcript, which is what `server.mjs` does; rendering a chat does not
+need `getSession(…, { history: true })` at all.
 
 **The API key authenticates your whole organization.** Anyone holding it can read and
 modify every agent in your org and every session under them. There is no per-user or

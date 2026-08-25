@@ -8,7 +8,7 @@
  * `wrangler d1 migrations apply`), so this file does no CREATE TABLE at runtime.
  * To target Postgres/MySQL instead, add a sibling store-pg.ts with the same shape.
  */
-import type { Store, Task, Prompt, TaskSummary, ZooclawAgentRow, AgentBindingRow, AttachmentMeta } from './store.ts'
+import type { Store, Task, Prompt, TaskSummary, ZooworkAgentRow, AgentBindingRow, AttachmentMeta } from './store.ts'
 
 export function createD1Store(db: D1Database): Store {
   return {
@@ -66,24 +66,24 @@ export function createD1Store(db: D1Database): Store {
       await db.prepare(`DELETE FROM agent_bindings WHERE user_email = ?`).bind(userEmail).run()
     },
 
-    async getZooclawAgent(userEmail) {
+    async getZooworkAgent(userEmail) {
       const row = await db
-        .prepare(`SELECT agent_id AS agentId, config_hash AS configHash FROM zooclaw_agents WHERE user_email = ?`)
+        .prepare(`SELECT agent_id AS agentId, config_hash AS configHash FROM zoowork_agents WHERE user_email = ?`)
         .bind(userEmail)
-        .first<ZooclawAgentRow>()
+        .first<ZooworkAgentRow>()
       return row ?? undefined
     },
-    async saveZooclawAgent(userEmail, agentId, configHash) {
+    async saveZooworkAgent(userEmail, agentId, configHash) {
       await db
-        .prepare(`INSERT OR IGNORE INTO zooclaw_agents (user_email, agent_id, config_hash) VALUES (?, ?, ?)`)
+        .prepare(`INSERT OR IGNORE INTO zoowork_agents (user_email, agent_id, config_hash) VALUES (?, ?, ?)`)
         .bind(userEmail, agentId, configHash)
         .run()
     },
-    async setZooclawAgentConfig(userEmail, configHash) {
-      await db.prepare(`UPDATE zooclaw_agents SET config_hash = ? WHERE user_email = ?`).bind(configHash, userEmail).run()
+    async setZooworkAgentConfig(userEmail, configHash) {
+      await db.prepare(`UPDATE zoowork_agents SET config_hash = ? WHERE user_email = ?`).bind(configHash, userEmail).run()
     },
-    async deleteZooclawAgent(userEmail) {
-      await db.prepare(`DELETE FROM zooclaw_agents WHERE user_email = ?`).bind(userEmail).run()
+    async deleteZooworkAgent(userEmail) {
+      await db.prepare(`DELETE FROM zoowork_agents WHERE user_email = ?`).bind(userEmail).run()
     },
 
     async createPrompt(id, taskId, prompt) {

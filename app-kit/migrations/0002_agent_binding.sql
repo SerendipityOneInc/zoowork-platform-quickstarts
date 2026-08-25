@@ -9,7 +9,7 @@
 --     every reply would come back `session not found`. Sessions are agent-scoped; the pin
 --     is what keeps old conversations alive across a rebind.
 --
---   agent_bindings — the user's chosen agent. Deliberately NOT a reuse of zooclaw_agents:
+--   agent_bindings — the user's chosen agent. Deliberately NOT a reuse of zoowork_agents:
 --     that table means "the agent this kit CREATED for this user" and carries the
 --     config_hash drift gate, so a borrowed agent living there would make the next turn PUT
 --     the kit's persona/tool_policy over somebody's real agent (see worker/provision.ts).

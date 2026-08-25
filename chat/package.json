@@ -2,7 +2,7 @@
   "name": "zoowork-quickstart-chat",
   "private": true,
   "type": "module",
-  "description": "The smallest thing that talks to your ZooClaw agent: an API key, an agent id, a chat box.",
+  "description": "The smallest thing that talks to your ZooWork agent: an API key, an agent id, a chat box.",
   "engines": {
     "node": ">=22.20.0"
   },
@@ -10,6 +10,6 @@
     "dev": "node server.mjs"
   },
   "dependencies": {
-    "@zooclaw-agents/sdk": "^0.2.0"
+    "@zoowork-ai/sdk": "^0.4.0"
   }
 }

@@ -1,6 +1,6 @@
 # Working on the `skill-lab` quickstart
 
-What is not obvious about configuring a ZooClaw agent. Every claim was verified against a
+What is not obvious about configuring a ZooWork agent. Every claim was verified against a
 live deployment on 2026-08-11.
 
 ---

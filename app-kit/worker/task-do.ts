@@ -1,6 +1,6 @@
 /**
  * TaskDO — the per-task turn runner, an ALARM-DRIVEN Durable Object (one per taskId). The
- * CF-welded execution leg: a turn streams the ZooClaw API's session event stream for minutes,
+ * CF-welded execution leg: a turn streams the ZooWork API's session event stream for minutes,
  * but `ctx.waitUntil` does NOT keep a DO alive past the request, so the turn lives in
  * alarm() and advances in bounded windows; progress (sessionId, resumeCursor,
  * lastEventSeq, …) is persisted in DO storage so a resumed alarm continues idempotently.
@@ -10,7 +10,7 @@
  *               window → frames(store) → finalize when the session settles (or expire)
  *
  * The streaming itself (translate, resume cursor) lives in the shared driveTurn
- * (server/zooclaw/turn-driver.ts); this file is just the execution leg + finalize/recover
+ * (server/zoowork/turn-driver.ts); this file is just the execution leg + finalize/recover
  * bookkeeping. Swapping CF for another long-lived runtime rewrites THIS file (+ the SSE
  * carrier); the streaming contract is untouched (template-layering ②).
  *
@@ -33,8 +33,8 @@
 import { DurableObject } from 'cloudflare:workers'
 import { createD1Store } from '../server/store-d1.ts'
 import type { Store } from '../server/store.ts'
-import { messageText, ZooclawError, type ZooclawClient, type SessionHistoryEntry, type SessionRecord } from '@zooclaw-agents/sdk'
-import { driveTurn, alreadyEmitted, recordEmitted, type FrameSink, type TurnEnd } from '../server/zooclaw/turn-driver.ts'
+import { messageText, ZooworkError, type ZooworkClient, type SessionHistoryEntry, type SessionRecord } from '@zoowork-ai/sdk'
+import { driveTurn, alreadyEmitted, recordEmitted, type FrameSink, type TurnEnd } from '../server/zoowork/turn-driver.ts'
 import {
   shouldDrainTerminal,
   shouldRetryWindowError,
@@ -48,7 +48,7 @@ import {
 import { framesHaveAssistantText } from '../server/frame-text.ts'
 import { agentFor } from './provision.ts'
 import { defaultAgentConfig, type AgentConfig } from '../domain/agent.ts'
-import { provisionConfig, zooclawClient, type Env } from './env.ts'
+import { provisionConfig, zooworkClient, type Env } from './env.ts'
 
 const isObj = (v: unknown): v is Record<string, unknown> => !!v && typeof v === 'object'
 
@@ -59,7 +59,7 @@ const FIRST_EVENT_IDLE_MS = 8_000 // quiet time tolerated before the window's FI
 const EVENT_IDLE_MS = 2_500 // quiet time after an event before the window short-circuits
 
 /** The in-flight turn, persisted in DO storage so alarm() resumes idempotently. The
- *  conversation's Zooclaw ids live separately ('agentId'/'sessionId') so follow-ups
+ *  conversation's Zoowork ids live separately ('agentId'/'sessionId') so follow-ups
  *  continue the same session. */
 interface TurnState {
   taskId: string
@@ -81,7 +81,7 @@ interface TurnState {
   resumeCursor?: string
   /** Highest durable session-event seq processed — the skipThrough/progress bound, NOT
    *  the resume mechanism (that's resumeCursor; the SDK's numeric `after` selects the
-   *  deprecated engine-only lane and is never passed). Zooclaw seqs are SESSION-scoped
+   *  deprecated engine-only lane and is never passed). Zoowork seqs are SESSION-scoped
    *  (they don't reset per turn), so this is seeded from the DO's persisted 'sessionSeq'
    *  at submit time — starting a follow-up turn at 0 would replay the whole
    *  conversation's events into the new turn's frames. */
@@ -100,8 +100,8 @@ export class TaskDO extends DurableObject<Env> {
   /** Durable frame seq for the current window (read from the store at window start). */
   private frameSeq = 0
 
-  private client(): ZooclawClient {
-    return zooclawClient(this.env)
+  private client(): ZooworkClient {
+    return zooworkClient(this.env)
   }
 
   private emit(promptId: string, data: Record<string, unknown>): Promise<void> {
@@ -134,7 +134,7 @@ export class TaskDO extends DurableObject<Env> {
   /** Last-ditch: finalizing without ever showing text means the answer exists upstream but
    *  never became a frame. Pull the newest answer out of the transcript so the LIVE view
    *  completes too (recoverPrompt does the same on a later refresh). Best-effort. */
-  private async backfillLastAnswer(t: TurnState, client: ZooclawClient, agentId: string, sessionId: string): Promise<void> {
+  private async backfillLastAnswer(t: TurnState, client: ZooworkClient, agentId: string, sessionId: string): Promise<void> {
     const session = await client.getSession(agentId, sessionId, { history: true, limit: 50 }).catch(() => null)
     const history = session?.history
     if (!Array.isArray(history)) return
@@ -246,7 +246,7 @@ export class TaskDO extends DurableObject<Env> {
       await this.client()
         .postEvents(agentId, sessionId, [{ type: 'user.interrupt' }])
         .catch(() => {
-          /* best-effort: local cancel must not depend on the ZooClaw API availability */
+          /* best-effort: local cancel must not depend on the ZooWork API availability */
         })
       await this.advanceSessionCursor(agentId, sessionId)
     }
@@ -339,7 +339,7 @@ export class TaskDO extends DurableObject<Env> {
 
     try {
       if (!t.submitted) {
-        // One Zooclaw session per CONVERSATION: the first turn creates it (with the
+        // One Zoowork session per CONVERSATION: the first turn creates it (with the
         // prompt as initial user.message); follow-ups post events into it.
         let agentId = await this.ctx.storage.get<string>('agentId')
         let sessionId = await this.ctx.storage.get<string>('sessionId')
@@ -392,9 +392,9 @@ export class TaskDO extends DurableObject<Env> {
               agentId,
               {
                 initial_events: [{ type: 'user.message', content: t.prompt }],
-                metadata: { app: 'zooclaw-app-kit', task_id: t.taskId },
+                metadata: { app: 'zoowork-app-kit', task_id: t.taskId },
               },
-              `zooclaw-app-kit:turn:${t.promptId}`,
+              `zoowork-app-kit:turn:${t.promptId}`,
             )
             sessionId = session.session_id
             await this.ctx.storage.put('sessionId', sessionId)
@@ -416,7 +416,7 @@ export class TaskDO extends DurableObject<Env> {
           // turns / first start still settling). Kick a start and let the normal window
           // retry re-submit — session create is idempotent (key = promptId), and the
           // user.message double-send window on a lost 202 is accepted (see README).
-          if (e instanceof ZooclawError && e.status === 409 && e.type === 'agent_not_running') {
+          if (e instanceof ZooworkError && e.status === 409 && e.type === 'agent_not_running') {
             await client.startAgent(agentId).catch(() => {})
           }
           throw e
@@ -426,18 +426,18 @@ export class TaskDO extends DurableObject<Env> {
         t.sessionId = sessionId
         t.submitted = true
         if (!(await this.putTurnIfOwned(t))) return // canceled during submit — interrupt already covers the sent message
-        // Surface this conversation's Zooclaw identity so the debug pane can show it. The
+        // Surface this conversation's Zoowork identity so the debug pane can show it. The
         // agent id rides on the SAME marker frame rather than a new one: both ids name the
         // same thing (which agent, which session this conversation is), and chat.ts /
-        // frameLabel key off `__zooclaw_session` alone, so widening it stays chat-invisible.
+        // frameLabel key off `__zoowork_session` alone, so widening it stays chat-invisible.
         // Conversations started before this shipped simply carry no agent_id.
         this.frameSeq = await this.maxFrameSeq(t.promptId)
-        await this.emit(t.promptId, { __zooclaw_session: sessionId, agent_id: agentId })
+        await this.emit(t.promptId, { __zoowork_session: sessionId, agent_id: agentId })
       }
 
       const { agentId, sessionId } = t
       if (!agentId || !sessionId) {
-        await this.emit(t.promptId, { __error: 'Internal error: the ZooClaw session is missing.' })
+        await this.emit(t.promptId, { __error: 'Internal error: the ZooWork session is missing.' })
         return this.finalize(t, 'failed')
       }
 
@@ -473,7 +473,7 @@ export class TaskDO extends DurableObject<Env> {
       t.lastEventSeq = end.lastSeq
       if (end.cursor) t.resumeCursor = end.cursor
       t.emittedText = emittedRef.value
-      if (!end.streamError) t.errors = 0 // a clean window ran — the ZooClaw API is reachable
+      if (!end.streamError) t.errors = 0 // a clean window ran — the ZooWork API is reachable
 
       // Persist progress BEFORE acting on errors or polling status: frames this window
       // wrote are already durable, so losing the cursor would duplicate them on retry.
@@ -534,8 +534,8 @@ export class TaskDO extends DurableObject<Env> {
       // A transient hiccup must not kill a turn whose agent is still running. Retry with
       // backoff — but deterministic upstream rejections (501 not_configured, plain 4xx,
       // unhealable 409 types) fail fast per the contract's retry rules.
-      const status = e instanceof ZooclawError ? e.status : undefined
-      const errorType = e instanceof ZooclawError ? e.type : undefined
+      const status = e instanceof ZooworkError ? e.status : undefined
+      const errorType = e instanceof ZooworkError ? e.type : undefined
       const errors = (t.errors ?? 0) + 1
       if (shouldRetryWindowError({ errors, now: Date.now(), hardDeadline: t.hardDeadline, status, errorType })) {
         t.errors = errors
@@ -545,9 +545,9 @@ export class TaskDO extends DurableObject<Env> {
       }
       if (t.agentId && t.sessionId) await this.advanceSessionCursor(t.agentId, t.sessionId)
       const friendly =
-        e instanceof ZooclawError && e.status >= 500 && e.status !== 501
+        e instanceof ZooworkError && e.status >= 500 && e.status !== 501
           ? `The upstream service is temporarily unavailable (${e.status}). Try again shortly.`
-          : e instanceof ZooclawError && e.status === 501
+          : e instanceof ZooworkError && e.status === 501
             ? 'This deployment does not have that capability wired up (501 not_configured).'
             : e instanceof Error
               ? e.message

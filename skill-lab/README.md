@@ -1,6 +1,6 @@
 # skill-lab
 
-> A template in [ZooClaw Quickstarts](../README.md). Build an agent, then teach it something.
+> A template in [ZooWork Quickstarts](../README.md). Build an agent, then teach it something.
 
 Ask an agent something it cannot know. Install a skill you wrote. Ask the exact same
 thing again. The difference between the two answers is what a skill *is*.
@@ -9,7 +9,7 @@ thing again. The difference between the two answers is what a skill *is*.
 
 ```bash
 cd skill-lab              # every command below runs in this directory
-cp .env.example .env      # paste your ZOOCLAW_API_KEY
+cp .env.example .env      # paste your ZOOWORK_API_KEY
 npm install
 npm run dev               # http://localhost:3000
 ```
@@ -21,7 +21,7 @@ Port 3000 busy, or running `chat` at the same time? `PORT=3001 npm run dev`.
 
 One value this time — no agent id. **This template builds its own agent** on first run
 and remembers it in `.agent`, so restarting does not litter your org. Point it at an agent
-you already own with `ZOOCLAW_AGENT_ID` if you prefer.
+you already own with `ZOOWORK_AGENT_ID` if you prefer.
 
 ## The five-minute demo
 

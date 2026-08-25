@@ -7,13 +7,13 @@ import { fileURLToPath } from 'node:url'
 import { dirname, join } from 'node:path'
 
 import {
-  createZooclawClient,
-  ZooclawError,
+  createZooworkClient,
+  ZooworkError,
   assistantText,
   isRunFinished,
   runOutcome,
   toolCall,
-} from '@zooclaw-agents/sdk'
+} from '@zoowork-ai/sdk'
 
 import { makeZip } from './zip.mjs'
 
@@ -23,23 +23,23 @@ const AGENT_FILE = join(HERE, '.agent') // remembers the lab agent across restar
 
 await loadDotEnv(join(HERE, '.env'))
 
-const API_KEY = process.env.ZOOCLAW_API_KEY
+const API_KEY = process.env.ZOOWORK_API_KEY
 const PORT = Number(process.env.PORT || 3000)
 
 if (!API_KEY) {
-  console.error(`\nMissing ZOOCLAW_API_KEY.\n\n  cp .env.example .env\n\nthen paste your org key (zct_…).\n`)
+  console.error(`\nMissing ZOOWORK_API_KEY.\n\n  cp .env.example .env\n\nthen paste your org key (zct_…).\n`)
   process.exit(1)
 }
 
-const zc = createZooclawClient({ apiKey: API_KEY, baseUrl: process.env.ZOOCLAW_BASE_URL })
+const zc = createZooworkClient({ apiKey: API_KEY, baseUrl: process.env.ZOOWORK_BASE_URL })
 
 // ─── the lab agent ───────────────────────────────────────────────────────────
 
 // Unlike `chat/`, this template BUILDS an agent — that is the whole point. It makes one
 // the first time it runs and remembers it in `.agent`, so restarting does not litter your
-// org with agents. Set ZOOCLAW_AGENT_ID to point the lab at one you already own instead.
+// org with agents. Set ZOOWORK_AGENT_ID to point the lab at one you already own instead.
 async function resolveAgent() {
-  const pinned = process.env.ZOOCLAW_AGENT_ID || (await readFile(AGENT_FILE, 'utf8').catch(() => '')).trim()
+  const pinned = process.env.ZOOWORK_AGENT_ID || (await readFile(AGENT_FILE, 'utf8').catch(() => '')).trim()
   if (pinned) {
     const agent = await zc.getAgent(pinned).catch(() => null)
     if (agent) return ensureRunning(pinned)
@@ -89,7 +89,7 @@ let AGENT_ID
 try {
   AGENT_ID = await resolveAgent()
 } catch (e) {
-  console.error(`\nCould not reach ZooClaw.\n\n  ${describe(e)}\n`)
+  console.error(`\nCould not reach ZooWork.\n\n  ${describe(e)}\n`)
   process.exit(1)
 }
 
@@ -271,17 +271,17 @@ const server = createServer(async (req, res) => {
 // ─── plumbing ────────────────────────────────────────────────────────────────
 
 function describe(e) {
-  if (e instanceof ZooclawError) {
-    if (e.status === 401) return 'ZooClaw rejected the API key (401). Check ZOOCLAW_API_KEY in .env — a stray space or a truncated paste looks exactly like this.'
+  if (e instanceof ZooworkError) {
+    if (e.status === 401) return 'ZooWork rejected the API key (401). Check ZOOWORK_API_KEY in .env — a stray space or a truncated paste looks exactly like this.'
     if (e.status === 404) {
-      return 'Not found (404). Installing a BUILT-IN skill returns this — those cannot be added or removed. If you set ZOOCLAW_AGENT_ID, a 404 there means that agent belongs to a different organization than your key.'
+      return 'Not found (404). Installing a BUILT-IN skill returns this — those cannot be added or removed. If you set ZOOWORK_AGENT_ID, a 404 there means that agent belongs to a different organization than your key.'
     }
-    return `ZooClaw error ${e.status}${e.type ? ` ${e.type}` : ''}: ${e.message}`
+    return `ZooWork error ${e.status}${e.type ? ` ${e.type}` : ''}: ${e.message}`
   }
   // A transport failure arrives as the two words 'fetch failed'; the real reason is on .cause.
   if (e?.name === 'TypeError' && /fetch failed/i.test(e.message ?? '')) {
     const why = e.cause?.message ?? e.cause?.code ?? 'no route to the gateway'
-    return `Could not reach the ZooClaw gateway (${why}). Check your network, VPN or proxy, and ZOOCLAW_BASE_URL if you set one.`
+    return `Could not reach the ZooWork gateway (${why}). Check your network, VPN or proxy, and ZOOWORK_BASE_URL if you set one.`
   }
   return e?.message ?? String(e)
 }

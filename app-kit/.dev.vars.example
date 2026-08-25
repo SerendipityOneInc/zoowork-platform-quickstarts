@@ -14,7 +14,7 @@
 #
 # SECURITY: this authenticates the Worker as your whole organization. It must never
 # reach the browser, a log, or a client bundle.
-ZOOCLAW_API_KEY=
+ZOOWORK_API_KEY=
 
 # ── Local identity ───────────────────────────────────────────────────────────
 # Stands in for Cloudflare Access so you are signed in locally. Any string works; it is

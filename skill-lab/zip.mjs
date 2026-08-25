@@ -1,6 +1,6 @@
 // Uninteresting plumbing: builds a ZIP in memory because `uploadSkill()` wants one.
 // Entries are STORED (uncompressed) — a SKILL.md is a few KB, and this keeps the whole
-// template at exactly one dependency. Nothing here is ZooClaw-specific; skip it.
+// template at exactly one dependency. Nothing here is ZooWork-specific; skip it.
 
 const CRC_TABLE = Uint32Array.from({ length: 256 }, (_, n) => {
   let c = n

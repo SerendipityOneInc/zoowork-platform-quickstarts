@@ -1,5 +1,5 @@
 /**
- * HTTP-layer tests over the in-memory store with a fake turn runner — no DO, no the ZooClaw API,
+ * HTTP-layer tests over the in-memory store with a fake turn runner — no DO, no ZooWork API,
  * no quota. Proves tenant scoping (404 on cross-user), the create/follow-up turn wiring,
  * the attachments-disabled 501 gate, the /content self-heal hook (R3), and that GET /config
  * cannot leak a deployment secret. The SSE /stream is covered by tail.test.ts.
@@ -116,7 +116,7 @@ test('POST /files → 501 while attachments ship disabled, without calling uploa
   fd.append('file', new File([new Uint8Array([1, 2, 3])], 'shot.png', { type: 'image/png' }))
   const res = await root.request('/files', { method: 'POST', body: fd })
   assert.equal(res.status, 501)
-  assert.deepEqual(await res.json(), { error: 'attachments disabled: Zooclaw Files is not production-wired' })
+  assert.deepEqual(await res.json(), { error: 'attachments disabled: Zoowork Files is not production-wired' })
   assert.deepEqual(uploadCalls, []) // gated before any staging upload
 })
 
@@ -234,9 +234,9 @@ test('GET /me returns the authed email', async () => {
  *  that skipped the declaration would fail `tsc` before it could reach this test uncovered. */
 function sentinelEnv(): { env: Env; sentinels: Map<string, string> } {
   const sentinels = new Map(KIT_ENV_VARS.map((v) => [v.name, `zct_LEAK_SENTINEL_${v.name}_9f3a`]))
-  // ZOOCLAW_API_URL is the one variable whose value is deliberately public (it IS the
+  // ZOOWORK_API_URL is the one variable whose value is deliberately public (it IS the
   // resolved base URL), so its sentinel is shaped like the URL it stands in for.
-  sentinels.set('ZOOCLAW_API_URL', 'https://leak-sentinel.example/service/v1')
+  sentinels.set('ZOOWORK_API_URL', 'https://leak-sentinel.example/service/v1')
   return { env: Object.fromEntries(sentinels) as unknown as Env, sentinels }
 }
 
@@ -276,25 +276,25 @@ test('GET /config never echoes a variable VALUE — only the deliberately public
   const body = (await (await root.request('/config')).json()) as RouteVars['runtimeConfig']
 
   // The single sanctioned exception, named explicitly.
-  assert.equal(body.runtime.apiBaseUrl, sentinels.get('ZOOCLAW_API_URL'))
-  assert.equal(body.runtime.apiBaseUrlFrom, 'ZOOCLAW_API_URL')
+  assert.equal(body.runtime.apiBaseUrl, sentinels.get('ZOOWORK_API_URL'))
+  assert.equal(body.runtime.apiBaseUrlFrom, 'ZOOWORK_API_URL')
 
   // Blank that one field out; NO other variable's value may appear anywhere in the rest of
   // the response — not in `env`, not in a mode flag, not in a nested field added later.
   const rest = JSON.stringify({ ...body, runtime: { ...body.runtime, apiBaseUrl: '' } })
   for (const [name, sentinel] of sentinels) {
-    if (name === 'ZOOCLAW_API_URL') continue
+    if (name === 'ZOOWORK_API_URL') continue
     assert.equal(rest.includes(sentinel), false, `${name} value leaked into GET /config`)
   }
 })
 
 test('GET /config derives the deployment mode flags from Env', async () => {
-  const fixed = describeRuntime({ ZOOCLAW_API_KEY: 'zct_x', ZOOCLAW_AGENT_ID: 'agt_x', DEV_EMAIL: 'you@example.com' } as Env)
+  const fixed = describeRuntime({ ZOOWORK_API_KEY: 'zct_x', ZOOWORK_AGENT_ID: 'agt_x', DEV_EMAIL: 'you@example.com' } as Env)
   assert.deepEqual(
     { t: fixed.runtime.transport, p: fixed.runtime.provisioning, i: fixed.runtime.identity, e: fixed.runtime.embedGate },
     { t: 'gateway', p: 'fixed-agent', i: 'dev-email', e: false },
   )
-  // No key → nothing can reach the API at all; no ZOOCLAW_AGENT_ID → per-user provisioning.
+  // No key → nothing can reach the API at all; no ZOOWORK_AGENT_ID → per-user provisioning.
   const bare = describeRuntime({} as Env)
   assert.deepEqual(
     { t: bare.runtime.transport, p: bare.runtime.provisioning, i: bare.runtime.identity, from: bare.runtime.apiBaseUrlFrom },
@@ -307,7 +307,7 @@ test('the agent picker is ON by default; only an explicit `off` closes it', asyn
   // The kit is a template for learning the SDK, so the picker ships open — binding an agent
   // you already built is the shortest path to seeing listAgents/getAgent/startAgent work.
   assert.equal(describeRuntime({} as Env).runtime.agentPicker, true)
-  assert.equal(describeRuntime({ ZOOCLAW_API_KEY: 'zct_x', CF_ACCESS_AUD: 'aud' } as Env).runtime.agentPicker, true)
+  assert.equal(describeRuntime({ ZOOWORK_API_KEY: 'zct_x', CF_ACCESS_AUD: 'aud' } as Env).runtime.agentPicker, true)
   assert.equal(describeRuntime({ AGENT_PICKER: 'on' } as Env).runtime.agentPicker, true)
   // The one switch a vertical flips before shipping to end users (the org key reaches every
   // agent in the org). Spelling is forgiving; anything else is treated as "leave it on".
@@ -415,12 +415,12 @@ test('PUT /binding verifies the agent upstream BEFORE storing it, and asks exact
 
 test('PUT /binding stores in agent_bindings and never touches the kit-owned agent row', async () => {
   const store = createMemStore()
-  await store.saveZooclawAgent('u@x.com', 'agt_kit', 'hash')
+  await store.saveZooworkAgent('u@x.com', 'agt_kit', 'hash')
   const { root } = makeApp({ store })
   await root.request('/binding', putJson({ agentId: 'agt_bound' }))
-  // Reusing zooclaw_agents would hand a borrowed agent the config drift gate — and the next
+  // Reusing zoowork_agents would hand a borrowed agent the config drift gate — and the next
   // turn would PUT the kit's persona over somebody else's agent.
-  assert.deepEqual(await store.getZooclawAgent('u@x.com'), { agentId: 'agt_kit', configHash: 'hash' })
+  assert.deepEqual(await store.getZooworkAgent('u@x.com'), { agentId: 'agt_kit', configHash: 'hash' })
 })
 
 test('PUT /binding rejects an unknown id, and says so when it looks like a workspace id', async () => {

@@ -1,6 +1,6 @@
-# ZooClaw Quickstarts
+# ZooWork Quickstarts
 
-Runnable templates for building on **ZooClaw Managed Agents**. Each directory is a
+Runnable templates for building on **ZooWork Managed Agents**. Each directory is a
 self-contained app: clone the repo, work in one directory, run it.
 
 ```bash
@@ -8,12 +8,12 @@ git clone https://github.com/SerendipityOneInc/zoowork-quickstarts
 cd zoowork-quickstarts
 ```
 
-You need two values, both copied from the ZooClaw workspace UI:
+You need two values, both copied from the ZooWork workspace UI:
 
 | | |
 |---|---|
-| `ZOOCLAW_API_KEY` | `zct_…` — issued by your org admin. **Server-side only:** it authenticates your whole organization, not one end user. |
-| `ZOOCLAW_AGENT_ID` | `agt_…` — open your agent in the workspace UI, and copy it from the detail dialog. |
+| `ZOOWORK_API_KEY` | `zct_…` — issued by your org admin. **Server-side only:** it authenticates your whole organization, not one end user. |
+| `ZOOWORK_AGENT_ID` | `agt_…` — open your agent in the workspace UI, and copy it from the detail dialog. |
 
 ## Templates
 
@@ -59,7 +59,7 @@ Then add a row to the table above.
 
 ## Links
 
-- **SDK** — [`@zooclaw-agents/sdk`](https://www.npmjs.com/package/@zooclaw-agents/sdk)
+- **SDK** — [`@zoowork-ai/sdk`](https://www.npmjs.com/package/@zoowork-ai/sdk)
   ([source](https://github.com/SerendipityOneInc/zoowork-sdk-typescript))
 - **API reference** — [zooclaw.ai/docs](https://zooclaw.ai/docs/)
   ([source](https://github.com/SerendipityOneInc/zoowork-agents-docs))

@@ -39,7 +39,7 @@ test('task lifecycle: create defaults to running, status/session/agent writes ro
   await s.createTask('t1', 'proj', 'a@x.com')
   const fresh = await s.getTask('t1')
   assert.equal(fresh?.status, 'running')
-  assert.equal(fresh?.session_id, null) // no Zooclaw session until the first turn creates it
+  assert.equal(fresh?.session_id, null) // no Zoowork session until the first turn creates it
   assert.equal(fresh?.agent_id, null) // and no agent until that turn resolves one
   await s.setTaskStatus('t1', 'completed')
   await s.setTaskSessionId('t1', 'sess_1')
@@ -80,14 +80,14 @@ test('prompt lifecycle: listPrompts ASC, finishPrompt only flips a running promp
   assert.equal((await s.getPrompt('p1'))?.status, 'completed')
 })
 
-test('saveZooclawAgent is INSERT OR IGNORE; setZooclawAgentConfig updates the fingerprint', async () => {
+test('saveZooworkAgent is INSERT OR IGNORE; setZooworkAgentConfig updates the fingerprint', async () => {
   const s = createMemStore()
-  await s.saveZooclawAgent('a@x.com', 'agt-1', null)
-  await s.saveZooclawAgent('a@x.com', 'agt-2', 'h2') // ignored (first writer wins)
-  assert.deepEqual(await s.getZooclawAgent('a@x.com'), { agentId: 'agt-1', configHash: null })
-  await s.setZooclawAgentConfig('a@x.com', 'h9')
-  assert.deepEqual(await s.getZooclawAgent('a@x.com'), { agentId: 'agt-1', configHash: 'h9' })
-  assert.equal(await s.getZooclawAgent('nobody@x.com'), undefined)
+  await s.saveZooworkAgent('a@x.com', 'agt-1', null)
+  await s.saveZooworkAgent('a@x.com', 'agt-2', 'h2') // ignored (first writer wins)
+  assert.deepEqual(await s.getZooworkAgent('a@x.com'), { agentId: 'agt-1', configHash: null })
+  await s.setZooworkAgentConfig('a@x.com', 'h9')
+  assert.deepEqual(await s.getZooworkAgent('a@x.com'), { agentId: 'agt-1', configHash: 'h9' })
+  assert.equal(await s.getZooworkAgent('nobody@x.com'), undefined)
 })
 
 test('agent_bindings UPSERT: rebinding replaces (unlike the INSERT-OR-IGNORE agent row)', async () => {
@@ -104,20 +104,20 @@ test('agent_bindings UPSERT: rebinding replaces (unlike the INSERT-OR-IGNORE age
 
 test('a binding is per user and never touches the kit-provisioned agent row', async () => {
   const s = createMemStore()
-  await s.saveZooclawAgent('a@x.com', 'agt_kit', 'hash')
+  await s.saveZooworkAgent('a@x.com', 'agt_kit', 'hash')
   await s.saveAgentBinding('a@x.com', 'agt_borrowed', 'Borrowed')
   // Two tables, two meanings: the drift-gated kit agent must survive a binding untouched,
   // otherwise the next turn would PUT the kit's config over somebody else's agent.
-  assert.deepEqual(await s.getZooclawAgent('a@x.com'), { agentId: 'agt_kit', configHash: 'hash' })
+  assert.deepEqual(await s.getZooworkAgent('a@x.com'), { agentId: 'agt_kit', configHash: 'hash' })
   assert.equal(await s.getAgentBinding('b@x.com'), undefined)
 })
 
-test('deleteZooclawAgent forgets the row so a later save is no longer ignored', async () => {
+test('deleteZooworkAgent forgets the row so a later save is no longer ignored', async () => {
   const s = createMemStore()
-  await s.saveZooclawAgent('a@x.com', 'agt-stale', 'h1')
-  await s.deleteZooclawAgent('a@x.com')
-  assert.equal(await s.getZooclawAgent('a@x.com'), undefined)
+  await s.saveZooworkAgent('a@x.com', 'agt-stale', 'h1')
+  await s.deleteZooworkAgent('a@x.com')
+  assert.equal(await s.getZooworkAgent('a@x.com'), undefined)
   // The whole point of delete: email is the PK, so re-provisioning MUST insert fresh.
-  await s.saveZooclawAgent('a@x.com', 'agt-fresh', null)
-  assert.deepEqual(await s.getZooclawAgent('a@x.com'), { agentId: 'agt-fresh', configHash: null })
+  await s.saveZooworkAgent('a@x.com', 'agt-fresh', null)
+  assert.deepEqual(await s.getZooworkAgent('a@x.com'), { agentId: 'agt-fresh', configHash: null })
 })

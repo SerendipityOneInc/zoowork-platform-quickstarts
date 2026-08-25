@@ -1,5 +1,5 @@
 /**
- * Finalize-decision truth tables for the two Zooclaw races (see turn-finalize.ts):
+ * Finalize-decision truth tables for the two Zoowork races (see turn-finalize.ts):
  * R-a status still `idle` before the workflow picks the event up, R-b status flips
  * `idle` before the tail lands on the stream. Pure; no quota.
  */
@@ -47,7 +47,7 @@ test('turnExpired: a running-ish status earns the hard deadline', () => {
 test('turnExpired: idle / absent status gets only the soft deadline', () => {
   assert.equal(turnExpired({ now: 50, deadline: 100, hardDeadline: 200, sessionStatus: 'idle' }), false)
   assert.equal(turnExpired({ now: 150, deadline: 100, hardDeadline: 200, sessionStatus: 'idle' }), true)
-  assert.equal(turnExpired({ now: 150, deadline: 100, hardDeadline: 200 }), true) // unreachable the ZooClaw API: no benefit of the doubt
+  assert.equal(turnExpired({ now: 150, deadline: 100, hardDeadline: 200 }), true) // unreachable ZooWork API: no benefit of the doubt
   assert.equal(turnExpired({ now: 150, deadline: 100, hardDeadline: 200, sessionStatus: 'failed' }), true) // any at-rest status
 })
 

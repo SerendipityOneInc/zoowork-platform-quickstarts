@@ -27,7 +27,7 @@ test('assistantFrameText: joins text parts, else null', () => {
 
 test('framesHaveAssistantText', () => {
   assert.equal(framesHaveAssistantText([{ seq: 1, data: assistant('hi') }]), true)
-  assert.equal(framesHaveAssistantText([{ seq: 1, data: { __zooclaw: 'thinking', payload: { text: 'hm' } } }]), false)
+  assert.equal(framesHaveAssistantText([{ seq: 1, data: { __zoowork: 'thinking', payload: { text: 'hm' } } }]), false)
   assert.equal(framesHaveAssistantText([]), false)
 })
 
@@ -37,7 +37,7 @@ test('heal-attempt markers: recognized and counted, invisible to text detection'
   assert.equal(isHealAttemptFrame({ __heal_attempted: 'yes' }), false) // strictly boolean true
   assert.equal(isHealAttemptFrame(assistant('hi')), false)
   const frames: Frame[] = [
-    { seq: 1, data: { __zooclaw_session: 'ses_x' } },
+    { seq: 1, data: { __zoowork_session: 'ses_x' } },
     { seq: 2, data: marker },
     { seq: 3, data: marker },
   ]
