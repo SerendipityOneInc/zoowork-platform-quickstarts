@@ -61,7 +61,7 @@ Then add a row to the table above.
 
 - **SDK** — [`@zoowork-ai/sdk`](https://www.npmjs.com/package/@zoowork-ai/sdk)
   ([source](https://github.com/SerendipityOneInc/zoowork-sdk-typescript))
-- **API reference** — [zooclaw.ai/docs](https://zooclaw.ai/docs/)
+- **API reference** — [zoowork.ai/docs](https://zoowork.ai/docs/)
   ([source](https://github.com/SerendipityOneInc/zoowork-agents-docs))
 - **Skills** — [zoowork-sdk-skills](https://github.com/SerendipityOneInc/zoowork-sdk-skills)
 
