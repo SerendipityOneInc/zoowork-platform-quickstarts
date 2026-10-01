@@ -1,70 +1,58 @@
-# ZooWork Quickstarts
+# Platform Quickstarts
 
-Runnable templates for building on **ZooWork Managed Agents**. Each directory is a
-self-contained app: clone the repo, work in one directory, run it.
+Four independent starters for applications built on [Platform](https://platform.zoowork.ai).
+Each uses a Platform Project key and creates its own Agent through the published SDK.
 
-```bash
+## Status
+
+Agent setup, status, cleanup and a staging lifecycle smoke are runnable in each directory.
+The four feature demos will be implemented in separate sessions.
+
+| Directory | Planned demo | Status |
+| --- | --- | --- |
+| [custom-tool/](custom-tool/) | Order assistant with application-executed tools | Foundation ready |
+| [mcp/](mcp/) | Public remote MCP and approvals | Foundation ready |
+| [rag/](rag/) | External knowledge Q&A with citations | Foundation ready; provider/UX to discuss |
+| [chat-sdk/](chat-sdk/) | Vercel Chat SDK Web adapter with persistent Platform Sessions | Foundation ready |
+
+## Run the foundation
+
+Use Node 22.20+, a Project key from Platform, initialized Org billing and sufficient credits.
+
+```sh
 git clone https://github.com/SerendipityOneInc/zoowork-quickstarts
-cd zoowork-quickstarts
+cd zoowork-quickstarts/custom-tool
+npm ci
+cp .env.example .env
+# Fill in the Project key and public /service/v1 API URL.
+npm run check
+npm run setup
+npm run status
+npm run cleanup
 ```
 
-You need two values, both copied from the ZooWork workspace UI:
+Setup records its create request and Agent ID under ignored `.local/` state. Repeating
+setup reuses that resource. Cleanup stops/deletes only this app's recorded Agent.
+The Project key stays server-side in `.env` or a secret manager.
 
-| | |
-|---|---|
-| `ZOOWORK_API_KEY` | `zct_…` — issued by your org admin. **Server-side only:** it authenticates your whole organization, not one end user. |
-| `ZOOWORK_AGENT_ID` | `agt_…` — open your agent in the workspace UI, and copy it from the detail dialog. |
+Read [Platform and staging](docs/PLATFORM.md) before any optional live smoke.
+Each demo installs independently with its own package and lockfile.
 
-## Templates
+## Development
 
-| Template | What it is | Needs |
-|---|---|---|
-| [`chat/`](chat/) | **Start here.** The smallest thing that talks to your agent: a chat box, one conversation, ~250 lines, no database and no build step. Two values and two commands. | Node 22.20, npm |
-| [`skill-lab/`](skill-lab/) | **Teach an agent something.** Builds its own agent, then lets you edit its persona and upload skills you wrote — and ask the same question before and after, to see what changed. Needs only the key. | Node 22.20, npm |
-| [`app-kit/`](app-kit/) | **Production reference.** Cloudflare Workers + D1 + Durable Objects + Access: per-user agents, multi-conversation, refresh-safe streaming, a `domain/` seam for verticals. Go here when `chat/` runs out of room. | Node 22.20, pnpm, wrangler |
+- [Outline and acceptance criteria](docs/OUTLINE.md)
+- [Platform contract](docs/PLATFORM.md)
+- [RAG examples and open decisions](docs/RAG-RESEARCH.md)
+- [Four session handoffs](docs/HANDOFF.md)
+- [References and license policy](docs/REFERENCES.md)
 
-## Teach your coding assistant this platform
-
-One command, before you start:
-
-```bash
-npx skills add SerendipityOneInc/zoowork-sdk-skills
-```
-
-Your assistant then knows the API shape before it writes a line: which calls exist, which do
-not, and the handful of places where code that looks right fails at runtime.
-
-This installs into whichever assistants you have — Claude Code, Codex, Cursor and 70-odd
-others — each in the directory it actually reads. Add `-g` to install for every project
-instead of this one. Using Claude Code only? `/plugin marketplace add
-SerendipityOneInc/zoowork-sdk-skills` does the same thing.
-
-Install it wherever you are building, not just here: the skill is about the platform, and
-that is most useful in *your* project.
-
-## Adding a template
-
-One directory, self-contained, no workspace linking — each template has its own
-`package.json` and installs independently.
-
-```
-<name>/
-├── README.md          what it is, what to fill in, how to run — in that order
-├── .env.example       the values to fill in, and where to copy them from
-├── skill.md           this template's own gotchas, written for a coding assistant
-└── …                  the app
-```
-
-Then add a row to the table above.
+The previous templates are removed. This repository now targets Platform. Public API
+docs are still being aligned; use `docs/PLATFORM.md` for this foundation's entry flow.
 
 ## Links
 
-- **SDK** — [`@zoowork-ai/sdk`](https://www.npmjs.com/package/@zoowork-ai/sdk)
-  ([source](https://github.com/SerendipityOneInc/zoowork-sdk-typescript))
-- **API reference** — [zoowork.ai/docs](https://zoowork.ai/docs/)
-  ([source](https://github.com/SerendipityOneInc/zoowork-agents-docs))
-- **Skills** — [zoowork-sdk-skills](https://github.com/SerendipityOneInc/zoowork-sdk-skills)
-
-## License
+[Platform](https://platform.zoowork.ai) · [SDK](https://www.npmjs.com/package/@zoowork-ai/sdk) ·
+[SDK source](https://github.com/SerendipityOneInc/zoowork-sdk-typescript) ·
+[API docs](https://zoowork.ai/docs/)
 
 MIT. See [LICENSE](LICENSE).
