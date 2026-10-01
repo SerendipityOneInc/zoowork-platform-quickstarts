@@ -11,6 +11,7 @@
 | 浏览器 1440×1000、390×844 | PASS | 搜索 3 个候选、拒绝详情、批准比较、刷新恢复、追问预算 5000 后 1 个推荐；无 page errors 和 document 横向 overflow |
 | 独立 UI review | 四项修正 resolved / ship | mobile 入口、字号、常驻模拟声明和键盘表格；这个 verdict 仅针对修正清单 |
 | MCP Docker build / probe | PASS | Linux arm64 image；构建内 `npm ci/check/build` 均通过，non-root container 的 initialize/list/search/receipt read 通过 |
+| GitHub CI | PASS | PR #22 的四项 app check 通过；[workflow evidence](https://github.com/SerendipityOneInc/zoowork-platform-quickstarts/actions/runs/36870445008) 对应实现 commit `b8d62de` |
 | 真实 feature staging | NOT RUN | 等待已获授权的 public HTTPS MCP endpoint |
 
 浏览器运行 `scripts/test-ui.ts`：Platform lifecycle/events/approvals 为 mock，数据通过实际本地 HTTP MCP 获取。工具执行与拒绝计数的断言在集成测试中核对；浏览器结果不能用作真实 Platform 接通证据。UI 截图在 ignored `.impeccable/review/`，可本地复查。

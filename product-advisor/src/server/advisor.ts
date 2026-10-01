@@ -670,7 +670,7 @@ export class Advisor {
           id: `reply-${c.lastSeq}`,
           role: "assistant",
           text: c.shortlist.length
-            ? `已根据目录记录整理 ${c.shortlist.length} 个候选。参数与推荐依据见右侧商品卡。`
+            ? `已根据目录记录整理 ${c.shortlist.length} 个候选。请查看商品卡中的参数与推荐依据。`
             : "本轮没有形成满足已确认条件的推荐。请查看候选和未满足条件。",
         });
       } else if (reply)
