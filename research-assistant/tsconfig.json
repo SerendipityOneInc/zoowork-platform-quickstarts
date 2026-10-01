@@ -10,11 +10,16 @@
       "ES2022",
       "DOM",
       "DOM.AsyncIterable"
-    ]
+    ],
+    "jsx": "react-jsx"
   },
   "include": [
     "src/**/*.ts",
     "scripts/**/*.ts",
-    "test/**/*.ts"
+    "test/**/*.ts",
+    "src/**/*.tsx",
+    "web/**/*.ts",
+    "web/**/*.tsx",
+    "playwright.config.ts"
   ]
 }

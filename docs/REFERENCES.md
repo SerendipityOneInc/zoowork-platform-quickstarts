@@ -15,3 +15,7 @@ is original, following the public SDK and the SDK repository's existing E2E sequ
 
 Before copying code, read its license, pin the source commit and retain copyright/license
 notices. Record copied paths and adaptations here. Adapt runtime calls to Platform.
+
+Research Assistant now adapts the Claude Web adapter/Hono/React reading structure from
+`3994db7dc2464d9ab255aba1dfda3594fc994c21`. Actual paths, Platform adaptations and the
+retained Anthropic MIT notice are recorded in [its references](../research-assistant/REFERENCES.md).
