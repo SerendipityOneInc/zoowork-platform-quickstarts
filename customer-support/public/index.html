@@ -1,0 +1,158 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <meta name="theme-color" content="#183c35" />
+    <title>Customer Support · ZooWork Platform</title>
+    <link rel="stylesheet" href="/style.css" />
+    <script type="module" src="/app.js"></script>
+  </head>
+  <body>
+    <header class="topbar">
+      <a class="brand" href="/" aria-label="Customer Support home"
+        ><svg viewBox="0 0 28 28" aria-hidden="true">
+          <path d="M5 7h18v12H12l-7 5V7Z" />
+          <path d="M10 12h8M10 16h5" /></svg
+        ><span>Customer Support</span></a
+      >
+      <div class="account">
+        <span id="mode">Synthetic shop</span
+        ><span class="avatar" aria-hidden="true">LX</span><span>Lin Xia</span>
+      </div>
+    </header>
+    <div id="notice" class="notice" role="alert" hidden></div>
+    <main class="workbench">
+      <aside class="sidebar" aria-label="Conversations">
+        <div class="sidebar-heading">
+          <h2>Conversations</h2>
+          <button
+            id="new"
+            class="icon-button"
+            aria-label="Start a new conversation"
+          >
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+              <path d="M12 5v14M5 12h14" />
+            </svg>
+          </button>
+        </div>
+        <nav id="conversations" aria-label="Saved conversations"></nav>
+        <div class="sidebar-note">
+          <strong>A working example</strong>
+          <p>
+            Orders and shipments are synthetic. Tickets record a request; they
+            do not issue a refund or contact a carrier.
+          </p>
+          <a
+            href="https://zoowork.ai/docs/en/build/tools"
+            target="_blank"
+            rel="noreferrer"
+            >Built with ZooWork Platform <span aria-hidden="true">↗</span></a
+          >
+        </div>
+      </aside>
+      <section class="conversation-panel" aria-labelledby="chat-title">
+        <header class="panel-header">
+          <div>
+            <h1 id="chat-title">How can we help?</h1>
+            <p>Ask about an order. We’ll keep the details here.</p>
+          </div>
+          <span id="status" class="status" role="status">Ready to start</span>
+        </header>
+        <div
+          id="messages"
+          class="messages"
+          role="log"
+          aria-live="polite"
+          aria-relevant="additions text"
+        >
+          <div class="welcome">
+            <svg viewBox="0 0 48 48" aria-hidden="true">
+              <path d="M9 13h30v22H22L9 43V13Z" />
+              <path d="M17 22h14M17 28h9" />
+            </svg>
+            <h2>Let’s sort it out.</h2>
+            <p>
+              Find your order, follow its delivery, or request after-sales help.
+              You review every ticket before it’s created.
+            </p>
+          </div>
+        </div>
+        <div id="activity" class="activity" role="status"></div>
+        <div id="recovery" class="recovery" hidden>
+          <p id="recovery-copy"></p>
+          <button id="recover" class="secondary">Recover conversation</button>
+        </div>
+        <div id="suggestions" class="suggestions">
+          <button
+            data-prompt="Check order ORD-1001 and its shipment. Where is it now?"
+          >
+            Track ORD-1001</button
+          ><button data-prompt="Look up order ORD-1002. What did I buy?">
+            View ORD-1002
+          </button>
+        </div>
+        <form id="composer" class="composer">
+          <label for="message">Message Customer Support</label>
+          <div class="input-row">
+            <textarea
+              id="message"
+              rows="2"
+              maxlength="4000"
+              placeholder="Ask about an order or request after-sales help…"
+              required
+            ></textarea
+            ><button id="send" class="primary" type="submit">
+              Send
+              <svg viewBox="0 0 24 24" aria-hidden="true">
+                <path d="m5 12 14-7-4 14-3-7-7 0Zm7 0 7-7" />
+              </svg>
+            </button>
+          </div>
+          <p id="composer-hint">Enter to send · Shift + Enter for a new line</p>
+        </form>
+      </section>
+      <aside class="context-panel" aria-label="Order and ticket details">
+        <header class="context-header">
+          <h2>Your orders</h2>
+          <span class="small-label">Sample data</span>
+        </header>
+        <div id="order-tabs" class="order-tabs" aria-label="Choose order"></div>
+        <section
+          id="order"
+          class="order-section"
+          aria-label="Order details"
+        ></section>
+        <section
+          id="shipment"
+          class="shipment-section"
+          aria-label="Shipment timeline"
+        ></section>
+        <section
+          id="confirmation"
+          class="confirmation-section"
+          aria-label="Review ticket request"
+          hidden
+        ></section>
+        <section class="tickets-section" aria-labelledby="tickets-title">
+          <div class="section-heading">
+            <h2 id="tickets-title">After-sales tickets</h2>
+            <span id="ticket-count" class="small-label">0</span>
+          </div>
+          <div id="tickets">
+            <p class="empty-copy">
+              No tickets yet. Ask for help in the conversation to prepare a
+              request.
+            </p>
+          </div>
+        </section>
+        <details class="trace">
+          <summary>Tool activity <span id="trace-count"></span></summary>
+          <div id="trace">
+            <p class="empty-copy">Tool results will appear here.</p>
+          </div>
+        </details>
+      </aside>
+    </main>
+  </body>
+</html>

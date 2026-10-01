@@ -1,6 +1,7 @@
 import { resolve } from 'node:path'
 import { agentResource, demo } from '../src/agent.js'
-import { cleanupAgent, FoundationError, loadState, newState, ownedAgent, readConfig, runtime, safeError, setupAgent, withStateLock } from '../src/platform.js'
+import { FoundationError, loadState, newState, ownedAgent, readConfig, runtime, safeError, setupAgent, withStateLock } from '../src/platform.js'
+import { cleanupApplication } from '../src/cleanup.js'
 
 const command = process.argv[2]
 const filename = process.argv[3] ?? 'agent.json'
@@ -22,7 +23,7 @@ try {
     if (!state) throw new FoundationError('run_setup_first')
     if (command === 'cleanup') {
       rt.beginCleanup()
-      await cleanupAgent(rt.client, state, path)
+      await cleanupApplication(rt.client, state, path)
       console.log('Cleanup complete')
     } else {
       const agent = await ownedAgent(rt.client, state)
