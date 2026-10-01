@@ -10,6 +10,8 @@ node_modules/
 dist/
 build/
 .wrangler/
+.local/
+coverage/
 
 .DS_Store
 *.log
