@@ -62,6 +62,87 @@ let messageSignature = "",
 const welcome =
   '<div class="welcome"><svg viewBox="0 0 48 48" aria-hidden="true"><path d="M9 13h30v22H22L9 43V13Z"/><path d="M17 22h14M17 28h9"/></svg><h2>Let’s sort it out.</h2><p>Find your order, follow its delivery, or request after-sales help. You review every ticket before it’s created.</p></div>';
 
+const toolLabels = {
+  lookup_order: "Order lookup",
+  lookup_shipment: "Shipment lookup",
+  create_support_ticket: "After-sales ticket",
+};
+function toolStep(job) {
+  const waiting = job.status === "waiting_confirmation";
+  const state = waiting
+    ? "waiting"
+    : job.decision === "cancel" || job.decision === "timeout"
+      ? "stopped"
+      : job.isError
+        ? "failed"
+        : "complete";
+  const label = waiting
+    ? "Awaiting confirmation"
+    : job.decision === "cancel"
+      ? "Cancelled"
+      : job.decision === "timeout"
+        ? "Expired"
+        : job.isError
+          ? "Failed"
+          : job.status === "result"
+            ? "Result saved"
+            : "Result returned";
+  const result = job.result ?? {};
+  const orderId =
+    job.input?.order_id ??
+    result.order?.id ??
+    result.shipment?.orderId ??
+    result.ticket?.orderId ??
+    "";
+  let summary;
+  if (waiting)
+    summary = "Review the request before the backend creates a ticket.";
+  else if (job.decision === "cancel")
+    summary = "You cancelled the request. No ticket was created.";
+  else if (job.decision === "timeout" || result.code === "confirmation_timeout")
+    summary = "Confirmation expired. No ticket was created.";
+  else if (job.isError)
+    summary =
+      errors[result.code] ??
+      "The tool could not complete this operation. See tool call details.";
+  else if (result.order)
+    summary = `${result.order.items.map((item) => item.name).join(", ")} · ${title(result.order.status)} · ${money(result.order.total)}`;
+  else if (result.shipment)
+    summary = `${title(result.shipment.status)} · Estimated ${result.shipment.estimatedDelivery} · ${result.shipment.carrier}`;
+  else if (result.ticket)
+    summary = `${result.ticket.id} · ${title(result.ticket.status)} · ${category[result.ticket.category] ?? title(result.ticket.category)}`;
+  else summary = "The backend saved the tool result.";
+  const flow = waiting
+    ? "Agent requested → Awaiting your confirmation"
+    : job.status === "result"
+      ? "Agent requested → Backend result saved; delivery pending"
+      : job.status === "terminal" &&
+          String(result.code ?? "").startsWith("tool_")
+        ? "Agent requested → Platform call ended"
+        : "Agent requested → Backend result returned to Agent";
+  return `<article class="tool-step" data-state="${state}" data-tool-call="${escape(job.callId)}" aria-label="${escape(toolLabels[job.name] ?? job.name)}: ${label}"><div class="tool-step-heading"><span class="tool-symbol" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="m8 5-6 7 6 7M16 5l6 7-6 7M14 4l-4 16"/></svg></span><strong>${escape(toolLabels[job.name] ?? job.name)}</strong><span class="tool-state">${label}</span></div><div class="tool-meta"><code>${escape(job.name)}</code>${orderId ? `<span>${escape(orderId)}</span>` : ""}</div><p class="tool-result">${escape(summary)}</p><p class="tool-flow">${flow}</p>${waiting ? `<button class="secondary tool-review" data-review-call="${escape(job.callId)}">Review ticket request <span aria-hidden="true">→</span></button>` : ""}</article>`;
+}
+function renderTimeline(messages, trace) {
+  const entries = [
+    ...messages.map((message, index) => ({
+      at: Date.parse(message.at),
+      rank: message.role === "user" ? 0 : 2,
+      index,
+      html: `<article class="message ${escape(message.role)}"><div class="message-header"><strong>${message.role === "user" ? "You" : "Customer Support"}</strong><time>${escape(date(message.at))}</time></div><div class="message-body">${escape(message.text)}</div></article>`,
+    })),
+    ...trace.map((job, index) => ({
+      at: Number.isFinite(Date.parse(job.requestedAt))
+        ? Date.parse(job.requestedAt)
+        : Infinity,
+      rank: 1,
+      index,
+      html: toolStep(job),
+    })),
+  ];
+  entries.sort((a, b) => a.at - b.at || a.rank - b.rank || a.index - b.index);
+  return entries.length ? entries.map((entry) => entry.html).join("") : welcome;
+}
+
 function replaceRegion(element, html) {
   if (element.innerHTML === html) return;
   const active = element.contains(document.activeElement)
@@ -71,7 +152,9 @@ function replaceRegion(element, html) {
     ? "conversation"
     : active?.dataset.order
       ? "order"
-      : undefined;
+      : active?.dataset.reviewCall
+        ? "reviewCall"
+        : undefined;
   const value = key ? active.dataset[key] : undefined;
   element.innerHTML = html;
   if (key)
@@ -193,7 +276,7 @@ function renderContext() {
     ? trace
         .map(
           (job) =>
-            `<div class="trace-entry"><strong>${escape(job.name)}</strong><p>${escape(title(job.status))}${job.decision ? ` · ${escape(job.decision)}` : ""}${job.isError ? " · Error result" : ""}</p><pre>${escape(JSON.stringify(job.result ?? { waiting: "UI confirmation" }, null, 2))}</pre></div>`,
+            `<div class="trace-entry"><strong>${escape(job.name)}</strong><p>${escape(title(job.status))}${job.decision ? ` · ${escape(job.decision)}` : ""}${job.isError ? " · Error result" : ""}</p><pre>${escape(JSON.stringify({ callId: job.callId, input: job.input, result: job.result ?? { waiting: "UI confirmation" } }, null, 2))}</pre></div>`,
         )
         .join("")
     : '<p class="empty-copy">Tool results will appear here.</p>';
@@ -224,18 +307,12 @@ function render(value) {
       ? "Session creation was interrupted. Recovery reuses the recorded request."
       : `${errors[conversation?.error] ?? "The conversation needs recovery."} Recovery reads saved history and retries an uncertain message with its original idempotency key.`;
   const messages = snapshot?.messages ?? [];
-  const signature = JSON.stringify(messages);
+  const trace = snapshot?.trace ?? [];
+  const signature = JSON.stringify({ messages, trace });
   if (signature !== messageSignature) {
     const log = $("#messages"),
       stick = log.scrollHeight - log.scrollTop - log.clientHeight < 90;
-    log.innerHTML = messages.length
-      ? messages
-          .map(
-            (message) =>
-              `<article class="message ${escape(message.role)}"><div class="message-header"><strong>${message.role === "user" ? "You" : "Customer Support"}</strong><time>${escape(date(message.at))}</time></div><div class="message-body">${escape(message.text)}</div></article>`,
-          )
-          .join("")
-      : welcome;
+    replaceRegion(log, renderTimeline(messages, trace));
     messageSignature = signature;
     if (stick || messages.at(-1)?.role === "user")
       log.scrollTop = log.scrollHeight;
@@ -323,6 +400,14 @@ document.addEventListener("click", async (event) => {
   if (button.dataset.order) {
     selectedOrder = button.dataset.order;
     renderContext();
+    return;
+  }
+  if (button.dataset.reviewCall) {
+    const confirm = [
+      ...document.querySelectorAll('[data-decision="confirm"]'),
+    ].find((control) => control.dataset.call === button.dataset.reviewCall);
+    confirm?.scrollIntoView({ block: "center", behavior: "auto" });
+    confirm?.focus({ preventScroll: true });
     return;
   }
   if (busy) return;

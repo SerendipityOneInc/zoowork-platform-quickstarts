@@ -62,6 +62,9 @@ test("lookups return database facts and update the selected order", () => {
       c.call("lookup_shipment", { order_id: "ORD-1001" }, "call-2"),
     ).result!.shipment as { status: string };
     assert.equal(shipment.status, "delayed");
+    const trace = c.store.snapshot(c.conversation.id, c.visitor.id).trace;
+    assert.equal(trace[0]?.requestedAt, c.call().requested_at);
+    assert.deepEqual(trace[0]?.input, { order_id: "ORD-1001" });
     assert.equal(
       c.store.conversation(c.conversation.id).selectedOrder,
       "ORD-1001",

@@ -160,7 +160,7 @@ components:
 
 The interface gives conversation and saved business context comparable visual weight. Muted green, an off-white canvas, a white conversation surface, and thin dividers support a compact working interface. Headings identify the task; small labels and tabular numbers make records easy to scan.
 
-The signature interaction is an inline ticket review in the context panel. Its warm surface distinguishes a pending human decision from ordinary order information. Tool activity is a closed disclosure at rest. System UI fonts and authored geometric SVG line icons provide the entire visual vocabulary; the app has no external font, image, or shipping raster asset.
+The signature interaction is an inline ticket review in the context panel. Its warm surface distinguishes a pending human decision from ordinary order information. Custom Tool summaries appear in the conversation timeline; raw call details stay in a closed disclosure at rest. System UI fonts and authored geometric SVG line icons provide the entire visual vocabulary; the app has no external font, image, or shipping raster asset.
 
 This document records the code-built implementation in `public/index.html`, `public/style.css`, and `public/app.js`. There was no approved raster comp. The final independent verdict was **ship** for the two reviewed fixes: clearing stale messages when selecting an empty conversation and retaining keyboard focus during polling. That verdict is bounded to those fixes, rather than a whole-surface approval.
 
@@ -271,7 +271,7 @@ Saved conversation buttons show a strong title and muted tabular timestamp. Hove
 
 The message log uses `role="log"`, polite live announcements, and additions/text relevance. Assistant messages remain on white without a bubble; user messages are right-aligned with a filled rounded surface. The empty state displays the welcome content. Switching to a saved empty conversation resets the message signature, so previous conversation messages cannot remain visible.
 
-Messages are rendered only when their serialized contents change. The log follows a changed message when already within (90px) of the bottom, or when the latest message is from the user. Otherwise it preserves the reader's scroll position. Smooth log scrolling changes to automatic scrolling under `prefers-reduced-motion: reduce`; no other animation is defined.
+Messages and tool summaries are rendered only when their combined serialized contents change. The log follows a changed message when already within (90px) of the bottom, or when the latest message is from the user. Otherwise it preserves the reader's scroll position. Smooth log scrolling changes to automatic scrolling under `prefers-reduced-motion: reduce`; no other animation is defined.
 
 ### Context records and shipment timeline
 
@@ -285,7 +285,9 @@ The warm confirmation surface appears only when pending jobs exist. Each request
 
 The conversation status maps to Ready, Connecting, Working, Review needed, or Needs attention. A separate polite activity line describes current work. Errors use a page-level alert and a recovery region near the composer when needed. Uncertain responses retain saved state and expose **Recover conversation**; they do not present a missing response as a successful request.
 
-Tool activity uses native `details`/`summary` and starts closed. Its count, tool name, result status, decision, and wrapping JSON become visible on request. It stays below customer-facing context. The outer disclosure node is stable, so polling does not close an open trace.
+Custom Tool summaries use a muted green surface, a thin left border and a compact code icon inside the message log. Each names the function and order, explains its business result and shows the actual saved lifecycle state. Pending ticket calls use the warm review surface and a **Review ticket request** button that focuses the protected confirmation, including on mobile. Calls are ordered by their persisted request timestamps; older saved jobs without timestamps appear after the recorded messages. Unchanged polling preserves the review button and its focus.
+
+Tool call details use native `details`/`summary` and start closed. The count, tool name, result status, decision, call ID, input and wrapping JSON become visible on request. It stays below customer-facing context. The outer disclosure node is stable, so polling does not close an open trace.
 
 ### Polling and interactive DOM identity
 
@@ -304,7 +306,7 @@ Order details, shipment, ticket records, and trace contents are rebuilt on each 
 - **Do** keep status words alongside green, warm, and error colors.
 - **Do** preserve explicit inline ticket review, exact request text, cancellation, and expiry information.
 - **Do** preserve visible keyboard focus and DOM identity for unchanged interactive regions during polling.
-- **Do** keep technical results in the initially closed Tool activity disclosure.
+- **Do** show tool names, outcomes and confirmation states in the conversation; keep raw parameters and JSON in the initially closed Tool call details disclosure.
 
 ### Don't:
 

@@ -321,6 +321,73 @@ p {
 .message.assistant {
   padding-right: 12px;
 }
+.tool-step {
+  margin: 0 0 20px;
+  padding: 14px 16px;
+  border: 1px solid var(--line);
+  border-left: 3px solid #618575;
+  border-radius: 8px;
+  background: #f6f9f6;
+  overflow-wrap: anywhere;
+}
+.tool-step-heading {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+  font-size: 12px;
+}
+.tool-symbol {
+  display: flex;
+  color: var(--green);
+}
+.tool-symbol svg {
+  width: 17px;
+  height: 17px;
+}
+.tool-state {
+  margin-left: auto;
+  font-size: 11px;
+  color: var(--green);
+}
+.tool-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin: 7px 0;
+  font-size: 11px;
+  color: var(--muted);
+}
+.tool-meta code {
+  font-size: 11px;
+}
+.tool-result {
+  font-size: 13px;
+  color: var(--ink);
+}
+.tool-flow {
+  margin-top: 6px;
+  font-size: 11px;
+  color: var(--muted);
+}
+.tool-step[data-state="waiting"] {
+  background: var(--amber-soft);
+  border-left-color: var(--amber);
+}
+.tool-step[data-state="waiting"] .tool-state,
+.tool-step[data-state="stopped"] .tool-state {
+  color: var(--amber);
+}
+.tool-step[data-state="failed"] {
+  border-left-color: var(--danger);
+}
+.tool-step[data-state="failed"] .tool-state {
+  color: var(--danger);
+}
+.tool-review {
+  margin-top: 12px;
+  font-size: 12px;
+}
 .activity {
   font-size: 12px;
   color: var(--muted);

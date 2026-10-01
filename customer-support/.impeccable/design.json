@@ -478,13 +478,20 @@
       "name": "Tool Activity Disclosure",
       "kind": "custom",
       "description": "Initially closed native disclosure keeps structured handler output secondary.",
-      "html": "<details class=\"ds-trace\"><summary>Tool activity (1)</summary><div class=\"ds-trace-entry\"><strong>lookup_order</strong><p>Resolved</p><pre>{\"order_id\":\"ORD-1001\"}</pre></div></details>",
+      "html": "<details class=\"ds-trace\"><summary>Tool call details (1)</summary><div class=\"ds-trace-entry\"><strong>lookup_order</strong><p>Resolved</p><pre>{\"order_id\":\"ORD-1001\"}</pre></div></details>",
       "css": ".ds-trace{font-family:-apple-system,BlinkMacSystemFont,\"Segoe UI\",sans-serif;line-height:1.55;margin-top:25px;border-top:1px solid var(--line,#dce3de);padding-top:16px;font-size:11px;color:var(--ink,#20312d)}.ds-trace summary{cursor:pointer;color:var(--muted,#5e6d67);padding:4px 0;outline-offset:4px}.ds-trace summary:hover{color:var(--green,#183c35)}.ds-trace summary:focus-visible{outline:3px solid #437465;outline-offset:4px}.ds-trace-entry{margin-top:12px;border-bottom:1px solid var(--line,#dce3de);padding-bottom:10px}.ds-trace-entry strong{font-size:11px}.ds-trace-entry p{font-size:10px;color:var(--muted,#5e6d67);margin:3px 0 0}.ds-trace-entry pre{font-family:monospace;font-size:10px;white-space:pre-wrap;overflow-wrap:anywhere;background:transparent;margin:8px 0 0;color:var(--muted,#5e6d67)}"
+    },
+    {
+      "name": "Conversation Tool Step",
+      "description": "Visible Custom Tool function, order, business outcome and actual saved lifecycle state in the conversation. Warm emphasis and a keyboard-accessible review button identify pending confirmation. Raw call IDs, inputs and results stay in the closed contextual disclosure.",
+      "html": "<article class=\"ds-tool-step\"><strong>Shipment lookup</strong><span>Result returned</span><p><code>lookup_shipment</code> · ORD-1001</p><p>Delayed · Estimated 2026-10-02 · Demo Express</p><small>Agent requested → Backend result returned to Agent</small></article>",
+      "css": ".ds-tool-step{font-family:-apple-system,BlinkMacSystemFont,\"Segoe UI\",sans-serif;line-height:1.55;padding:14px 16px;border:1px solid var(--line,#dce3de);border-left:3px solid #618575;border-radius:8px;background:#f6f9f6;color:var(--ink,#20312d);overflow-wrap:anywhere}.ds-tool-step strong{font-size:12px}.ds-tool-step span{float:right;font-size:11px;color:var(--green,#183c35)}.ds-tool-step p{margin:7px 0;font-size:13px}.ds-tool-step code,.ds-tool-step small{font-size:11px;color:var(--muted,#5e6d67)}",
+      "kind": "custom"
     }
   ],
   "narrative": {
     "northStar": "Practical Operate Workbench",
-    "overview": "The interface gives conversation and saved business context comparable visual weight. Muted green, an off-white canvas, a white conversation surface, and thin dividers support a compact working interface. Headings identify the task; small labels and tabular numbers make records easy to scan.\n\nThe signature interaction is an inline ticket review in the context panel. Its warm surface distinguishes a pending human decision from ordinary order information. Tool activity is a closed disclosure at rest. System UI fonts and authored geometric SVG line icons provide the entire visual vocabulary; the app has no external font, image, or shipping raster asset.\n\nThis document records the code-built implementation in `public/index.html`, `public/style.css`, and `public/app.js`. There was no approved raster comp. The final independent verdict was **ship** for the two reviewed fixes: clearing stale messages when selecting an empty conversation and retaining keyboard focus during polling. That verdict is bounded to those fixes, rather than a whole-surface approval.",
+    "overview": "The interface gives conversation and saved business context comparable visual weight. Muted green, an off-white canvas, a white conversation surface, and thin dividers support a compact working interface. Headings identify the task; small labels and tabular numbers make records easy to scan.\n\nThe signature interaction is an inline ticket review in the context panel. Its warm surface distinguishes a pending human decision from ordinary order information. Custom Tool summaries appear in the conversation timeline; raw call details stay in a closed disclosure at rest. System UI fonts and authored geometric SVG line icons provide the entire visual vocabulary; the app has no external font, image, or shipping raster asset.\n\nThis document records the code-built implementation in `public/index.html`, `public/style.css`, and `public/app.js`. There was no approved raster comp. The final independent verdict was **ship** for the two reviewed fixes: clearing stale messages when selecting an empty conversation and retaining keyboard focus during polling. That verdict is bounded to those fixes, rather than a whole-surface approval.",
     "keyCharacteristics": [
       "Compact working density with a clearly separated conversation and business context.",
       "Flat surfaces, restrained green actions, and warm pending-review emphasis.",
@@ -515,7 +522,7 @@
       "**Do** keep status words alongside green, warm, and error colors.",
       "**Do** preserve explicit inline ticket review, exact request text, cancellation, and expiry information.",
       "**Do** preserve visible keyboard focus and DOM identity for unchanged interactive regions during polling.",
-      "**Do** keep technical results in the initially closed Tool activity disclosure."
+      "**Do** show tool names, outcomes and confirmation states in the conversation; keep raw parameters and JSON in the initially closed Tool call details disclosure."
     ],
     "donts": [
       "**Don't** add shadows, decorative gradients, external fonts, or stock imagery to this flat working interface.",

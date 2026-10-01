@@ -17,6 +17,26 @@ test("track an order, ask a follow-up, cancel and then confirm a ticket; reload 
   await expect(page.locator("#status")).toHaveText("Ready");
   await expect(page.locator("#shipment")).toContainText("Transit delay");
   await expect(page.locator("#messages")).toContainText("delayed");
+  await expect(page.locator(".tool-step code")).toHaveText([
+    "lookup_order",
+    "lookup_shipment",
+  ]);
+  await expect(page.locator(".tool-step").first()).toContainText(
+    "Result returned",
+  );
+  await expect(page.locator(".tool-step").last()).toContainText(
+    "Estimated 2026-10-02",
+  );
+  await expect(page.locator("details.trace")).not.toHaveAttribute("open", "");
+  const sequence = await page
+    .locator("#messages > article")
+    .evaluateAll((nodes) => nodes.map((node) => node.className));
+  expect(sequence).toEqual([
+    "message user",
+    "tool-step",
+    "tool-step",
+    "message assistant",
+  ]);
   await send(page, "When should it arrive?");
   await expect(page.locator("#status")).toHaveText("Ready");
   await expect(page.locator(".message.assistant")).toHaveCount(2);
@@ -25,9 +45,23 @@ test("track an order, ask a follow-up, cancel and then confirm a ticket; reload 
     page.getByRole("button", { name: "Cancel request" }),
   ).toBeVisible();
   await expect(page.locator("#ticket-count")).toHaveText("0");
+  await expect(page.locator('.tool-step[data-state="waiting"]')).toContainText(
+    "create_support_ticket",
+  );
+  const review = page.getByRole("button", { name: "Review ticket request" });
+  await review.focus();
+  await page.waitForTimeout(1600);
+  await expect(review).toBeFocused();
+  await review.press("Enter");
+  await expect(
+    page.getByRole("button", { name: "Confirm & create ticket" }),
+  ).toBeFocused();
   await page.getByRole("button", { name: "Cancel request" }).click();
   await expect(page.locator("#status")).toHaveText("Ready");
   await expect(page.locator("#ticket-count")).toHaveText("0");
+  await expect(page.locator('.tool-step[data-state="stopped"]')).toContainText(
+    "No ticket was created",
+  );
   await send(page, "Create a delivery ticket for ORD-1001.");
   await expect(
     page.getByRole("button", { name: "Confirm & create ticket" }),
@@ -47,7 +81,11 @@ test("track an order, ask a follow-up, cancel and then confirm a ticket; reload 
   await page.reload();
   await expect(page.locator("#ticket-count")).toHaveText("1");
   await expect(page.locator("#messages")).toContainText(ticketId);
-  await page.getByText("Tool activity", { exact: false }).click();
+  await expect(page.locator(".tool-step").last()).toContainText(ticketId);
+  await expect(page.locator(".tool-step").last()).toContainText(
+    "Result returned",
+  );
+  await page.getByText("Tool call details", { exact: false }).click();
   await expect(page.locator("#trace")).toContainText("confirmation_cancelled");
   await page.screenshot({
     path: ".local/workbench-confirmed.png",
@@ -62,6 +100,10 @@ test("unknown orders and hostile tool data render safely without a ticket write"
   await send(page, "Check ORD-9999.");
   await expect(page.locator("#status")).toHaveText("Ready");
   await expect(page.locator("#messages")).toContainText("order_not_found");
+  await expect(page.locator('.tool-step[data-state="failed"]')).toContainText([
+    "No matching order",
+    "No matching order",
+  ]);
   await send(
     page,
     'Create a ticket for ORD-1001. <script>alert("fixture")</script>',
@@ -85,6 +127,10 @@ test("mobile layout retains conversation, order and confirmation controls withou
   await expect(
     page.getByRole("button", { name: "Confirm & create ticket" }),
   ).toBeVisible();
+  await page.getByRole("button", { name: "Review ticket request" }).click();
+  await expect(
+    page.getByRole("button", { name: "Confirm & create ticket" }),
+  ).toBeFocused();
   await page.screenshot({
     path: ".local/workbench-mobile.png",
     fullPage: true,

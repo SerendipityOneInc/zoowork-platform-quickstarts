@@ -20,7 +20,7 @@ acceptance, process exclusivity, cleanup scope and failure retention.
 
 Browser scenarios cover order/shipment lookup and follow-up, cancellation and confirmation, reload
 with pending/committed state, unknown orders, escaped hostile tool data, mobile layout, switching to
-an empty conversation and keyboard focus surviving a polling interval.
+an empty conversation and keyboard focus surviving a polling interval. The tool-visibility follow-up also verifies chronological inline lookup summaries, cancellation/failure/confirmation outcomes, pending review focus across polling, mobile navigation to confirmation and ticket summaries after reload.
 
 An independent UI source/screenshot review found stale messages when switching to an empty
 conversation and lost keyboard focus during polling. Both were repaired and covered by browser
@@ -54,7 +54,7 @@ This live run exercised the service and SDK, while the browser run independently
 HTTP/UI path with a fake transport. It was not a public deployment or a production integration.
 Later changes added stricter Session-metadata cleanup validation (offline tested), canonical tool-input
 comparison, immutable conversation ownership, normal SSE read-timeout reconnection and the two browser regressions. Those changes did
-not trigger another paid verification run. No deployed Custom Tool capability gap was observed.
+not trigger another paid verification run. The subsequent tool-visibility UI update exposes persisted request timestamps and inputs in the owner-scoped snapshot; it was verified with the same offline checks and browser workflow, without another paid run. No deployed Custom Tool capability gap was observed.
 
 ## Limits
 

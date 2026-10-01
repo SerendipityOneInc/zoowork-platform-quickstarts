@@ -55,6 +55,7 @@ export class Tools {
         callId: call.call_id,
         name: call.name,
         input: call.input,
+        requestedAt: call.requested_at,
         expiresAt:
           call.timeout_at ?? new Date(this.now() + 600_000).toISOString(),
         status: "result",

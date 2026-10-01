@@ -47,7 +47,7 @@ by setup to get the three Custom Tools; configuration is never silently changed.
 
 ORD-1002 is a delivered bottle order. ORD-9999 is unknown. ORD-2001 belongs to a different
 synthetic customer and returns the same `order_not_found` result as an unknown order.
-The **Tool activity** disclosure contains structured handler results and decisions.
+Custom Tool calls appear directly in the conversation timeline, with their function names, business results and confirmation or failure states. **Review ticket request** moves focus to the protected confirmation. The closed **Tool call details** disclosure contains call IDs, input parameters, structured results and decisions.
 
 ## Offline preview and checks
 

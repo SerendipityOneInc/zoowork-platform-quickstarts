@@ -54,6 +54,7 @@ export interface ToolJob {
   callId: string;
   name: string;
   input: Record<string, unknown>;
+  requestedAt?: string;
   expiresAt: string;
   status: "waiting_confirmation" | "result" | "delivered" | "terminal";
   result?: Record<string, unknown>;
@@ -251,8 +252,11 @@ export class Store {
     return conversation;
   }
   saveConversation(value: Conversation) {
-    const existing = this.db.prepare("SELECT owner FROM conversations WHERE id=?").get(value.id);
-    if (existing && existing.owner !== value.owner) throw new AppError("conversation_owner_immutable", 409);
+    const existing = this.db
+      .prepare("SELECT owner FROM conversations WHERE id=?")
+      .get(value.id);
+    if (existing && existing.owner !== value.owner)
+      throw new AppError("conversation_owner_immutable", 409);
     this.db
       .prepare(
         "INSERT INTO conversations VALUES (?,?,?) ON CONFLICT(id) DO UPDATE SET data=excluded.data",
@@ -428,6 +432,8 @@ export class Store {
       trace: this.jobs(id).map((job) => ({
         callId: job.callId,
         name: job.name,
+        input: job.input,
+        requestedAt: job.requestedAt,
         status: job.status,
         decision: job.decision,
         isError: job.isError,
