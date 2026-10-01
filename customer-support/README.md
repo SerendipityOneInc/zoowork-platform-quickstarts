@@ -1,9 +1,15 @@
-# External RAG starter
+# Customer Support
 
-Status: runnable Platform lifecycle foundation. The External RAG feature demo is not implemented yet.
+Status: runnable Platform lifecycle foundation. The Customer Support application is not implemented yet.
 
 Read [the outline](../docs/OUTLINE.md), [Platform contract](../docs/PLATFORM.md) and
-[session handoff](../docs/handoffs/rag.md).
+[session handoff](../docs/handoffs/customer-support.md).
+
+## Planned application
+
+A support workbench: look up an order and its shipment, explain the result, then create a support ticket after user confirmation. The order and ticket panels reflect application data.
+
+Read [the application plan](PLAN.md) for scope and acceptance criteria.
 
 ## Run the foundation
 
@@ -34,7 +40,7 @@ npm run test:staging -- --confirm-staging
 ```
 
 This tests one temporary Agent/Session, one model turn, stream/history consistency and
-cleanup. It does not test the unfinished External RAG feature. A failed cleanup keeps a
+cleanup. It does not test the unfinished application features. A failed cleanup keeps a
 private `.local/smoke-*.json` record and prints the exact recovery command.
 Do not delete ambiguous state or repeat a paid smoke automatically.
 

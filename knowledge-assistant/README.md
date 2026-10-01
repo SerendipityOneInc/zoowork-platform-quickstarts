@@ -1,9 +1,15 @@
-# Chat SDK starter
+# Knowledge Assistant
 
-Status: runnable Platform lifecycle foundation. The Chat SDK feature demo is not implemented yet.
+Status: runnable Platform lifecycle foundation. The Knowledge Assistant application is not implemented yet.
 
 Read [the outline](../docs/OUTLINE.md), [Platform contract](../docs/PLATFORM.md) and
-[session handoff](../docs/handoffs/chat-sdk.md).
+[session handoff](../docs/handoffs/knowledge-assistant.md).
+
+## Planned application
+
+A knowledge Q&A app: connect an existing retrieval service, answer with inspectable source citations, and explain when the corpus does not contain an answer. Provider and ingestion scope are still to discuss.
+
+Read [the application plan](PLAN.md) and [RAG research](docs/RAG-RESEARCH.md). Discussion comes before implementation.
 
 ## Run the foundation
 
@@ -34,7 +40,7 @@ npm run test:staging -- --confirm-staging
 ```
 
 This tests one temporary Agent/Session, one model turn, stream/history consistency and
-cleanup. It does not test the unfinished Chat SDK feature. A failed cleanup keeps a
+cleanup. It does not test the unfinished application features. A failed cleanup keeps a
 private `.local/smoke-*.json` record and prints the exact recovery command.
 Do not delete ambiguous state or repeat a paid smoke automatically.
 

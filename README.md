@@ -1,4 +1,4 @@
-# Platform Quickstarts
+# ZooWork Platform Quickstarts
 
 Four independent starters for applications built on [Platform](https://platform.zoowork.ai).
 Each uses a Platform Project key and creates its own Agent through the published SDK.
@@ -8,20 +8,20 @@ Each uses a Platform Project key and creates its own Agent through the published
 Agent setup, status, cleanup and a staging lifecycle smoke are runnable in each directory.
 The four feature demos will be implemented in separate sessions.
 
-| Directory | Planned demo | Status |
+| Application | User outcome | Technical focus / status |
 | --- | --- | --- |
-| [custom-tool/](custom-tool/) | Order assistant with application-executed tools | Foundation ready |
-| [mcp/](mcp/) | Public remote MCP and approvals | Foundation ready |
-| [rag/](rag/) | External knowledge Q&A with citations | Foundation ready; provider/UX to discuss |
-| [chat-sdk/](chat-sdk/) | Vercel Chat SDK Web adapter with persistent Platform Sessions | Foundation ready |
+| [customer-support/](customer-support/) | Look up orders and shipments, then create a support ticket | Custom Tool; implement first |
+| [product-advisor/](product-advisor/) | Search and compare products, then build a recommendation shortlist | Remote MCP; prepare design |
+| [knowledge-assistant/](knowledge-assistant/) | Ask an existing knowledge base and inspect cited evidence | External RAG; discuss design |
+| [research-assistant/](research-assistant/) | Research a topic, produce a sourced brief and continue later | Vercel Chat SDK; prepare design |
 
 ## Run the foundation
 
 Use Node 22.20+, a Project key from Platform, initialized Org billing and sufficient credits.
 
 ```sh
-git clone https://github.com/SerendipityOneInc/zoowork-quickstarts
-cd zoowork-quickstarts/custom-tool
+git clone https://github.com/SerendipityOneInc/zoowork-platform-quickstarts
+cd zoowork-platform-quickstarts/customer-support
 npm ci
 cp .env.example .env
 # Fill in the Project key and public /service/v1 API URL.
@@ -42,9 +42,14 @@ Each demo installs independently with its own package and lockfile.
 
 - [Outline and acceptance criteria](docs/OUTLINE.md)
 - [Platform contract](docs/PLATFORM.md)
-- [RAG examples and open decisions](docs/RAG-RESEARCH.md)
+- [RAG examples and open decisions](knowledge-assistant/docs/RAG-RESEARCH.md)
 - [Four session handoffs](docs/HANDOFF.md)
+- [Reusable session prompt](docs/SESSION-PROMPT.md)
 - [References and license policy](docs/REFERENCES.md)
+
+Each directory installs independently and will become a complete application. Its technical
+focus does not exclude other SDK capabilities. The four sessions share the published SDK
+contract; application code and dependencies stay inside their own directories.
 
 The previous templates are removed. This repository now targets Platform. Public API
 docs are still being aligned; use `docs/PLATFORM.md` for this foundation's entry flow.

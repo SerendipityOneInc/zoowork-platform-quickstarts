@@ -1,5 +1,5 @@
 {
-  "name": "@zoowork-platform/rag-starter",
+  "name": "@zoowork-platform/product-advisor",
   "version": "0.1.0",
   "private": true,
   "type": "module",

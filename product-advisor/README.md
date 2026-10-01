@@ -1,9 +1,15 @@
-# Custom Tool starter
+# Product Advisor
 
-Status: runnable Platform lifecycle foundation. The Custom Tool feature demo is not implemented yet.
+Status: runnable Platform lifecycle foundation. The Product Advisor application is not implemented yet.
 
 Read [the outline](../docs/OUTLINE.md), [Platform contract](../docs/PLATFORM.md) and
-[session handoff](../docs/handoffs/custom-tool.md).
+[session handoff](../docs/handoffs/product-advisor.md).
+
+## Planned application
+
+A product selection app: describe a budget and requirements, search a catalog, compare products and receive a shortlist grounded in remote catalog data.
+
+Read [the application plan](PLAN.md) for scope and acceptance criteria.
 
 ## Run the foundation
 
@@ -34,7 +40,7 @@ npm run test:staging -- --confirm-staging
 ```
 
 This tests one temporary Agent/Session, one model turn, stream/history consistency and
-cleanup. It does not test the unfinished Custom Tool feature. A failed cleanup keeps a
+cleanup. It does not test the unfinished application features. A failed cleanup keeps a
 private `.local/smoke-*.json` record and prints the exact recovery command.
 Do not delete ambiguous state or repeat a paid smoke automatically.
 

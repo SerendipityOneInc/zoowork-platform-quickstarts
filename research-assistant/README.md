@@ -1,9 +1,15 @@
-# MCP starter
+# Research Assistant
 
-Status: runnable Platform lifecycle foundation. The MCP feature demo is not implemented yet.
+Status: runnable Platform lifecycle foundation. The Research Assistant application is not implemented yet.
 
 Read [the outline](../docs/OUTLINE.md), [Platform contract](../docs/PLATFORM.md) and
-[session handoff](../docs/handoffs/mcp.md).
+[session handoff](../docs/handoffs/research-assistant.md).
+
+## Planned application
+
+A research app: enter a topic, follow research progress, receive a brief with sources, and return to the saved conversation to refine or export the brief.
+
+Read [the application plan](PLAN.md) for scope and acceptance criteria.
 
 ## Run the foundation
 
@@ -34,7 +40,7 @@ npm run test:staging -- --confirm-staging
 ```
 
 This tests one temporary Agent/Session, one model turn, stream/history consistency and
-cleanup. It does not test the unfinished MCP feature. A failed cleanup keeps a
+cleanup. It does not test the unfinished application features. A failed cleanup keeps a
 private `.local/smoke-*.json` record and prints the exact recovery command.
 Do not delete ambiguous state or repeat a paid smoke automatically.
 
