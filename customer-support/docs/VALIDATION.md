@@ -7,8 +7,8 @@ No sibling applications, Work Agents, channels, local SDK overrides or productio
 ## Offline checks
 
 - `npm ci`: independent install with the committed lockfile.
-- `npm run check`: TypeScript and browser JavaScript syntax checks; 39 Node tests passed.
-- `PLAYWRIGHT_CHANNEL=chrome npm run test:browser`: 5 browser scenarios on local Google Chrome.
+- `npm run check`: TypeScript and browser JavaScript syntax checks; 41 Node tests passed.
+- `PLAYWRIGHT_CHANNEL=chrome npm run test:browser`: 6 browser scenarios on local Google Chrome.
   The test transport is explicitly fake; the HTTP app, SQLite and handlers are the actual implementation.
 - Desktop 1440px and mobile 390px screenshots inspected. No horizontal overflow at the mobile width.
   English content, real action controls, confirmation state and a saved ticket were visible.
@@ -16,11 +16,11 @@ No sibling applications, Work Agents, channels, local SDK overrides or productio
 Node tests cover customer/conversation ownership, schema validation, unknown/unavailable tools,
 atomic confirmation/result commits, cancellation, deadlines, duplicate calls/decisions/messages,
 transaction rollback, conversation ID collision, pending-call and result-delivery restart, uncertainty before/after input
-acceptance, process exclusivity, cleanup scope and failure retention.
+acceptance, process exclusivity, cleanup scope and failure retention. Fresh-directory subprocess checks exercise the actual setup/server entry points with missing keys, missing URLs and no recorded Agent. They verify actionable instructions, no credential reflection and no created resource state.
 
 Browser scenarios cover order/shipment lookup and follow-up, cancellation and confirmation, reload
 with pending/committed state, unknown orders, escaped hostile tool data, mobile layout, switching to
-an empty conversation and keyboard focus surviving a polling interval. The tool-visibility follow-up also verifies chronological inline lookup summaries, cancellation/failure/confirmation outcomes, pending review focus across polling, mobile navigation to confirmation and ticket summaries after reload.
+an empty conversation and keyboard focus surviving a polling interval. The tool-visibility follow-up also verifies chronological inline lookup summaries, cancellation/failure/confirmation outcomes, pending review focus across polling, mobile navigation to confirmation and ticket summaries after reload. The starter onboarding scenario verifies the Console link, key/configuration/startup guidance, a stable open disclosure across polling and no overflow at 390px.
 
 An independent UI source/screenshot review found stale messages when switching to an empty
 conversation and lost keyboard focus during polling. Both were repaired and covered by browser
@@ -54,7 +54,7 @@ This live run exercised the service and SDK, while the browser run independently
 HTTP/UI path with a fake transport. It was not a public deployment or a production integration.
 Later changes added stricter Session-metadata cleanup validation (offline tested), canonical tool-input
 comparison, immutable conversation ownership, normal SSE read-timeout reconnection and the two browser regressions. Those changes did
-not trigger another paid verification run. The subsequent tool-visibility UI update exposes persisted request timestamps and inputs in the owner-scoped snapshot; it was verified with the same offline checks and browser workflow, without another paid run. No deployed Custom Tool capability gap was observed.
+not trigger another paid verification run. The subsequent tool-visibility UI update exposes persisted request timestamps and inputs in the owner-scoped snapshot; it was verified with the same offline checks and browser workflow, without another paid run. The starter onboarding update was also tested offline; it changes guidance and startup error text and does not create resources or issue model calls. No deployed Custom Tool capability gap was observed.
 
 ## Limits
 

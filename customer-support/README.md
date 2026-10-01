@@ -8,29 +8,96 @@ The application creates its own Agent with a **Platform Project key**. It uses a
 Custom Tools and durable Session events. All shop records are synthetic. Tickets record a request;
 they do not approve a refund, arrange a return or contact a carrier.
 
+## Get your Project key
+
+You can try the workbench without credentials with `npm ci` and `npm run demo:offline`.
+That preview uses simulated replies. To run the real Agent, use your own **Platform Project key**:
+
+1. Open [Platform Console](https://platform.zoowork.ai) and sign in. Complete account and
+   Organization setup if prompted.
+2. Select a Project. The **Default Project** is enough for this starter; you can also create
+   a separate Project for the app.
+3. Open **API Keys** for that Project and create a key. Copy the secret when it is shown;
+   the Console displays it once. This app requires a key beginning with `zwp_live_`.
+   Work/organization keys beginning with `zct_` are not accepted.
+4. Check **Billing** for the Organization. Runtime creation requires initialized billing and
+   model turns need sufficient credits. Projects in the same Organization share that wallet.
+   Key creation alone does not mean the runtime has credits. If billing setup needs recovery,
+   complete its retry in the Console before running the app.
+5. Put the key in your local server-side `.env` as shown below. Do not paste it into the chat,
+   browser JavaScript, screenshots or Git. You do not need an Agent ID: `npm run setup` creates
+   and starts this app's Agent through the published SDK.
+
 ## Run with Platform
 
-Use Node **22.20 or newer** (verified on 22.23.2), npm and a Project key from Platform.
+Use Node **22.20 or newer** (verified on 22.23.2) and npm.
 Node 22 reports an experimental warning for its built-in SQLite driver.
 
+From a fresh checkout:
+
 ```sh
-cd customer-support
+git clone https://github.com/SerendipityOneInc/zoowork-platform-quickstarts.git
+cd zoowork-platform-quickstarts/customer-support
 npm ci
 cp .env.example .env
-# Set ZOOWORK_API_KEY to your zwp_live_ Project key and set ZOOWORK_BASE_URL.
+```
+
+If you already cloned the repository, start from its `customer-support/` directory.
+Edit `.env` in your editor before continuing:
+
+```dotenv
+ZOOWORK_API_KEY=zwp_live_replace_with_your_project_key
+ZOOWORK_BASE_URL=https://clawapi.ecap.gsmo.ai/service/v1
+PORT=4600
+```
+
+The base URL above is the production public API. Use the API deployment that issued your key;
+[authorized staging](../docs/PLATFORM.md#staging) uses a different URL. The Console website URL
+is not an API base URL. `.env` is ignored by Git and loaded by the setup/server commands.
+`ZOOWORK_MODEL` is optional; leave it empty to use the Platform default model.
+
+```sh
 npm run check
 npm run setup
 npm run dev
 ```
 
-Open **http://localhost:4600**. `PORT` can select another local port. The key stays in the
-server process; the browser receives neither the key nor an Agent ID. There is no Work Agent,
-channels API, sibling app import or local SDK override.
+Successful setup prints `Agent ready: <agent-id>`. The server prints
+`Customer Support: http://localhost:4600 (synthetic data)`. Open **http://localhost:4600**,
+choose **Track ORD-1001**, click **Send**, and look for `lookup_order` / `lookup_shipment` results and an Agent reply.
+Real mode has no **Offline test fixture** label. Model turns consume your Organization credits;
+orders and tickets remain synthetic in both modes. Stop an offline preview before starting real
+mode on the same port. `PORT` can select another local port.
+
+The key stays in the server process; the browser receives neither the key nor an Agent ID.
+There is no Work Agent, channels API, sibling app import or local SDK override.
 
 `setup` creates and starts this application's Agent using an exact request and idempotency key
 saved in `.local/agent.json`. Repeating setup reuses that Agent. Edit the model setting before
 initial setup. An Agent created by the previous lifecycle-only foundation needs cleanup followed
 by setup to get the three Custom Tools; configuration is never silently changed.
+
+## Troubleshooting
+
+Startup errors include a safe error code and the next action, without printing the key or provider body.
+
+| Message | What to do |
+| --- | --- |
+| `platform_project_key_required` | Get a Project key in [Platform Console](https://platform.zoowork.ai), copy `.env.example` to `.env`, and fill `ZOOWORK_API_KEY` with the `zwp_live_` key. |
+| `explicit_public_base_url_required` / `invalid_public_base_url` | Set `ZOOWORK_BASE_URL` to your deployment's HTTPS `/service/v1` URL. Use `.env.example` for the production URL. |
+| `run_setup_first` | Run `npm run setup`, then `npm run dev`. Setup creates the Agent for you. |
+| `http_401` | Check that the key was copied correctly, is active and belongs to the configured API deployment. Restart after editing `.env`. |
+| `http_402` | Check Organization billing and available credits in the Console before retrying. |
+| `http_403` | Check your account access, selected Project and key permissions. Recorded resources must use the same Project and deployment. |
+| `http_400` during setup | Check account setup, Organization billing and the selected model. This code can have several causes; retain `.local` state while investigating. |
+| `state_scope_mismatch` / recorded resource `http_404` | Use the original API deployment and Project key. Do not delete `.local` to force recreation; see recovery and cleanup below. |
+| `agent_config_outdated_cleanup_then_setup` | Stop the server, run `npm run cleanup`, then `npm run setup` and `npm run dev`. Keep state if cleanup fails. |
+| `EADDRINUSE` / `request_or_runner_failed` when starting | Stop another process using port 4600 or set a free `PORT` in `.env`. The generic code can also mean a connection or runtime failure. |
+
+If the workbench still says **Offline test fixture**, you are running `npm run demo:offline`.
+Open **Connect to ZooWork Platform** in that page for the same key and startup steps. A real reply
+requires `npm run setup` followed by `npm run dev`. The starter never silently switches an offline
+preview into paid model calls.
 
 ## Walkthrough
 

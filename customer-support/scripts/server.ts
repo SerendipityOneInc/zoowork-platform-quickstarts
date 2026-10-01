@@ -7,8 +7,8 @@ import {
   loadState,
   ownedAgent,
   readConfig,
-  safeError,
 } from "../src/platform.js";
+import { startupFailure } from "../src/startup.js";
 import { Store } from "../src/store.js";
 import { SupportService } from "../src/service.js";
 import { supportServer } from "../src/http.js";
@@ -100,8 +100,6 @@ try {
     void close();
   });
 } catch (error) {
-  console.error(
-    `Cannot start: ${safeError(error)}. Check setup and retained .local state.`,
-  );
+  console.error(startupFailure("Cannot start", error));
   process.exitCode = 1;
 }

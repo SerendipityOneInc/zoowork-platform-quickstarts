@@ -62,6 +62,55 @@
           </div>
           <span id="status" class="status" role="status">Ready to start</span>
         </header>
+        <section
+          id="connection-guide"
+          class="connection-guide"
+          aria-label="Connect to Platform"
+          hidden
+        >
+          <p>
+            <strong>Offline preview</strong> · Replies are simulated. Connect
+            your Project key to run a real Agent.
+          </p>
+          <details id="platform-setup">
+            <summary>Connect to ZooWork Platform</summary>
+            <ol>
+              <li>
+                Sign in to
+                <a
+                  href="https://platform.zoowork.ai"
+                  target="_blank"
+                  rel="noreferrer"
+                  >Platform Console ↗</a
+                >, select a Project, then open <strong>API Keys</strong> and
+                create a key.
+              </li>
+              <li>
+                Copy <code>.env.example</code> to <code>.env</code>. Set
+                <code>ZOOWORK_API_KEY</code> to your <code>zwp_live_</code> key
+                and keep the matching <code>ZOOWORK_BASE_URL</code>. Keep the
+                key on your server; never paste it into this chat.
+              </li>
+              <li>
+                Check Organization billing and credits in the Console. Real
+                model turns use credits.
+              </li>
+              <li>
+                Stop the offline preview with <code>Ctrl+C</code>, then run
+                these commands from <code>customer-support/</code>:
+              </li>
+            </ol>
+            <pre>
+npm run setup
+npm run dev</pre
+            >
+            <p>
+              Setup creates and starts your Agent through the SDK. Reopen this
+              page after the server starts; the offline label will disappear.
+              See README.md for the full setup and troubleshooting guide.
+            </p>
+          </details>
+        </section>
         <div
           id="messages"
           class="messages"

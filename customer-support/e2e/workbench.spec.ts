@@ -4,6 +4,49 @@ async function send(page: Page, text: string) {
   await page.getByLabel("Message Customer Support").fill(text);
   await page.getByRole("button", { name: "Send", exact: true }).click();
 }
+test("offline onboarding explains Project keys and real startup on desktop and mobile", async ({
+  page,
+}) => {
+  await page.goto("/");
+  await expect(page.locator("#connection-guide")).toBeVisible();
+  await expect(page.locator("#connection-guide")).toContainText(
+    "Replies are simulated",
+  );
+  await page.getByText("Connect to ZooWork Platform", { exact: true }).click();
+  const guide = page.locator("#platform-setup");
+  await expect(
+    guide.getByRole("link", { name: "Platform Console" }),
+  ).toHaveAttribute("href", "https://platform.zoowork.ai");
+  await expect(guide).toContainText("API Keys");
+  await expect(guide).toContainText("ZOOWORK_API_KEY");
+  await expect(guide).toContainText("npm run setup");
+  await expect(guide).toContainText("npm run dev");
+  await expect(guide).toContainText("never paste it into this chat");
+  await page.setViewportSize({ width: 390, height: 844 });
+  expect(
+    await page.evaluate(
+      () => document.documentElement.scrollWidth <= window.innerWidth,
+    ),
+  ).toBe(true);
+  const layout = await page.evaluate(() => ({
+    composerBottom: document.querySelector("#composer")!.getBoundingClientRect()
+      .bottom,
+    contextTop: document
+      .querySelector(".context-panel")!
+      .getBoundingClientRect().top,
+  }));
+  expect(layout.composerBottom).toBeLessThanOrEqual(layout.contextTop);
+  await page.screenshot({
+    path: ".local/workbench-onboarding-mobile.png",
+    fullPage: false,
+  });
+  await page.getByText("Connect to ZooWork Platform", { exact: true }).click();
+  await send(page, "Check ORD-1001 and its shipment.");
+  await expect(page.locator("#status")).toHaveText("Ready");
+  await page.getByText("Connect to ZooWork Platform", { exact: true }).click();
+  await page.waitForTimeout(1600);
+  await expect(guide).toHaveAttribute("open", "");
+});
 test("track an order, ask a follow-up, cancel and then confirm a ticket; reload retains state", async ({
   page,
 }) => {

@@ -281,6 +281,10 @@ Orders, shipment, tickets, and trace form one contextual column with dividers, n
 
 The warm confirmation surface appears only when pending jobs exist. Each request shows order, category, exact reason, expiry, and separate **Confirm & create ticket** and **Cancel request** actions. Multiple jobs are divided inside the same surface. A review is a human decision, so neither arrival nor polling submits it. The expiry copy explains that an expired request creates no ticket. The interface also explains that creating a ticket does not approve a refund or return.
 
+### Starter connection guide
+
+The offline workbench shows a compact muted-green connection notice below the conversation header. It explicitly says replies are simulated. Its native **Connect to ZooWork Platform** disclosure provides the Console link, Project/API Keys steps, server-side `.env` variable names, billing prerequisite and setup/dev commands. The disclosure stays closed by default and is outside polling render regions, so its open state and focused link remain stable. Mobile margins align with the message log, and commands wrap without horizontal overflow. With the disclosure open, the mobile conversation panel uses natural height so the composer remains above the order context. The notice is hidden in Platform mode; configuring a key is a server task, not a customer chat form.
+
 ### Status, recovery, and technical trace
 
 The conversation status maps to Ready, Connecting, Working, Review needed, or Needs attention. A separate polite activity line describes current work. Errors use a page-level alert and a recovery region near the composer when needed. Uncertain responses retain saved state and expose **Recover conversation**; they do not present a missing response as a successful request.

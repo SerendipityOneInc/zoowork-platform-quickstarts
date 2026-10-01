@@ -256,6 +256,37 @@ p {
   background: var(--amber-soft);
   color: var(--amber);
 }
+.connection-guide {
+  margin: 16px 30px 0;
+  padding: 12px 16px;
+  background: var(--green-soft);
+  border-radius: 8px;
+  font-size: 12px;
+  overflow-wrap: anywhere;
+}
+.connection-guide strong {
+  color: var(--ink);
+}
+.connection-guide summary {
+  margin-top: 8px;
+  color: var(--green);
+  cursor: pointer;
+  font-weight: 600;
+}
+.connection-guide ol {
+  padding-left: 20px;
+  color: var(--ink);
+}
+.connection-guide li + li {
+  margin-top: 10px;
+}
+.connection-guide pre {
+  white-space: pre-wrap;
+  color: var(--ink);
+  padding: 10px 12px;
+  background: var(--paper);
+  border-radius: 6px;
+}
 .messages {
   flex: 1;
   overflow-y: auto;
@@ -813,6 +844,10 @@ textarea::placeholder {
   .activity {
     margin-left: 42px;
   }
+  .connection-guide {
+    margin-left: 42px;
+    margin-right: 42px;
+  }
 }
 @media (max-width: 1100px) {
   .workbench {
@@ -880,6 +915,10 @@ textarea::placeholder {
   }
 }
 @media (max-width: 680px) {
+  .connection-guide {
+    margin-left: 20px;
+    margin-right: 20px;
+  }
   .topbar {
     height: 64px;
     padding: 0 18px;
@@ -908,6 +947,9 @@ textarea::placeholder {
   .conversation-panel {
     min-height: 650px;
     height: calc(100dvh - 122px);
+  }
+  .conversation-panel:has(#platform-setup[open]) {
+    height: auto;
   }
   .panel-header {
     padding: 22px 20px 18px;

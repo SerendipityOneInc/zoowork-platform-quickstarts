@@ -283,6 +283,7 @@ function renderContext() {
 }
 function render(value) {
   if (value) snapshot = value;
+  $("#connection-guide").hidden = !bootstrap.offline;
   const conversation = snapshot?.conversation;
   const status = conversation?.status ?? "ready";
   $("#status").textContent = {
