@@ -13,14 +13,35 @@
     "setup": "node --env-file-if-exists=.env --import tsx scripts/platform.ts setup",
     "status": "node --env-file-if-exists=.env --import tsx scripts/platform.ts status",
     "cleanup": "node --env-file-if-exists=.env --import tsx scripts/platform.ts cleanup",
-    "test:staging": "node --env-file-if-exists=.env --import tsx scripts/staging.ts"
+    "test:staging": "node --env-file-if-exists=.env --import tsx scripts/staging.ts",
+    "build": "vite build && tsc -p tsconfig.build.json && node -e \"require('node:fs').cpSync('data','dist/data',{recursive:true})\"",
+    "dev": "node --env-file-if-exists=.env --import tsx scripts/dev.ts",
+    "start": "node --env-file-if-exists=.env dist/scripts/serve.js",
+    "mcp:dev": "node --env-file-if-exists=.env --import tsx scripts/mcp.ts",
+    "mcp:start": "node --env-file-if-exists=.env dist/scripts/mcp.js",
+    "mcp:probe": "node --env-file-if-exists=.env --import tsx scripts/probe.ts",
+    "configure": "node --env-file-if-exists=.env --import tsx scripts/platform.ts configure",
+    "test:ui": "node --import tsx scripts/test-ui.ts",
+    "test:feature-staging": "node --env-file-if-exists=.env --import tsx scripts/feature-staging.ts"
   },
   "dependencies": {
-    "@zoowork-ai/sdk": "0.9.0"
+    "@modelcontextprotocol/sdk": "1.29.0",
+    "@zoowork-ai/sdk": "0.9.0",
+    "better-sqlite3": "13.0.3",
+    "express": "5.2.1",
+    "react": "19.3.0",
+    "react-dom": "19.3.0",
+    "zod": "3.25.76"
   },
   "devDependencies": {
+    "@types/better-sqlite3": "7.6.13",
+    "@types/express": "5.0.6",
     "@types/node": "22.20.1",
+    "@types/react": "19.2.14",
+    "@types/react-dom": "19.2.3",
+    "prettier": "3.8.1",
     "tsx": "4.23.7",
-    "typescript": "5.6.3"
+    "typescript": "5.6.3",
+    "vite": "8.3.2"
   }
 }

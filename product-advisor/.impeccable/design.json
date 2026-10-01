@@ -1,0 +1,353 @@
+{
+  "schemaVersion": 2,
+  "generatedAt": "2026-10-01T13:24:21.805Z",
+  "title": "Design System: Product Advisor",
+  "extensions": {
+    "colorMeta": {
+      "green": {
+        "role": "primary",
+        "displayName": "Dark green",
+        "tonalRamp": [
+          "oklch(15% 0.0734 157.37)",
+          "oklch(26.43% 0.0734 157.37)",
+          "oklch(37.86% 0.0734 157.37)",
+          "oklch(49.29% 0.0734 157.37)",
+          "oklch(60.71% 0.0734 157.37)",
+          "oklch(72.14% 0.0734 157.37)",
+          "oklch(83.57% 0.0734 157.37)",
+          "oklch(95% 0.0734 157.37)"
+        ]
+      },
+      "green-hover": {
+        "role": "primary",
+        "displayName": "Deep green",
+        "tonalRamp": [
+          "oklch(15% 0.0623 156.83)",
+          "oklch(26.43% 0.0623 156.83)",
+          "oklch(37.86% 0.0623 156.83)",
+          "oklch(49.29% 0.0623 156.83)",
+          "oklch(60.71% 0.0623 156.83)",
+          "oklch(72.14% 0.0623 156.83)",
+          "oklch(83.57% 0.0623 156.83)",
+          "oklch(95% 0.0623 156.83)"
+        ]
+      },
+      "ink": {
+        "role": "neutral",
+        "displayName": "Dark green ink",
+        "tonalRamp": [
+          "oklch(15% 0.0257 158.15)",
+          "oklch(26.43% 0.0257 158.15)",
+          "oklch(37.86% 0.0257 158.15)",
+          "oklch(49.29% 0.0257 158.15)",
+          "oklch(60.71% 0.0257 158.15)",
+          "oklch(72.14% 0.0257 158.15)",
+          "oklch(83.57% 0.0257 158.15)",
+          "oklch(95% 0.0257 158.15)"
+        ]
+      },
+      "muted": {
+        "role": "neutral",
+        "displayName": "Muted green gray",
+        "tonalRamp": [
+          "oklch(15% 0.0174 151.49)",
+          "oklch(26.43% 0.0174 151.49)",
+          "oklch(37.86% 0.0174 151.49)",
+          "oklch(49.29% 0.0174 151.49)",
+          "oklch(60.71% 0.0174 151.49)",
+          "oklch(72.14% 0.0174 151.49)",
+          "oklch(83.57% 0.0174 151.49)",
+          "oklch(95% 0.0174 151.49)"
+        ]
+      },
+      "line": {
+        "role": "neutral",
+        "displayName": "Pale divider",
+        "tonalRamp": [
+          "oklch(15% 0.0137 134.90)",
+          "oklch(26.43% 0.0137 134.90)",
+          "oklch(37.86% 0.0137 134.90)",
+          "oklch(49.29% 0.0137 134.90)",
+          "oklch(60.71% 0.0137 134.90)",
+          "oklch(72.14% 0.0137 134.90)",
+          "oklch(83.57% 0.0137 134.90)",
+          "oklch(95% 0.0137 134.90)"
+        ]
+      },
+      "field-line": {
+        "role": "neutral",
+        "displayName": "Field divider",
+        "tonalRamp": [
+          "oklch(15% 0.0190 137.80)",
+          "oklch(26.43% 0.0190 137.80)",
+          "oklch(37.86% 0.0190 137.80)",
+          "oklch(49.29% 0.0190 137.80)",
+          "oklch(60.71% 0.0190 137.80)",
+          "oklch(72.14% 0.0190 137.80)",
+          "oklch(83.57% 0.0190 137.80)",
+          "oklch(95% 0.0190 137.80)"
+        ]
+      },
+      "paper": {
+        "role": "neutral",
+        "displayName": "White paper",
+        "tonalRamp": [
+          "oklch(15% 0.0000 89.88)",
+          "oklch(26.43% 0.0000 89.88)",
+          "oklch(37.86% 0.0000 89.88)",
+          "oklch(49.29% 0.0000 89.88)",
+          "oklch(60.71% 0.0000 89.88)",
+          "oklch(72.14% 0.0000 89.88)",
+          "oklch(83.57% 0.0000 89.88)",
+          "oklch(95% 0.0000 89.88)"
+        ]
+      },
+      "canvas": {
+        "role": "neutral",
+        "displayName": "Pale canvas",
+        "tonalRamp": [
+          "oklch(15% 0.0054 117.92)",
+          "oklch(26.43% 0.0054 117.92)",
+          "oklch(37.86% 0.0054 117.92)",
+          "oklch(49.29% 0.0054 117.92)",
+          "oklch(60.71% 0.0054 117.92)",
+          "oklch(72.14% 0.0054 117.92)",
+          "oklch(83.57% 0.0054 117.92)",
+          "oklch(95% 0.0054 117.92)"
+        ]
+      },
+      "sage-field": {
+        "role": "neutral",
+        "displayName": "Sage product field",
+        "tonalRamp": [
+          "oklch(15% 0.0127 126.37)",
+          "oklch(26.43% 0.0127 126.37)",
+          "oklch(37.86% 0.0127 126.37)",
+          "oklch(49.29% 0.0127 126.37)",
+          "oklch(60.71% 0.0127 126.37)",
+          "oklch(72.14% 0.0127 126.37)",
+          "oklch(83.57% 0.0127 126.37)",
+          "oklch(95% 0.0127 126.37)"
+        ]
+      },
+      "selected": {
+        "role": "primary",
+        "displayName": "Selection green",
+        "tonalRamp": [
+          "oklch(15% 0.0891 144.15)",
+          "oklch(26.43% 0.0891 144.15)",
+          "oklch(37.86% 0.0891 144.15)",
+          "oklch(49.29% 0.0891 144.15)",
+          "oklch(60.71% 0.0891 144.15)",
+          "oklch(72.14% 0.0891 144.15)",
+          "oklch(83.57% 0.0891 144.15)",
+          "oklch(95% 0.0891 144.15)"
+        ]
+      },
+      "focus": {
+        "role": "primary",
+        "displayName": "Focus green",
+        "tonalRamp": [
+          "oklch(15% 0.0821 147.36)",
+          "oklch(26.43% 0.0821 147.36)",
+          "oklch(37.86% 0.0821 147.36)",
+          "oklch(49.29% 0.0821 147.36)",
+          "oklch(60.71% 0.0821 147.36)",
+          "oklch(72.14% 0.0821 147.36)",
+          "oklch(83.57% 0.0821 147.36)",
+          "oklch(95% 0.0821 147.36)"
+        ]
+      },
+      "danger": {
+        "role": "neutral",
+        "displayName": "Error brown",
+        "tonalRamp": [
+          "oklch(15% 0.1248 34.15)",
+          "oklch(26.43% 0.1248 34.15)",
+          "oklch(37.86% 0.1248 34.15)",
+          "oklch(49.29% 0.1248 34.15)",
+          "oklch(60.71% 0.1248 34.15)",
+          "oklch(72.14% 0.1248 34.15)",
+          "oklch(83.57% 0.1248 34.15)",
+          "oklch(95% 0.1248 34.15)"
+        ]
+      }
+    },
+    "typographyMeta": {
+      "headline": {
+        "displayName": "Page headline",
+        "purpose": "Page title; smaller fixed rem values at responsive breakpoints."
+      },
+      "title": {
+        "displayName": "Section title",
+        "purpose": "Condition, result and conversation section headings."
+      },
+      "product-title": {
+        "displayName": "Product title",
+        "purpose": "Catalog record names."
+      },
+      "body": {
+        "displayName": "Body",
+        "purpose": "System sans for readable explanatory text; root rem basis."
+      },
+      "price": {
+        "displayName": "Price",
+        "purpose": "Prominent numeric product price with tabular figures."
+      },
+      "parameter": {
+        "displayName": "Parameter row",
+        "purpose": "Desktop fact labels and values."
+      },
+      "parameter-mobile": {
+        "displayName": "Mobile parameter row",
+        "purpose": "12px mobile product facts."
+      },
+      "control-mobile": {
+        "displayName": "Mobile input",
+        "purpose": "16px mobile inputs, selects and composer textarea."
+      }
+    },
+    "shadows": [],
+    "motion": [
+      {
+        "name": "button-state",
+        "value": "background-color 0.16s ease-out, border-color 0.16s ease-out",
+        "purpose": "Button hover and active color changes."
+      },
+      {
+        "name": "reduced-motion",
+        "value": "transition: none !important; scroll-behavior: auto !important;",
+        "purpose": "Reduced-motion preference removes transitions and automatic smooth movement."
+      }
+    ],
+    "breakpoints": [
+      {
+        "name": "wide-min",
+        "value": "1450px"
+      },
+      {
+        "name": "compact-desktop-max",
+        "value": "1150px"
+      },
+      {
+        "name": "horizontal-history-max",
+        "value": "850px"
+      },
+      {
+        "name": "single-column-max",
+        "value": "650px"
+      }
+    ]
+  },
+  "components": [
+    {
+      "name": "Default button",
+      "kind": "button",
+      "refersTo": "button-default",
+      "description": "Secondary action used for details, denial and recovery.",
+      "html": "<button class=\"ds-button\">查看完整参数</button>",
+      "css": ".ds-button{font-family:\"PingFang SC\", \"Microsoft YaHei\", system-ui, sans-serif;font-size:14px;cursor:pointer;color:var(--ink, #25342b);border:1px solid var(--line, #dde3da);background:#fff;border-radius:8px;padding:9px 13px;transition:background-color .16s ease-out,border-color .16s ease-out;}.ds-button:hover:not(:disabled){background:#f0f3ec;border-color:#92a38d}.ds-button:active:not(:disabled){background:#e5eddf}.ds-button:focus-visible{outline:3px solid var(--focus, #49784f);outline-offset:3px;}.ds-button:disabled{opacity:.55;cursor:not-allowed}@media(prefers-reduced-motion:reduce){.ds-button{transition:none}}"
+    },
+    {
+      "name": "Primary button",
+      "kind": "button",
+      "refersTo": "button-primary",
+      "description": "Green action for beginning a search, comparison or allow-once approval. Preview records default and hover; keyboard-active treatment remains an implementation constraint in the surface brief.",
+      "html": "<button class=\"ds-primary\">开始选购<svg width=\"18\" height=\"18\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.7\" aria-hidden=\"true\"><path d=\"M4 12h16m-6-6 6 6-6 6\"/></svg></button>",
+      "css": ".ds-primary{font-family:\"PingFang SC\", \"Microsoft YaHei\", system-ui, sans-serif;font-size:14px;cursor:pointer;color:var(--ink, #25342b);border:1px solid var(--line, #dde3da);background:#fff;border-radius:8px;padding:9px 13px;transition:background-color .16s ease-out,border-color .16s ease-out;background:var(--green, #24583c);border-color:var(--green, #24583c);color:#fff;display:inline-flex;align-items:center;justify-content:center;gap:8px}.ds-primary:hover:not(:disabled){background:#19432c;border-color:#19432c}.ds-primary:focus-visible{outline:3px solid var(--focus, #49784f);outline-offset:3px;}.ds-primary:disabled{opacity:.55;cursor:not-allowed}@media(prefers-reduced-motion:reduce){.ds-primary{transition:none}}"
+    },
+    {
+      "name": "Text field",
+      "kind": "input",
+      "refersTo": "field",
+      "description": "Visible label, white field and native input; 16px input text on mobile.",
+      "html": "<label class=\"ds-field-label\">最大重量（kg）<input class=\"ds-field\" type=\"number\" min=\"0.5\" max=\"10\" step=\"0.05\" placeholder=\"不限\" /></label>",
+      "css": ".ds-field-label{display:flex;flex-direction:column;gap:8px;font-family:\"PingFang SC\", \"Microsoft YaHei\", system-ui, sans-serif;font-size:11.2px;color:#515d52}.ds-field{font-family:\"PingFang SC\", \"Microsoft YaHei\", system-ui, sans-serif;font-size:14px;color:var(--ink, #25342b);border:1px solid #cad3c7;background:#fff;border-radius:8px;padding:10px 12px;width:100%;caret-color:var(--green, #24583c)}.ds-field::placeholder{color:#6a746b}.ds-field:focus-visible{outline:3px solid var(--focus, #49784f);outline-offset:3px;}@media(max-width:650px){.ds-field{font-size:16px}}"
+    },
+    {
+      "name": "Conversation history",
+      "kind": "nav",
+      "description": "Left-aligned history buttons with a visible current-conversation state.",
+      "html": "<nav class=\"ds-history\" aria-label=\"会话历史\"><button class=\"ds-history-item ds-history-active\">预算与选购需求<small>本轮已完成</small></button><button class=\"ds-history-item\">另一条选购会话<small>已保存</small></button></nav>",
+      "css": ".ds-history{font-family:\"PingFang SC\", \"Microsoft YaHei\", system-ui, sans-serif;background:#f0f3ed;padding:16px;max-width:240px}.ds-history-item{font-family:\"PingFang SC\", \"Microsoft YaHei\", system-ui, sans-serif;font-size:14px;cursor:pointer;color:var(--ink, #25342b);border:1px solid var(--line, #dde3da);background:#fff;border-radius:8px;padding:9px 13px;transition:background-color .16s ease-out,border-color .16s ease-out;width:100%;text-align:left;background:transparent;border-color:transparent;line-height:1.65;padding:12px;margin-bottom:4px;overflow-wrap:anywhere}.ds-history-item small{display:block;margin-top:4px;font-size:11.2px;color:var(--muted, #606a62)}.ds-history-active{background:#fff;border-color:#cad5c3}.ds-history-item:hover:not(:disabled){background:#f0f3ec;border-color:#92a38d}.ds-history-item:focus-visible{outline:3px solid var(--focus, #49784f);outline-offset:3px;}@media(max-width:650px){.ds-history{display:flex;gap:6px;overflow:auto;max-width:100%}.ds-history-item{min-width:170px;width:170px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-size:11.2px;padding:8px}.ds-history-item small{display:none}}"
+    },
+    {
+      "name": "Product record",
+      "kind": "card",
+      "refersTo": "product-record",
+      "description": "Synthetic catalog fact record with an explicit unknown value and a selected comparison state.",
+      "html": "<article class=\"ds-product\"><div class=\"ds-product-visual\"><svg width=\"180\" height=\"110\" viewBox=\"0 0 280 170\" aria-hidden=\"true\"><rect x=\"45\" y=\"24\" width=\"190\" height=\"116\" rx=\"7\" fill=\"#567353\"/><rect x=\"53\" y=\"32\" width=\"174\" height=\"99\" rx=\"3\" fill=\"#d5e0cc\"/><path d=\"M26 140h228l-13 11H39z\" fill=\"#7e9177\"/><rect x=\"72\" y=\"53\" width=\"61\" height=\"58\" rx=\"3\" fill=\"#edf2e7\"/><path d=\"M148 60h57M148 72h42M148 84h50M148 104h29\" stroke=\"#8ba37d\" stroke-width=\"5\"/></svg><label class=\"ds-select\"><input type=\"checkbox\" checked aria-label=\"把此演示记录加入比较\"/>比较</label></div><div class=\"ds-product-body\"><h3>演示目录记录</h3><dl class=\"ds-specs\"><div><dt>目录续航</dt><dd>目录未提供</dd></div></dl><details class=\"ds-source\"><summary>数据依据</summary><p>所有价格和参数都是模拟值。</p></details></div></article>",
+      "css": ".ds-product{font-family:\"PingFang SC\", \"Microsoft YaHei\", system-ui, sans-serif;color:var(--ink, #25342b);border:1px solid #467546;outline:1px solid #467546;outline-offset:0;border-radius:12px;background:#fff;overflow:hidden;max-width:340px}.ds-product-visual{height:174px;background:#edf1e8;position:relative;display:flex;justify-content:center;align-items:center}.ds-select{position:absolute;right:13px;top:14px;display:flex;align-items:center;gap:5px;font-size:10.5px;cursor:pointer}.ds-select input{width:16px;height:16px;accent-color:var(--green, #24583c)}.ds-product-body{padding:18px}.ds-product h3{margin:0;font-size:15.12px;font-weight:650;line-height:1.5}.ds-specs{display:grid;gap:7px;margin:15px 0;padding-bottom:14px;border-bottom:1px solid #edf0e8}.ds-specs>div{display:flex;justify-content:space-between;gap:15px;font-size:11.34px}.ds-specs dt{color:var(--muted, #606a62)}.ds-specs dd{margin:0;text-align:right;font-variant-numeric:tabular-nums}.ds-source{font-size:10.78px;color:var(--muted, #606a62)}.ds-source summary{cursor:pointer;line-height:1.5}.ds-source p{margin:6px 0 0;line-height:1.75}.ds-product :focus-visible{outline:3px solid var(--focus, #49784f);outline-offset:3px;}@media(max-width:650px){.ds-product-body{padding:14px}.ds-product-visual{height:133px}.ds-select,.ds-specs>div{font-size:12px}}"
+    },
+    {
+      "name": "Rank tag",
+      "kind": "chip",
+      "refersTo": "rank-tag",
+      "description": "Non-interactive ordering label attached to a recommendation record.",
+      "html": "<span class=\"ds-rank\">推荐 1</span>",
+      "css": ".ds-rank{display:inline-block;font-family:\"PingFang SC\", \"Microsoft YaHei\", system-ui, sans-serif;font-size:10.08px;background:#fff;color:var(--green, #24583c);padding:4px 8px;border-radius:5px}"
+    },
+    {
+      "name": "Native approval card",
+      "kind": "custom",
+      "description": "Pending directory operation with allow-once and deny decisions supplied by native approval state.",
+      "html": "<section class=\"ds-approval\"><h3>确认这次目录查询</h3><p>将读取所选商品的参数并进行比较。调用对象是公开演示目录。</p><div class=\"ds-approval-actions\"><button class=\"ds-allow\">允许这次</button><button class=\"ds-deny\">拒绝</button></div></section>",
+      "css": ".ds-approval{font-family:\"PingFang SC\", \"Microsoft YaHei\", system-ui, sans-serif;color:var(--ink, #25342b);background:#f0f5e9;padding:15px;border:1px solid #cbd9bd;border-radius:8px;max-width:330px}.ds-approval h3{margin:0;font-size:12.6px;font-weight:650;line-height:1.5}.ds-approval p{font-size:11.2px;line-height:1.75;margin:7px 0;color:#435b38}.ds-approval-actions{display:flex;gap:8px;margin-top:12px}.ds-approval-actions button{font-family:\"PingFang SC\", \"Microsoft YaHei\", system-ui, sans-serif;font-size:14px;cursor:pointer;color:var(--ink, #25342b);border:1px solid var(--line, #dde3da);background:#fff;border-radius:8px;padding:9px 13px;transition:background-color .16s ease-out,border-color .16s ease-out;font-size:11.2px;flex:1}.ds-approval-actions .ds-allow{background:var(--green, #24583c);border-color:var(--green, #24583c);color:#fff}.ds-approval-actions .ds-allow:hover:not(:disabled){background:#19432c;border-color:#19432c}.ds-deny:hover:not(:disabled){background:#f0f3ec;border-color:#92a38d}.ds-approval button:focus-visible{outline:3px solid var(--focus, #49784f);outline-offset:3px;}.ds-approval button:disabled{opacity:.55;cursor:not-allowed}@media(prefers-reduced-motion:reduce){.ds-approval button{transition:none}}"
+    },
+    {
+      "name": "Comparison table",
+      "kind": "custom",
+      "refersTo": "comparison-table",
+      "description": "Focusable horizontal scroll region for fact comparison, with unknown values left explicit.",
+      "html": "<div class=\"ds-table-scroll\" tabindex=\"0\" role=\"region\" aria-label=\"商品参数表，可横向滚动\"><table class=\"ds-table\"><caption>目录参数预览 · 模拟数据</caption><thead><tr><th scope=\"col\">参数</th><th scope=\"col\">演示记录 A</th><th scope=\"col\">演示记录 B</th></tr></thead><tbody><tr><th scope=\"row\">目录续航</th><td>目录未提供</td><td>目录未提供</td></tr></tbody></table></div>",
+      "css": ".ds-table-scroll{font-family:\"PingFang SC\", \"Microsoft YaHei\", system-ui, sans-serif;overflow:auto;border:1px solid var(--line, #dde3da);border-radius:10px;background:#fff;max-width:600px;color:var(--ink, #25342b)}.ds-table-scroll:focus-visible{outline:3px solid var(--focus, #49784f);outline-offset:3px;}.ds-table{border-collapse:collapse;width:100%;min-width:480px;font-size:11.48px;font-variant-numeric:tabular-nums;text-align:left}.ds-table th,.ds-table td{padding:12px 15px;border-bottom:1px solid var(--line, #dde3da);line-height:1.6;overflow-wrap:anywhere}.ds-table thead th{background:#eff3e9}.ds-table tbody th{font-weight:500;color:var(--muted, #606a62)}.ds-table tbody tr:last-child>*{border-bottom:0}.ds-table caption{text-align:left;padding:11px 15px;font-size:10.36px;color:var(--muted, #606a62)}"
+    }
+  ],
+  "narrative": {
+    "northStar": "Inspectable catalog records",
+    "overview": "The implemented system is a quiet catalog workspace. White panels separate input, conversation and product facts from a pale sage canvas. Dark green identifies primary actions and confirmed selections. Product data carries the hierarchy; decoration stays secondary.\n\nOne system sans-serif family serves headings, controls and data. Borders and changes in surface color define regions without shadows. This records the built UI in `src/ui/App.tsx` and `src/ui/style.css`; it does not establish a separate display identity or a new brand.",
+    "keyCharacteristics": [
+      "White task panels on pale sage surfaces.",
+      "Dark green actions with explicit hover, disabled and focus states.",
+      "Compact records with prominent prices and aligned parameters.",
+      "Native controls and disclosures for keyboard use.",
+      "One-column mobile composition with readable input and data sizes."
+    ],
+    "rules": [
+      {
+        "name": "The State Color Rule",
+        "body": "Green reinforces an action or a state; the accompanying label, checkbox or outline remains present.",
+        "section": "colors"
+      },
+      {
+        "name": "The Numeric Alignment Rule",
+        "body": "Prices, product IDs, parameter values and comparison tables use `font-variant-numeric: tabular-nums` so digits remain aligned.",
+        "section": "typography"
+      },
+      {
+        "name": "The Source Order Rule",
+        "body": "Keep the input and conversation before results in the DOM. Use desktop grid placement for the side-by-side layout rather than moving mobile controls below the results.",
+        "section": "layout"
+      },
+      {
+        "name": "The Flat Surface Rule",
+        "body": "Use surface color and borders for panel separation, matching the current components.",
+        "section": "elevation"
+      }
+    ],
+    "dos": [
+      "**Do** use white panels, pale sage regions and thin borders to group the task.",
+      "**Do** keep prices, units, unknown values and source disclosure adjacent to product records.",
+      "**Do** retain mobile input sizes, parameter row sizes and keyboard-visible focus from the extracted tokens.",
+      "**Do** keep focusable horizontal scrolling around comparison and snapshot tables.",
+      "**Do** show pending, submitted, denied, failed and recovery states with explicit text."
+    ],
+    "donts": [
+      "**Don't** treat model prose as the source for price or parameter values; rendered facts come from catalog evidence.",
+      "**Don't** replace native controls or disclosures with unlabeled decorative affordances.",
+      "**Don't** turn synthetic category drawings into claims about a physical product model.",
+      "**Don't** promote compact auxiliary label sizes to the body or parameter defaults.",
+      "**Don't** reorder mobile results ahead of the composer and approval controls."
+    ]
+  }
+}

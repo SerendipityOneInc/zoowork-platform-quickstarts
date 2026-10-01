@@ -17,6 +17,7 @@ export interface State {
   agentId?: string
   sessionRequest?: { metadata: Record<string, string>; initial_events: { type: 'user.message'; content: string }[] }
   sessionId?: string
+  pendingResource?: AgentResource
 }
 export function readConfig(env: NodeJS.ProcessEnv = process.env): Config {
   const apiKey = env.ZOOWORK_API_KEY?.trim()
