@@ -45,9 +45,9 @@ Session B 保持空会话，检查隔离。没有自动重试付费输入。
 
 ## 证据边界
 
-真实研究首轮和修复后的会话延续分别有 staging 证据。没有在修复后重复执行完整搜索流程，
-也没有把更新简报版本或 live interrupt 再跑成付费检查；这些由离线事件/浏览器测试覆盖。
-浏览器 UI 使用 fixture 验证，真实 Platform 使用同一 backend/project/export 代码验证。
+2026-10-01 的真实研究首轮和修复后的会话延续分别有 staging 证据；当天没有重复完整搜索。
+2026-10-02 补充了真实浏览器研究和简报更新，见下节。live interrupt 仍只由离线测试覆盖。
+首轮桌面和手机 UI 使用 fixture 验证，真实 Platform 使用同一 backend/project/export 代码验证。
 未做 production、公开部署、多人权限、性能压测或复杂长时间研究。
 
 来源的「已读取」来自成功的工具调用，不是独立事实验证。公开事件只提供 result preview，
@@ -55,3 +55,26 @@ Session B 保持空会话，检查隔离。没有自动重试付费输入。
 
 当前实现依赖每 Session 单写入及私有 `.local/` registry。公开/内部 ID 的关联缺口应在 Platform
 契约或 SDK 文档中另行澄清；本次不修改其他 repository。
+
+## 2026-10-02：真实 demo 与 SDK Debug
+
+Finn 要求启动真实 SDK demo 后，应用 setup 创建并启动自己的 staging Agent。
+本地真实服务运行在 `http://localhost:3000`，模拟服务已停止。key 从已有 staging 配置
+直接注入服务进程，没有写入仓库、浏览器、日志或截图。
+
+真实浏览器提交第一个主题，创建 1 个应用 Session：实际完成一次 `web_search`、
+两次 `web_fetch`、带两条来源的简报和精确 Markdown 导出，读取 18 个 durable events。
+这批应用资源按用户展示 demo 的要求保留，本地 `.local/` 记录 IDs 和归属；它们不是
+前述已清理的临时 smoke 资源。
+
+SDK Debug 增量验证复用同一 Agent/Session，仅提交 1 次追问，不自动重试。
+追问完成并生成第二版简报。实际 debug 记录：`postEvents` 返回 1 条 accepted receipt；
+`streamEvents` 接收 12 个新事件，随 reader 结束标为 closed；新一轮实际执行一次
+`web_fetch`，工具事件标为 stream/history，旧工具记录只标 history。真实页面已检查
+方法名、耗时、参数白名单、ID 和事件来源。没有额外创建 Agent/Session。
+
+增量离线验证：`npm ci`、`npm run check`（26 项 Node 测试、TypeScript、构建）及
+桌面/手机两项浏览器流程均通过。新增测试覆盖进行中调用、stream 提前结束、原返回值与
+异常保持不变、凭据和正文不泄露、事件来源去重、会话范围、记录上限、debug 只读，以及
+界面切换和暂停显示。浏览器 screenshot 使用标明模拟模式的 fixture；真实调用截图来自
+localhost:3000。debug 不补写服务启动前的 Agent setup 调用，也不是持久审计日志。

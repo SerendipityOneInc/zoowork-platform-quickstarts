@@ -5,6 +5,7 @@ import { createRoot } from 'react-dom/client'
 import Markdown from 'react-markdown'
 import { useChat, type UIMessage } from '@chat-adapter/web/react'
 import { safeUrl, type BriefView, type ResearchView, type SourceView, type ToolView } from '../src/brief.js'
+import { SdkDebugPanel } from './sdk-debug.js'
 
 type View = ResearchView & { title: string; archived: boolean }
 type Summary = { id: string; title: string; status: string; updatedAt: string; uncertain: boolean }
@@ -162,7 +163,7 @@ function App() {
       {next !== null && <button onClick={() => void list(next)}>加载更多</button>}
       <div className="sidebar-footer"><p>{fixture ? '离线演示 · 模拟资料' : '本地单用户研究助手'}</p><span>{fixture ? '未调用 Platform' : '会话由 Platform 持久保存'}</span></div>
     </aside>
-    <div className="content">{id ? <Conversation key={id} id={id} initial={initial} onChanged={list} /> : <main className="welcome"><span className="document-mark" aria-hidden="true"><svg viewBox="0 0 48 48"><path d="M12 6h19l6 6v30H12zM30 6v8h7M18 22h13M18 28h13M18 34h8" /></svg></span><h1>从一个问题开始，<br />找到有来源的答案。</h1><p>检索公开资料，整理成简报。查看每条来源，<br className="desktop-break" />保存研究，回来继续追问。</p>
+    <div className="content"><SdkDebugPanel conversation={id} />{id ? <Conversation key={id} id={id} initial={initial} onChanged={list} /> : <main className="welcome"><span className="document-mark" aria-hidden="true"><svg viewBox="0 0 48 48"><path d="M12 6h19l6 6v30H12zM30 6v8h7M18 22h13M18 28h13M18 34h8" /></svg></span><h1>从一个问题开始，<br />找到有来源的答案。</h1><p>检索公开资料，整理成简报。查看每条来源，<br className="desktop-break" />保存研究，回来继续追问。</p>
       <form className="topic-form" onSubmit={e => { e.preventDefault(); void create() }}><label htmlFor="topic">你想研究什么？</label><textarea id="topic" value={topic} onChange={e => setTopic(e.target.value)} placeholder="例如：Node.js 当前的 LTS 版本有哪些？适合如何选择？" rows={4} maxLength={4000} />
         <div><span>研究会显示实际检索进度。</span><button className="primary" disabled={!topic.trim() || creating}>{creating ? '正在创建会话…' : pending.current ? '继续创建' : '开始研究'}</button></div></form>
       <div className="examples"><p>也可以从这些问题开始</p>{['Node.js 当前 LTS 版本与支持周期', '比较 React 和 Vue 的服务端渲染方案', '研究电池回收的主要技术与限制'].map(t => <button key={t} onClick={() => setTopic(t)}>{t}<svg className="inline-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 19 19 5M5 5h14v14" /></svg></button>)}</div>

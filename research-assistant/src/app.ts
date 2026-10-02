@@ -25,6 +25,12 @@ export function createApi(research: Research, fixture = false): Hono {
     return new Response(JSON.stringify({ error: code }), { status, headers: { 'content-type': 'application/json', 'cache-control': 'no-store' } })
   })
   app.get('/api/info', c => c.json({ fixture, application: 'Research Assistant' }))
+  app.get('/api/debug', async c => {
+    const id = c.req.query('conversation')
+    const record = id ? await research.store.read(id) : undefined
+    // Reading debug state causes no Platform request and cannot repost input.
+    return c.json(research.store.debug.snapshot(research.store.state.agentId!, fixture, record?.sessionId, id))
+  })
   app.get('/api/sessions', async c => {
     const offset = Math.max(0, Number(c.req.query('offset') ?? 0))
     if (!Number.isSafeInteger(offset)) throw new FoundationError('invalid_input')

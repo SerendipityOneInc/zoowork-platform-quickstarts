@@ -17,9 +17,10 @@ export async function webRuntime(directory = resolve('.local')): Promise<Researc
     const signal = streaming ? init.signal : AbortSignal.any([AbortSignal.timeout(30_000), ...(init.signal ? [init.signal] : [])])
     return fetch(input, { ...init, signal, redirect: 'error' })
   } })
-  const agent = await ownedAgent(client, state)
+  const store = new Conversations(resolve(directory, 'conversations'), state, client)
+  const agent = await ownedAgent(store.client, state)
   if (agent.status?.desired_state !== 'running') throw new FoundationError('agent_not_running')
-  return new Research(new Conversations(resolve(directory, 'conversations'), state, client))
+  return new Research(store)
 }
 // One local process owns the registry. A crashed process is recoverable; a live PID is never evicted.
 export async function processLease(directory = resolve('.local')): Promise<() => Promise<void>> {

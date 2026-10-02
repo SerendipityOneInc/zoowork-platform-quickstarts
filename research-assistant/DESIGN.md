@@ -37,6 +37,9 @@ typography:
   metadata:
     fontFamily: "system-ui, -apple-system, 'Segoe UI', sans-serif"
     fontSize: ".7rem"
+  code-data:
+    fontFamily: "ui-monospace, SFMono-Regular, Consolas, monospace"
+    fontSize: ".77rem"
 rounded:
   control: "7px"
   compact: "5px"
@@ -112,12 +115,15 @@ components:
 
 **Body Font:** system-ui、-apple-system、Segoe UI、sans-serif；用于正文、控件和辅助信息。
 
+**Code / Data Font:** frontmatter 的 `code-data`；用于 SDK 方法名、ID、工具名称、seq 和参数/结果 JSON 等代码与数据。SDK Debug 标题、tab、用途、状态和读取来源保持 sans-serif。
+
 ### Hierarchy
 
 - **Headline**：简报标题使用 `headline`，手机缩小为（1.5rem）。
 - **Section title**：正文二级标题使用 `section-title`，上方留出较大间距。
 - **Body**：简报和对话使用 `body`，行高适合连续阅读；阅读容器限制最大宽度（850px）。
 - **Control / Label / Metadata**：按钮、状态说明、日期和域名逐级减小。日期与来源编号使用 tabular numerals，保证数字对齐。
+- **Code / Data**：SDK Debug 的代码与数据使用 `code-data`；参数 JSON 行高（1.7），长 ID 与 JSON 在本区域内换行。调用时间和耗时保持 sans-serif，并使用 tabular numerals。
 
 **The 阅读层级 Rule.** serif 负责简报主标题；正文、列表、导航和操作保持 sans-serif，不用不同字体区分来源可信度。
 
@@ -128,6 +134,8 @@ components:
 宽度不超过（1150px）时，来源移到正文后，来源列表暂为两列。宽度不超过（760px）时，历史改为（270px）drawer，来源单列，顶部显示历史入口。手机 composer 放在内容之后并随页面滚动；桌面 composer 使用底部 sticky。
 
 间距按用途取值：小间隔用于按钮和行内图标，紧凑间距用于历史项和列表行，较大间距用于阅读段落与区域内边距。桌面阅读区主要水平内边距使用 `reading-inset`，手机统一缩小到（23px）。长标题、URL、表格和代码必须在自身区域内换行或滚动。
+
+SDK Debug 位于内容顶部，欢迎页和已有研究共用同一组件。Agent / Session ID 桌面并列；宽度不超过（760px）时单列，摘要和控件可堆叠，调用时间单独一行，用途移到方法名下方，参数区取消左侧缩进。记录保持连续列表，列表自身滚动，高度上限为桌面（360px）、手机（330px）。
 
 ## Elevation & Depth
 
@@ -162,6 +170,16 @@ textarea 透明、无内边框，继承正文颜色，行高（1.7），可垂�
 来源按编号、标题、域名和读取状态排列，点击正文编号定位相应来源，外部来源链接可单独打开。来源 hover 增加下划线，键盘 focus 保持可见。
 
 研究过程使用原生 details，可通过「查看研究过程」展开。chevron 随展开状态旋转，状态文字与调用计数保持可见；研究运行期间展开，结束后可折叠。工具行明确区分进行中、完成、未执行、待处理和失败。
+
+### SDK Debug
+
+扁平的原生 details 区域通过细边框与研究内容分隔。折叠时保留「SDK Debug」、当前研究或所有会话的范围，以及执行中调用数、暂停或读取故障状态；chevron 随展开状态旋转，summary 有键盘 focus 轮廓。展开状态保存在当前浏览器 session 中。
+
+「SDK 调用」和「Platform 事件」使用独立 tab。当前 tab 使用绿色文字和 `paper` 底色；左右方向键切换并聚焦，Home / End 定位首尾，只有当前 tab 进入 Tab 顺序。两个 panel 始终挂载，用 hidden 切换，并通过 aria-controls / aria-labelledby 相互关联。调用区默认勾选「显示历史和状态读取调用」；每条调用的「参数与结果」使用独立原生 details。「暂停显示」冻结记录展示，按钮变为「继续显示」，研究继续执行。
+
+调用列表按最新在前排列时间、SDK 方法、用途、状态和耗时，最多展示（40）条。状态明确写出「执行中」「返回成功」「调用失败」「读取已结束」；执行中使用 accent，失败使用 failure，成功返回不表示研究已完成。事件列表最多展示（60）条，按 seq、事件类型、读取来源、工具阶段和 Run ID 阅读；「历史读取」与「实时 stream」同时保留文字，历史工具事件不表示重新执行工具。
+
+首次读取、当前范围无记录和暂时无法读取各有说明。读取故障以文字提示自动重连及研究仍在执行。模拟模式在记录前明确标注未连接 Platform；参数只展示允许公开的 ID、类型和数量等摘要，代码字体用于数据，不扩展到装饰标签。
 
 ## Do's and Don'ts
 

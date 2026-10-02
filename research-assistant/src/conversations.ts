@@ -3,6 +3,7 @@ import { mkdir, readFile, readdir, rename, writeFile } from 'node:fs/promises'
 import { join } from 'node:path'
 import type { ZooworkClient, SessionRecord } from '@zoowork-ai/sdk'
 import { FoundationError, ownedAgent, type State } from './platform.js'
+import { SdkDebug, traceClient } from './sdk-debug.js'
 
 export const localOwner = 'local'
 export const validId = (value: unknown): value is string => typeof value === 'string' && /^[a-zA-Z0-9_-]{8,128}$/.test(value)
@@ -16,7 +17,10 @@ export interface Conversation {
 }
 export class Conversations {
   private queue: Promise<unknown> = Promise.resolve()
-  constructor(readonly directory: string, readonly state: State, readonly client: ZooworkClient) {}
+  readonly client: ZooworkClient
+  constructor(readonly directory: string, readonly state: State, client: ZooworkClient, readonly debug = new SdkDebug()) {
+    this.client = traceClient(client, debug)
+  }
   async serial<T>(action: () => Promise<T>): Promise<T> {
     const next = this.queue.catch(() => {}).then(action); this.queue = next
     return next

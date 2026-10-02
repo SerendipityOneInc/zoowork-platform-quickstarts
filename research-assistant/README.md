@@ -22,6 +22,27 @@ Setup creates and starts this app’s Agent with a research persona and an allow
 
 Keys stay in the server process. Never add a key to browser code, query parameters, logs, or Git. The normal application makes billable model/tool calls when you submit a topic or follow-up.
 
+## SDK Debug
+
+Expand **SDK Debug** at the top of the page to inspect the actual server-side SDK
+calls: `getAgent`, `createSession`, `getSession`, `postEvents`, `listEventsPage` and
+`streamEvents`. Each entry shows its in-flight/returned/failed/closed state, elapsed
+time and an allow-listed argument/result summary. Interrupts appear as `postEvents`
+with `user.interrupt`. Agent and Session IDs identify the current research.
+
+The **Platform 事件** tab shows durable event types, sequence numbers, Run IDs and
+`web_search`/`web_fetch` phases. History reads and live stream deliveries are labeled
+separately and deduplicated per Session/sequence; reading a historical tool event
+does not execute that tool again. SDK call success is distinct from run completion.
+
+Debug uses process memory only, retaining up to 160 calls and 200 event summaries;
+the UI shows the latest 40 calls or 60 events in the selected scope. Restarting clears
+the journal; setup calls from an earlier process are not invented. Completed routine
+reads are evicted first. The debug endpoint is local, read-only and does not call
+Platform. It never stores keys, headers, input text, tool output, raw metadata,
+cursor values or provider error bodies. **暂停显示** freezes display only; it does not
+interrupt research. Offline fixtures are explicitly labeled in this panel.
+
 ## History and recovery
 
 Platform is authoritative for messages, tools, run outcomes and brief text. Ignored private `.local/agent.json` records the immutable create body/key and Agent ID. `.local/conversations/` records app conversation → Session mappings, ownership, input intents and cursors. Completed input text is removed from local intents. Keep this directory and the same Agent to resume after server restart. Browser storage remembers the active conversation and per-conversation drafts.
