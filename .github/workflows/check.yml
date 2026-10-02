@@ -1,4 +1,4 @@
-name: Platform foundation
+name: ZooWork Platform quickstarts
 on:
   pull_request:
   push:
@@ -11,7 +11,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        demo: [custom-tool, mcp, rag, chat-sdk]
+        demo: [customer-support, product-advisor, knowledge-assistant, research-assistant]
     defaults:
       run:
         working-directory: ${{ matrix.demo }}
