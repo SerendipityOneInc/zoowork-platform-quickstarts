@@ -64,12 +64,47 @@ test("hard conditions, null facts, availability and budget use one versioned cat
     null,
   );
   assert.equal(
-    confirmedRequirements("预算降到 5000 元", {
+    confirmedRequirements("Lower the budget to CNY 5000", {
       category: "laptop",
       maxPriceMinor: 650000,
       filters: { minRamGB: 16 },
     }).maxPriceMinor,
     500000,
+  );
+});
+test("English requirements drive catalog filtering without changing prior requirements", () => {
+  const previous = {
+    category: "laptop" as const,
+    maxPriceMinor: 650000,
+    filters: { minRamGB: 16 },
+  };
+  const parsed = confirmedRequirements(
+    "Budget is CNY 6,500.25. I need a laptop with at least 32 GB RAM, under 1.5 kg.",
+    previous,
+  );
+  assert.deepEqual(parsed, {
+    category: "laptop",
+    maxPriceMinor: 650025,
+    filters: { minRamGB: 32, maxWeightKg: 1.5 },
+  });
+  assert.deepEqual(
+    new Catalog()
+      .execute("search_products", parsed)
+      .products.map((p) => p.productId),
+    ["lap-02"],
+  );
+  assert.equal(previous.filters.minRamGB, 16);
+  assert.deepEqual(
+    confirmedRequirements("Switch to headphones. Budget CNY 1000.", previous),
+    { category: "headphones", maxPriceMinor: 100000, filters: {} },
+  );
+  assert.equal(
+    confirmedRequirements("I need 64 GB storage.", previous).filters.minRamGB,
+    16,
+  );
+  assert.equal(
+    confirmedRequirements("Compare laptops and monitors.", previous).category,
+    "laptop",
   );
 });
 test("official MCP transport, prefix-sized preview and immutable public receipt agree", async () => {

@@ -13,28 +13,40 @@ import type { ConversationView } from "../domain/conversation.js";
 
 const errors: Record<string, string> = {
   advisor_not_configured:
-    "选购服务尚未配置。请联系应用维护者，或按 README 完成服务端 setup。",
-  origin_not_allowed: "请求来源不符合应用配置，请从正确的地址打开页面。",
+    "The advisor is not configured. Contact the maintainer or follow the server setup in README.",
+  origin_not_allowed:
+    "This address does not match the application configuration. Open the configured URL.",
   message_delivery_uncertain:
-    "发送结果尚未确认。请保留此会话，点击“恢复本次发送”，不要创建新的请求。",
-  turn_in_progress: "当前回合还在进行，请先完成审批或停止。",
-  mcp_connection_failed: "暂时无法连接商品目录。本轮没有取得新的商品依据。",
+    "Delivery is unconfirmed. Keep this conversation and choose Resume delivery to recover the original request.",
+  turn_in_progress:
+    "This turn is still running. Complete the approval or stop the turn first.",
+  mcp_connection_failed:
+    "The catalog is unreachable. No new product evidence was obtained in this turn.",
   mcp_authentication_failed:
-    "商品目录要求认证，当前示例连接无法提供。请联系维护者检查目录配置。",
-  catalog_tool_failed: "有一次目录查询失败，相关数据不会加入推荐。",
-  approvals_unavailable: "当前服务没有启用原生审批，详情和比较暂时无法执行。",
+    "The catalog requires authentication that this demo cannot provide. Ask the maintainer to check the connection.",
+  catalog_tool_failed:
+    "A catalog query failed. Its data will not be included in recommendations.",
+  approvals_unavailable:
+    "Native approvals are unavailable. Details and comparisons cannot run.",
   evidence_unavailable:
-    "工具已返回，但完整商品数据暂未取得。已有结果仍可查看。",
+    "The tool returned, but its full data is not available yet. Saved results remain available.",
   tool_receipt_missing:
-    "目录结果缺少可读取的 receipt，暂时无法展示其商品参数。",
-  approval_not_pending: "审批已经处理或过期。请刷新当前会话。",
-  approval_delivery_uncertain: "审批提交结果尚未确认。请等待状态恢复。",
-  approval_decision_not_allowed: "当前审批不允许这个决定。",
-  stream_recovery_required: "连接暂时中断，请恢复会话状态。",
-  turn_stopped: "本轮已停止，之前取得的结果仍然保留。",
-  turn_failed: "本轮未完成，请检查目录连接或服务端配置。",
-  request_failed: "请求未完成，请保留当前会话后重试。",
-  invalid_request: "请检查预算、参数和输入长度。",
+    "The result has no readable receipt. Its product specifications cannot be displayed.",
+  approval_not_pending:
+    "This approval was handled or expired. Refresh the conversation.",
+  approval_delivery_uncertain:
+    "Approval delivery is unconfirmed. Wait for the state to recover.",
+  approval_decision_not_allowed:
+    "This decision is not allowed for this approval.",
+  stream_recovery_required:
+    "The connection was interrupted. Restore the conversation state.",
+  turn_stopped:
+    "This turn stopped. Previously retrieved results are preserved.",
+  turn_failed:
+    "This turn did not finish. Check the catalog connection or server configuration.",
+  request_failed:
+    "The request did not finish. Keep this conversation before retrying.",
+  invalid_request: "Check the budget, filters, and message length.",
 };
 async function api<T>(path: string, body?: unknown): Promise<T> {
   const r = await fetch("/api" + path, {
@@ -49,35 +61,38 @@ async function api<T>(path: string, body?: unknown): Promise<T> {
   const data = await r.json();
   if (!r.ok)
     throw Object.assign(
-      new Error(errors[data.error as string] ?? "请求未完成，请稍后重试。"),
+      new Error(
+        errors[data.error as string] ??
+          "The request did not finish. Try again later.",
+      ),
       { conversationId: data.conversationId },
     );
   return data as T;
 }
 const statusNames = {
-  creating: "正在创建会话",
-  running: "正在查询目录",
-  awaiting_approval: "等待你的确认",
-  finished: "本轮已完成",
-  failed: "本轮未完成",
-  uncertain: "发送结果待确认",
-  recovering: "正在恢复连接",
+  creating: "Creating conversation",
+  running: "Querying catalog",
+  awaiting_approval: "Awaiting your approval",
+  finished: "Turn complete",
+  failed: "Turn incomplete",
+  uncertain: "Delivery unconfirmed",
+  recovering: "Recovering connection",
 };
 const examples = [
   {
     category: "laptop" as const,
     budget: 6500,
-    text: "预算 6500 元，办公和编程，经常带出门，至少 16 GB 内存。",
+    text: "Budget CNY 6500 for office work and coding. I travel often and need at least 16 GB RAM.",
   },
   {
     category: "monitor" as const,
     budget: 2500,
-    text: "预算 2500 元，找一台办公显示器，重视分辨率和 USB-C。",
+    text: "Budget CNY 2500 for an office monitor. Resolution and USB-C matter most.",
   },
   {
     category: "headphones" as const,
     budget: 1000,
-    text: "预算 1000 元，通勤用耳机，需要主动降噪，也在意续航。",
+    text: "Budget CNY 1000 for commuting headphones. I need active noise cancellation and good battery life.",
   },
 ];
 function Icon({
@@ -129,16 +144,16 @@ function ProductCard({
     <article className={`product ${selected ? "selected" : ""}`}>
       <div className="product-visual">
         <img src={p.imagePath} alt="" />
-        {rank !== undefined && <span className="rank">推荐 {rank + 1}</span>}
+        {rank !== undefined && <span className="rank">Pick {rank + 1}</span>}
         <label className="select-product">
           <input
             type="checkbox"
-            aria-label={`把${p.name}加入比较`}
+            aria-label={`Select ${p.name} for comparison`}
             checked={selected}
             onChange={onSelect}
             disabled={disabled || (!selected && c.selectedIds.length >= 4)}
           />
-          <span>比较</span>
+          <span>Compare</span>
         </label>
       </div>
       <div className="product-body">
@@ -163,25 +178,30 @@ function ProductCard({
           </ul>
         ) : (
           <p className="card-note">
-            {misses.length ? misses.join("；") : "符合已确认的目录条件"}
+            {misses.length
+              ? misses.join("; ")
+              : "Meets the confirmed catalog requirements"}
           </p>
         )}
         {!!item?.caveats.length && (
-          <p className="card-note">{item.caveats.join("；")}</p>
+          <p className="card-note">{item.caveats.join("; ")}</p>
         )}
         <div className="card-actions">
           <button disabled={disabled} onClick={onDetails}>
-            查看完整参数
+            View full specifications
           </button>
           <details>
-            <summary>数据依据</summary>
-            <p>自制演示目录 · {p.catalogVersion}</p>
-            <p>记录 ID：{p.productId}</p>
-            <p>更新：{p.updatedAt.slice(0, 10)}。所有价格和参数都是模拟值。</p>
+            <summary>Evidence</summary>
+            <p>Synthetic demo catalog · {p.catalogVersion}</p>
+            <p>Record ID: {p.productId}</p>
+            <p>
+              Updated: {p.updatedAt.slice(0, 10)}. All prices and specifications
+              are synthetic.
+            </p>
             {p.detailLevel === "full" &&
               Object.entries(p.specs).map(([k, v]) => (
                 <p key={k}>
-                  {attributeInfo[k]?.label ?? k}：{formatSpec(k, v)}
+                  {attributeInfo[k]?.label ?? k}: {formatSpec(k, v)}
                 </p>
               ))}
           </details>
@@ -269,7 +289,7 @@ export function App() {
     try {
       await fn();
     } catch (e) {
-      setError(e instanceof Error ? e.message : "请求未完成");
+      setError(e instanceof Error ? e.message : "Request incomplete");
     } finally {
       setBusy(false);
     }
@@ -277,7 +297,7 @@ export function App() {
   function requirements(): Requirements {
     const amount = Number(budget);
     if (!Number.isFinite(amount) || amount <= 0 || amount > 1_000_000)
-      throw new Error("请输入 1–1,000,000 元之间的预算。");
+      throw new Error("Enter a budget between CNY 1 and CNY 1,000,000.");
     const filters: Requirements["filters"] = {};
     if (category === "laptop" && ram) filters.minRamGB = Number(ram);
     if (category === "laptop" && weight) filters.maxWeightKg = Number(weight);
@@ -339,32 +359,32 @@ export function App() {
   return (
     <div className="app-shell">
       <header className="topbar">
-        <a className="brand" href="/" aria-label="Product Advisor 首页">
+        <a className="brand" href="/" aria-label="Product Advisor home">
           <span className="brand-mark">pa</span>
           <span>Product Advisor</span>
         </a>
         <div className="top-meta">
           <span>
-            {testMode ? "离线测试：Platform 为模拟环境" : "演示商品目录"}
+            {testMode ? "Offline test: mock Platform" : "Synthetic catalog"}
           </span>
           <span className={`connection ${ready ? "ready" : ""}`}>
             {loading
-              ? "检查服务中"
+              ? "Checking service"
               : ready
                 ? testMode
-                  ? "离线测试服务"
-                  : "选购服务可用"
-                : "服务尚未配置"}
+                  ? "Offline test service"
+                  : "Advisor ready"
+                : "Not configured"}
           </span>
         </div>
       </header>
       <div className="workspace">
         <aside className="sidebar">
           <div className="sidebar-heading">
-            <h2>选购会话</h2>
+            <h2>Conversations</h2>
             <button
               className="icon-button"
-              aria-label="新建选购会话"
+              aria-label="New conversation"
               onClick={() => {
                 setConversation(undefined);
                 setInput("");
@@ -375,7 +395,7 @@ export function App() {
               <Icon name="plus" />
             </button>
           </div>
-          <nav aria-label="会话历史">
+          <nav aria-label="Conversation history">
             {history.length ? (
               history.map((h) => (
                 <button
@@ -392,36 +412,43 @@ export function App() {
                   {h.title}
                   <small>
                     {statusNames[h.status as keyof typeof statusNames] ??
-                      "已保存"}
+                      "Saved"}
                   </small>
                 </button>
               ))
             ) : (
               <p className="history-empty">
-                开始一次选购后，会话和比较结果会保存在这里。
+                Your conversations and comparisons will be saved here.
               </p>
             )}
           </nav>
           <div className="sidebar-foot">
-            <p>参数有出处，取舍看得见。</p>
+            <p>Specifications with sources. Clear trade-offs.</p>
             <span>
-              价格与商品均为模拟数据。
+              Products and prices are synthetic.
               <br />
-              此示例不提供真实购买。
+              This demo does not offer purchases.
             </span>
           </div>
         </aside>
         <main>
           <div className="page-heading">
             <div>
-              <h1>找到适合你的那一款。</h1>
-              <p>先给出预算和需求，再用商品事实做决定。</p>
+              <h1>Find the right fit.</h1>
+              <p>
+                Start with your budget and needs. Decide with verified product
+                facts.
+              </p>
             </div>
-            <span className="category-count">3 类商品 · 18 条目录记录</span>
+            <span className="category-count">
+              3 categories · 18 catalog records
+            </span>
           </div>
           {!ready && !loading && (
             <div className="notice">
-              选购服务尚未准备完成。请联系维护者配置服务端连接；页面不会提供未经查询的推荐。
+              The advisor is not ready. Ask the maintainer to configure the
+              server connection. Recommendations require a successful catalog
+              query.
             </div>
           )}
           {error && (
@@ -431,12 +458,12 @@ export function App() {
           )}
           <section className="requirements" aria-labelledby="needs-heading">
             <div className="section-heading">
-              <h2 id="needs-heading">你的选购条件</h2>
-              <span>预算与硬条件会用于实际筛选</span>
+              <h2 id="needs-heading">Your requirements</h2>
+              <span>Budget and requirements filter the catalog</span>
             </div>
             <div className="conditions">
               <label>
-                商品类别
+                Category
                 <select
                   value={category}
                   disabled={busy || !!working}
@@ -452,7 +479,7 @@ export function App() {
                 </select>
               </label>
               <label>
-                预算上限
+                Budget limit (CNY)
                 <div className="money-input">
                   <span>¥</span>
                   <input
@@ -462,20 +489,20 @@ export function App() {
                     value={budget}
                     disabled={busy || !!working}
                     onChange={(e) => setBudget(e.target.value)}
-                    aria-label="预算上限（元）"
+                    aria-label="Budget limit (CNY)"
                   />
                 </div>
               </label>
               {category === "laptop" && (
                 <>
                   <label>
-                    最低内存
+                    Minimum RAM
                     <select
                       value={ram}
                       disabled={busy || !!working}
                       onChange={(e) => setRam(e.target.value)}
                     >
-                      <option value="">不限</option>
+                      <option value="">Any</option>
                       {[8, 16, 32].map((v) => (
                         <option key={v} value={v}>
                           {v} GB
@@ -484,13 +511,13 @@ export function App() {
                     </select>
                   </label>
                   <label>
-                    最大重量（kg）
+                    Maximum weight (kg)
                     <input
                       type="number"
                       min="0.5"
                       max="10"
                       step="0.05"
-                      placeholder="不限"
+                      placeholder="Any"
                       value={weight}
                       disabled={busy || !!working}
                       onChange={(e) => setWeight(e.target.value)}
@@ -506,18 +533,18 @@ export function App() {
                     disabled={busy || !!working}
                     onChange={(e) => setAnc(e.target.checked)}
                   />
-                  需要主动降噪
+                  Require noise cancellation
                 </label>
               )}
               {category === "monitor" && (
                 <label>
-                  最低刷新率
+                  Minimum refresh rate
                   <select
                     value={refresh}
                     disabled={busy || !!working}
                     onChange={(e) => setRefresh(e.target.value)}
                   >
-                    <option value="">不限</option>
+                    <option value="">Any</option>
                     {[60, 75, 144, 165].map((v) => (
                       <option key={v} value={v}>
                         {v} Hz
@@ -529,14 +556,14 @@ export function App() {
             </div>
             {!conversation && (
               <div className="examples">
-                <span>试试这些需求</span>
+                <span>Try an example</span>
                 {examples.map((e, i) => (
                   <button
                     key={e.category}
                     onClick={() => example(i)}
                     disabled={busy || !!working}
                   >
-                    {categoryNames[e.category]} · {e.budget} 元
+                    {categoryNames[e.category]} · CNY {e.budget}
                   </button>
                 ))}
               </div>
@@ -548,8 +575,10 @@ export function App() {
               aria-labelledby="chat-heading"
             >
               <div className="section-heading">
-                <h2 id="chat-heading">一起缩小范围</h2>
-                <span>{conversation ? "会话已保存" : "开始一次选购"}</span>
+                <h2 id="chat-heading">Narrow down your choices</h2>
+                <span>
+                  {conversation ? "Conversation saved" : "Start a conversation"}
+                </span>
               </div>
               <form
                 className="composer"
@@ -559,7 +588,7 @@ export function App() {
                 }}
               >
                 <label className="sr-only" htmlFor="needs">
-                  预算与需求
+                  Budget and needs
                 </label>
                 <textarea
                   id="needs"
@@ -568,16 +597,16 @@ export function App() {
                   onChange={(e) => setInput(e.target.value)}
                   placeholder={
                     conversation
-                      ? "继续追问，或写下新的选购条件…"
-                      : "例如：预算 6500 元，编程用，经常带出门…"
+                      ? "Ask a follow-up or change your requirements..."
+                      : "For example: budget CNY 6500 for coding and frequent travel..."
                   }
                   disabled={busy || !!working}
                 />
                 <div>
                   <span>
                     {conversation
-                      ? "追问会沿用当前会话。"
-                      : "可以先点一个示例，再修改需求。"}
+                      ? "Follow-ups stay in this conversation."
+                      : "Choose an example, then adjust it to your needs."}
                   </span>
                   <button
                     className="primary"
@@ -585,7 +614,11 @@ export function App() {
                       loading || !ready || busy || !!working || !input.trim()
                     }
                   >
-                    {busy ? "提交中" : conversation ? "发送追问" : "开始选购"}
+                    {busy
+                      ? "Sending"
+                      : conversation
+                        ? "Send follow-up"
+                        : "Find products"}
                     <Icon name="arrow" />
                   </button>
                 </div>
@@ -594,20 +627,26 @@ export function App() {
                 {conversation?.messages.length ? (
                   conversation.messages.map((m) => (
                     <div className={`message ${m.role}`} key={m.id}>
-                      <span>{m.role === "user" ? "你" : "选购助手"}</span>
+                      <span>
+                        {m.role === "user" ? "You" : "Product Advisor"}
+                      </span>
                       <p>{m.text}</p>
                     </div>
                   ))
                 ) : (
                   <div className="chat-intro">
-                    <p>你更在意什么？</p>
+                    <p>What matters most to you?</p>
                     <p>
-                      日常办公、随身携带，还是续航和性能？把使用场景写下来，推荐会更具体。
+                      Office work, travel, battery life, or performance?
+                      Describe how you will use it to get more relevant
+                      recommendations.
                     </p>
                     <ul>
-                      <li>价格和参数来自目录记录。</li>
-                      <li>未知参数会明确标注。</li>
-                      <li>完整详情和比较由你确认。</li>
+                      <li>
+                        Prices and specifications come from catalog records.
+                      </li>
+                      <li>Unknown specifications are clearly marked.</li>
+                      <li>You approve full details and comparisons.</li>
                     </ul>
                   </div>
                 )}
@@ -619,26 +658,26 @@ export function App() {
                 )}
                 {pending.map((a) => (
                   <div className="approval" key={a.approval_id}>
-                    <h3>确认这次目录查询</h3>
+                    <h3>Approve this catalog query</h3>
                     <p>
                       {a.tool_name?.endsWith("compare_products")
-                        ? "将读取所选商品的参数并进行比较。"
-                        : "将读取候选商品的完整参数。"}
-                      调用对象是公开演示目录。
+                        ? "This will retrieve and compare specifications for the selected products."
+                        : "This will retrieve full specifications for the selected product."}{" "}
+                      The query goes to the public demo catalog.
                     </p>
                     {a.arguments_preview && <pre>{a.arguments_preview}</pre>}
                     {a.timeout_at && (
                       <small>
-                        等待截止：
-                        {new Date(a.timeout_at).toLocaleTimeString("zh-CN")}
+                        Deadline:
+                        {new Date(a.timeout_at).toLocaleTimeString("en-US")}
                       </small>
                     )}
                     {a.signaled ? (
                       <div>
                         <p role="status">
                           {a.deliveryUncertain
-                            ? "提交结果尚未确认，请保留原决策。"
-                            : "决策已提交，等待工具状态。"}
+                            ? "Delivery is unconfirmed. Keep the original decision."
+                            : "Decision submitted. Waiting for the tool state."}
                         </p>
                         {!!a.deliveryUncertain && (
                           <button
@@ -652,7 +691,7 @@ export function App() {
                               })
                             }
                           >
-                            重新提交原决策
+                            Resubmit original decision
                           </button>
                         )}
                       </div>
@@ -672,7 +711,7 @@ export function App() {
                               })
                             }
                           >
-                            允许这次
+                            Allow once
                           </button>
                         )}
                         {(!a.allowed_decisions ||
@@ -688,7 +727,7 @@ export function App() {
                               })
                             }
                           >
-                            拒绝
+                            Deny
                           </button>
                         )}
                       </div>
@@ -697,7 +736,8 @@ export function App() {
                 ))}
                 {warnings.map((w) => (
                   <p className="inline-warning" key={w}>
-                    {errors[w] ?? "本轮有未完成的操作，请查看调用记录。"}
+                    {errors[w] ??
+                      "An operation is incomplete. Check the call log."}
                   </p>
                 ))}
               </div>
@@ -722,10 +762,10 @@ export function App() {
                     }
                   >
                     {conversation.status === "uncertain"
-                      ? "恢复本次发送"
+                      ? "Resume delivery"
                       : conversation.warnings.includes("evidence_unavailable")
-                        ? "重新读取目录结果"
-                        : "恢复会话状态"}
+                        ? "Read result again"
+                        : "Restore conversation"}
                   </button>
                 )}
               {working && conversation && (
@@ -741,20 +781,22 @@ export function App() {
                     })
                   }
                 >
-                  停止本轮
+                  Stop turn
                 </button>
               )}
             </section>
             <section className="results" aria-labelledby="results-heading">
-              <p className="synthetic-notice">商品、价格和参数均为模拟数据。</p>
+              <p className="synthetic-notice">
+                Products, prices, and specifications are synthetic.
+              </p>
               <div className="section-heading">
                 <h2 id="results-heading">
-                  {ranked.length ? "推荐清单" : "商品候选"}
+                  {ranked.length ? "Shortlist" : "Candidates"}
                 </h2>
                 <span>
                   {latestSearch
-                    ? `${candidates.length} 个候选 · ${latestSearch.catalogVersion}`
-                    : "等待目录查询"}
+                    ? `${candidates.length} ${candidates.length === 1 ? "candidate" : "candidates"} · ${latestSearch.catalogVersion}`
+                    : "Waiting for a catalog query"}
                 </span>
               </div>
               {!products.length ? (
@@ -762,13 +804,13 @@ export function App() {
                   <img src="/products/catalog.svg" alt="" />
                   <h3>
                     {latestSearch
-                      ? "没有符合条件的商品"
-                      : "好选择，从清楚的需求开始。"}
+                      ? "No matching products"
+                      : "Good choices start with clear requirements."}
                   </h3>
                   <p>
                     {latestSearch
-                      ? "可以调整预算或参数，再发起一次查询。我们不会自动放宽你的条件。"
-                      : "选一个类别，写下预算和使用场景。查询完成后，候选、来源和比较都会在这里。"}
+                      ? "Adjust your budget or filters and query again. Your requirements will not be relaxed automatically."
+                      : "Choose a category, budget, and use case. Candidates, evidence, and comparisons will appear here after a query."}
                   </p>
                 </div>
               ) : (
@@ -818,7 +860,13 @@ export function App() {
               )}
               {!!conversation?.selectedIds.length && (
                 <div className="compare-bar">
-                  <span>已选 {conversation.selectedIds.length} 件商品</span>
+                  <span>
+                    {conversation.selectedIds.length}{" "}
+                    {conversation.selectedIds.length === 1
+                      ? "product"
+                      : "products"}{" "}
+                    selected
+                  </span>
                   <button
                     className="primary"
                     disabled={
@@ -839,7 +887,7 @@ export function App() {
                     }
                   >
                     <Icon name="compare" />
-                    比较所选商品
+                    Compare selected products
                   </button>
                 </div>
               )}
@@ -848,21 +896,21 @@ export function App() {
                   className="comparison"
                   aria-labelledby="comparison-heading"
                 >
-                  <h2 id="comparison-heading">参数比较</h2>
+                  <h2 id="comparison-heading">Specification comparison</h2>
                   <div
                     className="table-scroll"
                     tabIndex={0}
                     role="region"
-                    aria-label="商品参数表，可横向滚动"
+                    aria-label="Product specifications, horizontally scrollable"
                   >
                     <table>
                       <caption>
-                        来自 {conversation.comparison.catalogVersion}{" "}
-                        的已批准比较结果
+                        Approved comparison from{" "}
+                        {conversation.comparison.catalogVersion}
                       </caption>
                       <thead>
                         <tr>
-                          <th scope="col">参数</th>
+                          <th scope="col">Specification</th>
                           {conversation.comparison.result.products.map((p) => (
                             <th scope="col" key={p.productId}>
                               {p.name}
@@ -893,7 +941,7 @@ export function App() {
           </div>
           {conversation && evidences.length > 1 && (
             <details className="snapshots">
-              <summary>查看已保存的查询快照（{evidences.length}）</summary>
+              <summary>View saved query snapshots ({evidences.length})</summary>
               {evidences.map((e) => {
                 const args = Object.values(conversation.tools).find(
                   (t) => t.receiptId === e.receiptId,
@@ -904,43 +952,43 @@ export function App() {
                       {
                         (
                           {
-                            search_products: "商品搜索",
-                            get_products: "完整参数",
-                            compare_products: "参数比较",
+                            search_products: "Product search",
+                            get_products: "Full specifications",
+                            compare_products: "Specification comparison",
                           } as const
                         )[e.tool]
                       }{" "}
-                      · {new Date(e.issuedAt).toLocaleTimeString("zh-CN")}
+                      · {new Date(e.issuedAt).toLocaleTimeString("en-US")}
                     </h3>
                     <p>
                       {e.catalogVersion}
                       {typeof args?.maxPriceMinor === "number"
-                        ? ` · 当时预算 ${formatMoney(args.maxPriceMinor)}`
+                        ? ` · Budget at query: ${formatMoney(args.maxPriceMinor)}`
                         : ""}
                     </p>
                     {e.tool === "search_products" && !!args?.filters && (
                       <p>
-                        当时硬条件：
+                        Filters at query:
                         {Object.entries(args.filters as Record<string, unknown>)
                           .map(
                             ([key, value]) =>
-                              `${({ minRamGB: "最低内存 GB", maxWeightKg: "最大重量 kg", minBatteryHours: "最低续航小时", minRefreshHz: "最低刷新率 Hz", minUsbPowerW: "最低 USB-C 供电 W", anc: "主动降噪" } as Record<string, string>)[key] ?? key} ${value}`,
+                              `${({ minRamGB: "Minimum RAM (GB)", maxWeightKg: "Maximum weight (kg)", minBatteryHours: "Minimum battery life (hours)", minRefreshHz: "Minimum refresh rate (Hz)", minUsbPowerW: "Minimum USB-C power (W)", anc: "Noise cancellation" } as Record<string, string>)[key] ?? key} ${value}`,
                           )
-                          .join("；") || "不限"}
+                          .join("; ") || "Any"}
                       </p>
                     )}
                     <div
                       className="table-scroll"
                       tabIndex={0}
                       role="region"
-                      aria-label="商品参数表，可横向滚动"
+                      aria-label="Product specifications, horizontally scrollable"
                     >
                       <table>
                         <thead>
                           <tr>
-                            <th>商品</th>
-                            <th>目录价格</th>
-                            <th>原始参数</th>
+                            <th>Product</th>
+                            <th>Catalog price</th>
+                            <th>Original specifications</th>
                           </tr>
                         </thead>
                         <tbody>
@@ -954,14 +1002,16 @@ export function App() {
                                     ([key, value]) =>
                                       `${attributeInfo[key]?.label ?? key} ${formatSpec(key, value)}`,
                                   )
-                                  .join("；")}
+                                  .join("; ")}
                               </td>
                             </tr>
                           ))}
                         </tbody>
                       </table>
                     </div>
-                    {!e.result.products.length && <p>此查询没有匹配商品。</p>}
+                    {!e.result.products.length && (
+                      <p>This query returned no matching products.</p>
+                    )}
                   </section>
                 );
               })}
@@ -969,11 +1019,11 @@ export function App() {
           )}
           {conversation && (
             <details className="diagnostics">
-              <summary>查看 MCP 调用记录与请求 JSON</summary>
+              <summary>View MCP calls and request JSON</summary>
               <p>
                 {testMode
-                  ? "Platform 事件为模拟；商品工具通过本机 HTTP MCP 实际执行。"
-                  : "以下为 Platform 工具事件记录的请求参数。"}
+                  ? "Platform events are mocked. Product tools execute through a real local HTTP MCP server."
+                  : "These request arguments were recorded in Platform tool events."}
               </p>
               <div>
                 {Object.values(conversation.tools).map((t) => (
@@ -981,29 +1031,29 @@ export function App() {
                     <p>
                       <code>{t.name}</code> · {t.phase}
                       {t.deniedReason
-                        ? "未执行"
+                        ? " · Not executed"
                         : t.phase === "blocked"
-                          ? " · 等待审批"
+                          ? " · Awaiting approval"
                           : t.phase === "end" && t.executionStarted === false
-                            ? " · 未执行"
+                            ? " · Not executed"
                             : t.phase === "end"
                               ? t.isError
-                                ? " · 调用失败"
-                                : " · 已返回"
-                              : " · 工具请求已发起"}
+                                ? " · Call failed"
+                                : " · Returned"
+                              : " · Tool request sent"}
                     </p>
                     {t.args && (
                       <pre
                         tabIndex={0}
                         role="region"
-                        aria-label={`${t.name} 的请求参数 JSON`}
+                        aria-label={`${t.name} request arguments JSON`}
                       >
                         <code>{JSON.stringify(t.args, null, 2)}</code>
                       </pre>
                     )}
                     {t.receiptId && (
                       <p>
-                        receipt：<code>{t.receiptId}</code>
+                        receipt: <code>{t.receiptId}</code>
                       </p>
                     )}
                   </div>
@@ -1014,7 +1064,7 @@ export function App() {
                   </p>
                 ))}
                 {!Object.keys(conversation.tools).length && (
-                  <p>尚无目录工具调用。</p>
+                  <p>No catalog tool calls yet.</p>
                 )}
               </div>
             </details>

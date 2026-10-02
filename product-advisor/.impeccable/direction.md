@@ -1,6 +1,6 @@
 # Product Advisor surface direction
 
-Mode: Operate. The user approved the functional plan and said 开搞 on 2026-10-01.
+Mode: Operate. The user approved the functional plan and authorized implementation on 2026-10-01.
 No pre-existing UI or brand authority. This is a code-led functional catalog surface,
 not an approved image comp. Concept seed: d12b2ba3, grounded candidate index 6.
 

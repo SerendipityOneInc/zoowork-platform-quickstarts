@@ -2,9 +2,9 @@ import { z } from "zod";
 
 export const categories = ["laptop", "monitor", "headphones"] as const;
 export const categoryNames = {
-  laptop: "笔记本",
-  monitor: "显示器",
-  headphones: "耳机",
+  laptop: "Laptop",
+  monitor: "Monitor",
+  headphones: "Headphones",
 };
 export const categorySchema = z.enum(categories);
 export const scalarSchema = z.union([
@@ -76,18 +76,18 @@ export const toolNames = [
 ] as const;
 export type CatalogTool = (typeof toolNames)[number];
 export const attributeInfo: Record<string, { label: string; unit: string }> = {
-  ramGB: { label: "内存", unit: "GB" },
-  weightKg: { label: "重量", unit: "kg" },
-  batteryHours: { label: "目录续航", unit: "小时" },
-  cpu: { label: "处理器", unit: "" },
-  screenInches: { label: "屏幕尺寸", unit: "英寸" },
-  resolution: { label: "分辨率", unit: "" },
-  refreshHz: { label: "刷新率", unit: "Hz" },
-  usbPowerW: { label: "USB-C 供电", unit: "W" },
-  anc: { label: "主动降噪", unit: "" },
-  connection: { label: "连接方式", unit: "" },
-  ports: { label: "接口", unit: "" },
-  warrantyMonths: { label: "保修", unit: "个月" },
+  ramGB: { label: "RAM", unit: "GB" },
+  weightKg: { label: "Weight", unit: "kg" },
+  batteryHours: { label: "Catalog battery life", unit: "hours" },
+  cpu: { label: "Processor", unit: "" },
+  screenInches: { label: "Screen size", unit: "inches" },
+  resolution: { label: "Resolution", unit: "" },
+  refreshHz: { label: "Refresh rate", unit: "Hz" },
+  usbPowerW: { label: "USB-C power", unit: "W" },
+  anc: { label: "Noise cancellation", unit: "" },
+  connection: { label: "Connection", unit: "" },
+  ports: { label: "Ports", unit: "" },
+  warrantyMonths: { label: "Warranty", unit: "months" },
 };
 export const summaryAttributes: Record<Product["category"], string[]> = {
   laptop: ["ramGB", "weightKg", "batteryHours"],
@@ -108,21 +108,25 @@ const numericFilters = [
 ] as const;
 export function mismatches(p: Product, r: Requirements): string[] {
   const reasons: string[] = [];
-  if (r.category && p.category !== r.category) reasons.push("商品类别不同");
-  if (p.availability !== "available") reasons.push("目录标记为不可选购");
+  if (r.category && p.category !== r.category)
+    reasons.push("Different product category");
+  if (p.availability !== "available")
+    reasons.push("Unavailable in the catalog");
   if (r.maxPriceMinor !== undefined && p.priceMinor > r.maxPriceMinor)
-    reasons.push("超过预算");
+    reasons.push("Over budget");
   for (const [filter, attribute, direction] of numericFilters) {
     const target = r.filters[filter];
     if (target === undefined) continue;
     const value = p.specs[attribute];
     if (typeof value !== "number")
-      reasons.push(`${attributeInfo[attribute]!.label}未提供`);
+      reasons.push(`${attributeInfo[attribute]!.label} not provided`);
     else if (direction === "min" ? value < target : value > target)
-      reasons.push(`${attributeInfo[attribute]!.label}不满足条件`);
+      reasons.push(
+        `${attributeInfo[attribute]!.label} does not meet the requirement`,
+      );
   }
   if (r.filters.anc !== undefined && p.specs.anc !== r.filters.anc)
-    reasons.push("降噪条件未满足");
+    reasons.push("Noise cancellation requirement not met");
   return reasons;
 }
 export const matrixRowSchema = z
@@ -150,15 +154,16 @@ export const evidenceSchema = z
   .strict();
 export type Evidence = z.infer<typeof evidenceSchema>;
 export function formatMoney(minor: number): string {
-  return new Intl.NumberFormat("zh-CN", {
+  return new Intl.NumberFormat("en-US", {
     style: "currency",
     currency: "CNY",
+    currencyDisplay: "code",
     minimumFractionDigits: minor % 100 === 0 ? 0 : 2,
     maximumFractionDigits: 2,
   }).format(minor / 100);
 }
 export function formatSpec(key: string, value: unknown): string {
-  if (value === null || value === undefined) return "目录未提供";
-  if (typeof value === "boolean") return value ? "支持" : "不支持";
+  if (value === null || value === undefined) return "Not provided by catalog";
+  if (typeof value === "boolean") return value ? "Supported" : "Not supported";
   return `${String(value)}${attributeInfo[key]?.unit ? ` ${attributeInfo[key]!.unit}` : ""}`;
 }

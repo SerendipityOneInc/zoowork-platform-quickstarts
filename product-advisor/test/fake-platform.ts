@@ -247,13 +247,15 @@ export class FakePlatform {
     this.emit(id, "run.started", {});
     try {
       const r = JSON.parse(
-        /应用已确认条件[^：]*：([^\n]+)/.exec(content)?.[1] ?? "{}",
+        /Confirmed application requirements[^:]*: ([^\n]+)/.exec(
+          content,
+        )?.[1] ?? "{}",
       ) as Record<string, unknown>;
       let reply: unknown;
       if (!r.category || !r.maxPriceMinor)
         reply = {
           type: "clarification",
-          question: "你想选哪类商品，预算上限是多少？",
+          question: "Which product category and budget limit do you want?",
         };
       else if (
         content.includes("compare_products") ||
@@ -266,7 +268,7 @@ export class FakePlatform {
         const evidence = await this.tool(
           id,
           tool,
-          { productIds: ids, catalogVersion: "demo-2026-10-01" },
+          { productIds: ids, catalogVersion: "demo-2026-10-02-en" },
           true,
         );
         reply =
@@ -279,7 +281,10 @@ export class FakePlatform {
                   reasonCodes: ["budget", "ram", "weight", "battery"],
                 })),
               }
-            : { type: "message", message: evidence ? "比较完成" : "已拒绝" };
+            : {
+                type: "message",
+                message: evidence ? "Comparison complete" : "Denied",
+              };
       } else {
         const evidence = (await this.tool(id, "search_products", {
           category: r.category,
@@ -296,7 +301,7 @@ export class FakePlatform {
                 reasonCodes: ["budget", "ram", "weight", "battery"],
               })),
             }
-          : { type: "message", message: "没有符合条件的商品" };
+          : { type: "message", message: "No matching products" };
       }
       this.emit(id, "agent.assistant", {
         message: {

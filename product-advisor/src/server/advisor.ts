@@ -61,7 +61,7 @@ export class Advisor {
       type: "user.message",
       actor: { ref: `visitor:${visitor}` },
       idempotency_key: id,
-      content: `用户需求：${text}\n应用已确认条件（未提供的字段需要澄清）：${JSON.stringify(r)}\n${instruction}\n只使用目录 MCP。请按 product-advisor-result 格式给出可验证结果。`,
+      content: `User requirements: ${text}\nConfirmed application requirements (clarify missing fields): ${JSON.stringify(r)}\n${instruction}\nUse only the catalog MCP. Return verifiable results in the product-advisor-result format. Always write user-facing messages in English.`,
     };
   }
   async create(
@@ -340,10 +340,10 @@ export class Advisor {
     return this.message(
       visitor,
       id,
-      `比较${selected.map((p) => p!.name).join("、")}的参数。`,
+      `Compare specifications for ${selected.map((p) => p!.name).join(", ")}.`,
       c.requirements,
       requestId,
-      `请调用 compare_products，商品 IDs ${ids.join(", ")}，目录版本 ${selected[0]!.catalogVersion}。等待用户原生审批，不改变商品集合。`,
+      `Call compare_products with product IDs ${ids.join(", ")} and catalogVersion ${selected[0]!.catalogVersion}. Wait for native user approval. Keep the product set unchanged.`,
     );
   }
   async details(
@@ -365,10 +365,10 @@ export class Advisor {
     return this.message(
       visitor,
       id,
-      `查看${p.name}的完整参数。`,
+      `View full specifications for ${p.name}.`,
       c.requirements,
       requestId,
-      `请调用 get_products，productIds ["${productId}"]，目录版本 ${catalogVersion}。等待用户原生审批。`,
+      `Call get_products with productIds ["${productId}"] and catalogVersion ${catalogVersion}. Wait for native user approval.`,
     );
   }
   private watch(id: string): void {
@@ -690,8 +690,8 @@ export class Advisor {
           id: `reply-${c.lastSeq}`,
           role: "assistant",
           text: c.shortlist.length
-            ? `已根据目录记录整理 ${c.shortlist.length} 个候选。请查看商品卡中的参数与推荐依据。`
-            : "本轮没有形成满足已确认条件的推荐。请查看候选和未满足条件。",
+            ? `Prepared ${c.shortlist.length} ${c.shortlist.length === 1 ? "candidate" : "candidates"} from catalog records. See the product cards for specifications and verified reasons.`
+            : "No recommendation meets the confirmed requirements in this turn. Check the candidates and unmet requirements.",
         });
       } else if (reply)
         c.messages.push({
@@ -701,26 +701,26 @@ export class Advisor {
             reply.type === "clarification"
               ? reply.question
               : c.denied
-                ? "本次参数查询已拒绝，保留已取得的目录摘要。"
+                ? "This specification query was denied. Previously retrieved catalog summaries remain available."
                 : c.comparison
-                  ? "已取得所选商品的远程比较结果，请查看参数表。"
+                  ? "The remote comparison is ready. See the specifications table."
                   : Object.values(c.evidence).some(
                         (e) =>
                           e.tool === "search_products" &&
                           !e.result.products.length,
                       )
-                    ? "目录没有符合这些条件的商品。可以修改条件后继续查询。"
-                    : "本轮已结束，请查看已验证的候选和调用状态。",
+                    ? "No catalog products match these requirements. Adjust them before querying again."
+                    : "This turn ended. See the verified candidates and call states.",
         });
       else
         c.messages.push({
           id: `reply-${c.lastSeq}`,
           role: "assistant",
           text: c.denied
-            ? "本次参数查询已拒绝。保留此前取得的目录摘要。"
+            ? "This specification query was denied. Earlier catalog summaries are preserved."
             : c.warnings.includes("mcp_connection_failed")
-              ? "暂时无法连接商品目录。本轮没有取得新的推荐依据。"
-              : "本轮尚未形成可验证的推荐。可以查看已取得的候选，或明确要求重新整理。",
+              ? "The catalog is unreachable. No new recommendation evidence was obtained in this turn."
+              : "No verifiable recommendation was produced in this turn. Review existing candidates or explicitly request another query.",
         });
       c.assistantBlocks = [];
     });

@@ -5,22 +5,31 @@ export function confirmedRequirements(
 ): Requirements {
   const next = { ...previous, filters: { ...previous.filters } };
   const budget =
-    /(?:预算|降到|降至|改为)\s*(?:上限|降到|降至|改为|控制在|是|为)?\s*(\d+(?:\.\d{1,2})?)\s*(?:元|块|人民币)?/.exec(
+    /\bbudget\s*(?:(?:limit|cap|maximum|of|is|to|at|down to|lowered to|reduced to|changed to|set to)\s*)*(?:CNY\s*|RMB\s*|¥\s*)?(\d+(?:,\d{3})*(?:\.\d{1,2})?)/i.exec(
       text,
     );
-  if (budget) next.maxPriceMinor = Math.round(Number(budget[1]) * 100);
-  const categories = [...text.matchAll(/笔记本|显示器|耳机/g)].map((m) => m[0]);
+  if (budget)
+    next.maxPriceMinor = Math.round(
+      Number(budget[1]!.replaceAll(",", "")) * 100,
+    );
+  const categories = [
+    ...text.matchAll(/\b(laptops?|monitors?|headphones?)\b/gi),
+  ].map((m) => m[1]!.toLowerCase().replace(/s$/, ""));
   if (new Set(categories).size === 1)
     next.category =
-      categories[0] === "笔记本"
+      categories[0] === "laptop"
         ? "laptop"
-        : categories[0] === "显示器"
+        : categories[0] === "monitor"
           ? "monitor"
           : "headphones";
-  const ram = /(?:至少|最低|内存)\s*(\d+)\s*(?:GB|G)(?:\s*内存)?/i.exec(text);
-  if (ram && next.category === "laptop") next.filters.minRamGB = Number(ram[1]);
+  const ram =
+    /\b(\d+)\s*GB\s+(?:of\s+)?(?:RAM|memory)\b|\b(?:RAM|memory)\s*(?:of|at least|minimum|:)?\s*(\d+)\s*GB\b/i.exec(
+      text,
+    );
+  if (ram && next.category === "laptop")
+    next.filters.minRamGB = Number(ram[1] ?? ram[2]);
   const weight =
-    /(?:不超过|低于|小于|最多)\s*(\d+(?:\.\d+)?)\s*(?:kg|公斤|千克)/i.exec(
+    /\b(?:no more than|at most|under|below|less than|maximum(?: weight)?(?: of)?|max(?: weight)?)\s*(\d+(?:\.\d+)?)\s*kg\b/i.exec(
       text,
     );
   if (weight) next.filters.maxWeightKg = Number(weight[1]);

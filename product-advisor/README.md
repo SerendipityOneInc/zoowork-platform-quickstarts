@@ -1,12 +1,12 @@
 # Product Advisor
 
-一个完整的 Platform remote MCP 示例。用户输入预算和使用需求，取得目录候选和推荐卡，选择商品进行参数比较，再在同一会话调整条件。价格、参数和推荐理由来自成功 MCP 调用的远程 snapshot。
+A complete Platform remote MCP example. Users enter a budget and requirements, search a catalog, review evidence-backed product cards, compare specifications, and adjust their requirements in the same conversation. Product facts come from successful remote MCP snapshots.
 
-示例包含笔记本、显示器、耳机，每类 6 条自制商品。所有型号、价格、参数和插图均为 synthetic data，没有真实购买链接或市场报价。未提供的参数显示“目录未提供”，不当作满足硬条件。
+The interface, Agent responses, examples, catalog, and documentation are in English. Currency remains **CNY**. The catalog contains six invented laptops, six monitors, and six headphones. All names, prices, specifications, and illustrations are synthetic. There are no real merchant offers or purchase links. Missing specifications are displayed as “Not provided by catalog” and never treated as satisfying a hard requirement.
 
-## 安装与离线检查
+## Install and check offline
 
-需要 Node **22.20+**、npm。本目录独立安装，不需要 sibling repositories 或本地 SDK override。默认完整 demo 还需要本机有 `cloudflared`，用它把示例 MCP 提供给云端 Platform；它不要求额外的账号或 key。macOS 可用 `brew install cloudflared`，其他系统按 [官方安装说明](https://developers.cloudflare.com/tunnel/get-started/)安装。
+Requires Node **22.20+** and npm. This directory installs independently, without sibling repositories or a local SDK override. The full local demo also requires `cloudflared` to make the bundled MCP accessible to the cloud Platform. It needs no additional account or key. On macOS run `brew install cloudflared`; see the [official installation instructions](https://developers.cloudflare.com/tunnel/get-started/) for other systems.
 
 ```sh
 npm ci
@@ -14,61 +14,61 @@ npm run check
 npm run build
 ```
 
-`check` 运行 TypeScript 和离线测试。测试通过官方 MCP client 调用实际本地 HTTP Server；Platform 的 lifecycle、events 和 approvals 使用 test-only adapter，不花费 model tokens。`check` 不依赖 credentials 或 staging。
+`check` runs TypeScript and offline tests. Tests use the official MCP client against a real local HTTP server. Platform lifecycle, events, and approvals use a test-only adapter and consume no model tokens. Checks need no credentials or staging connection.
 
-没有 Project key 时，`npm run dev` 可以打开界面，显示“服务尚未配置”，不会生成模拟推荐。
+Without a Project key, `npm run dev` opens an unconfigured interface and generates no mock recommendations.
 
-## 配置一把 key，运行完整 demo
+## Run the full demo with one key
 
 ```sh
 npm ci
 cp .env.example .env
-# 只填写 ZOOWORK_API_KEY，使用自己的 Platform Project key（zwp_live_）。
+# Fill only ZOOWORK_API_KEY with your Platform Project key (zwp_live_).
 npm run demo
-# 打开 http://localhost:4310
+# Open http://localhost:4310
 ```
 
-这个入口使用真实 SDK 和 Platform。启动时自动运行自带的 synthetic MCP、建立临时 HTTPS tunnel、验证工具 discovery、创建或复用本应用 Agent，并启动 Web。Project key 只留在应用进程，tunnel 进程不会收到它；公开入口只转发示例目录，不转发 Web API。cookie secret 自动生成到 private `.local/cookie-secret`，重启沿用，用户不需要再配一个 secret。
+This entry uses the real published SDK and Platform. It starts the bundled synthetic catalog, creates a temporary HTTPS tunnel, verifies tool discovery, creates or reuses the app-owned Agent, and starts the Web app. The Project key stays in the application process and is excluded from the tunnel process. Only the synthetic catalog is exposed publicly; the Web API is not tunneled. A private cookie secret is generated in `.local/cookie-secret` and reused on restart.
 
-默认 API 地址直接采用已发布 SDK 的 production 默认值。测试 staging 时另外设置 `ZOOWORK_BASE_URL=https://claw-interface.ecap.yesy.live/service/v1`，不要把 staging key 发到默认 production 地址。本机开发配置和临时 tunnel 不会写进 Git。
+The default API address comes from the published SDK's production default. For an authorized staging test, also set `ZOOWORK_BASE_URL=https://claw-interface.ecap.yesy.live/service/v1`. Do not send a staging key to the production address. Local configuration and temporary tunnel addresses are not committed.
 
-临时 hostname 每次启动会变化。入口更新会先保存 exact pending resource，再通过 SDK 更新同一个 owned Agent；模糊结果保留原请求，不创建替代 Agent。按 Ctrl+C 关闭本机 Web、MCP 和 tunnel，Agent/Session 及历史保留；`npm run cleanup` 清理这些记录的远程资源。
+The temporary hostname changes on restart. The launcher saves an exact pending resource before updating the same owned Agent through the SDK. Ambiguous results retain the original request for recovery instead of creating a replacement Agent. Ctrl+C closes the local Web server, MCP, and tunnel; remote Agent/Session records and local history remain. Use `npm run cleanup` to remove the recorded remote resources.
 
-Quick Tunnel 适合本机 demo，没有稳定地址或 uptime 保证。这个 Server 使用 JSON response 的 Streamable HTTP；Web 的 SSE 走本机，不经过 Quick Tunnel。[Cloudflare 的限制](https://developers.cloudflare.com/tunnel/get-started/quick-tunnels/)不适合需要远程 SSE 的其他 Server。已经托管了本项目 MCP 时，可填写 `MCP_PUBLIC_URL`，`demo` 会使用它并跳过本机 MCP/tunnel。
+Quick Tunnels are intended for local demos, with no stable address or uptime guarantee. This MCP uses JSON responses for Streamable HTTP. The Web application's SSE stays local. [Quick Tunnel limitations](https://developers.cloudflare.com/tunnel/get-started/quick-tunnels/) make it unsuitable for other servers that require remote SSE. If you already host this MCP, set `MCP_PUBLIC_URL` to skip the bundled server and tunnel.
 
-## 先验证 MCP Server
+## Probe the MCP server
 
 ```sh
-# Terminal A，在本目录运行。
+# Terminal A, in this directory.
 npm run mcp:dev
-# Terminal B
+# Terminal B.
 npm run mcp:probe -- http://localhost:4311/mcp
 ```
 
-默认监听 `localhost:4311`。probe 验证 initialize、三个工具的 discovery、实际 search、preview 中的短 receipt 和完整结果读取。它只验证 MCP Server，不证明 Platform 能访问 localhost。
+The standalone server listens on `localhost:4311` by default. The probe checks initialization, discovery of all three tools, an actual search, receipt extraction from a short preview, and retrieval of the full result. This proves local MCP operation, not cloud Platform access to localhost.
 
-| 工具 | 输入 | 结果 |
+| Tool | Input | Result |
 | --- | --- | --- |
-| `search_products` | category、CNY minor units 预算、typed filters、可选 model query、limit | 筛选后的摘要：价格、核心参数、total、版本和 receipt |
-| `get_products` | 1–4 个 product IDs 和 exact catalogVersion | 完整事实，未知值保留 null |
-| `compare_products` | 同类别 2–4 个 IDs、exact version、可选 attributes | 原始参数矩阵，包含每个商品的值 |
+| `search_products` | category, budget in CNY minor units, typed filters, optional model query, limit | Filtered summaries, price, key specifications, total, version, receipt |
+| `get_products` | 1–4 product IDs and exact catalogVersion | Full facts, with unknown fields retained as null |
+| `compare_products` | 2–4 IDs in the same category and version, optional attributes | A specification matrix with each product's original values |
 
-金额用整数分表示：6500 元传 `650000`。工具不接收用户身份或任意外部 URL。比较不做推测评分，模型负责排序，应用负责验证事实。
+Amounts are integer minor units: CNY 6500 is `650000`. Tools accept no user identity or arbitrary external URL. Comparison returns facts without speculative scores. The model ranks candidates; the application validates the facts.
 
-## 让 Platform 访问目录
+## Make the catalog accessible to Platform
 
-Engine 从远端执行 MCP，不能访问浏览器或开发者电脑的 localhost。当前 Project-key 路径支持公开、无需认证的 HTTP MCP，不能通过 public gateway 配置 authenticated MCP credentials。这个 Server 因此只提供可公开的 synthetic facts。
+Engine executes MCP remotely and cannot access a developer's localhost. The current Project-key API supports public, unauthenticated HTTP MCP. The public gateway does not allow configuring authenticated MCP credentials, so this server exposes only public synthetic facts.
 
-`npm run demo` 自动准备临时开发 tunnel。自行托管时，准备 Node host 或开发 tunnel，使以下路径在同一固定 HTTPS origin 可达：
+`npm run demo` prepares a temporary development tunnel automatically. For separate hosting, use a Node host or an authorized tunnel with these routes under the same HTTPS origin:
 
-- `POST /mcp`：stateless Streamable HTTP，支持 JSON response。
-- `GET /health`：目录版本和 synthetic 标记。
-- `GET /evidence/:receiptId`：读取已执行结果，不执行新工具。
-- `/unavailable/mcp`：没有 handler，返回 404，供受控故障验证。
+- `POST /mcp`: stateless Streamable HTTP with JSON responses.
+- `GET /health`: catalog version and synthetic marker.
+- `GET /evidence/:receiptId`: read an already executed result without a new tool call.
+- `/unavailable/mcp`: intentionally unhandled, returning 404 for controlled failure verification.
 
-TLS proxy 必须保留 `Accept`、`Content-Type`、`MCP-Protocol-Version` 等 MCP headers 和请求 body。不能把 `/mcp` 重定向到登录页或另一个 origin。若使用路径前缀，proxy 必须一致转发 evidence 路径。Engine 仍会执行 egress/DNS 校验。
+The TLS proxy must preserve MCP headers such as `Accept`, `Content-Type`, and `MCP-Protocol-Version`, and the request body. Do not redirect `/mcp` to a login page or another origin. If using a path prefix, forward evidence paths consistently. Engine still applies its egress and DNS checks.
 
-本仓提供独立 MCP Docker image；下面是构建和运行方法，不会自动部署：
+The directory includes a standalone MCP Docker image. These commands build and run it locally; they do not deploy it:
 
 ```sh
 docker build -t product-advisor-mcp .
@@ -77,79 +77,78 @@ docker run --rm -p 127.0.0.1:4311:4311 \
   product-advisor-mcp
 ```
 
-镜像以非 root 用户运行，volume 保存 receipt 和私有审计。容器内监听 `0.0.0.0:4311`，host 端口只绑定 loopback。公开托管时由授权的 TLS proxy 转发。可用 `MCP_ALLOWED_HOSTS` 约束 Host；incoming Origin 默认拒绝，需要 browser MCP clients 时用 `MCP_ALLOWED_ORIGINS` 允许指定值。Platform 的 server-to-server 请求通常没有 Origin。
+The image runs as a non-root user. Its volume stores receipts and private audit records. It listens on `0.0.0.0:4311` inside the container; the host port is loopback-only. Public hosting requires an authorized TLS proxy. Use `MCP_ALLOWED_HOSTS` to constrain Host. Incoming Origin is rejected by default; allow selected browser MCP clients with `MCP_ALLOWED_ORIGINS`. Platform server-to-server requests normally omit Origin.
 
-确认 public endpoint 后，运行 `npm run mcp:probe -- https://your-authorized-host.example/mcp`。这仍是本机 read probe；实际 Platform turn 才能证明 Engine 接通。
+Probe your public endpoint with `npm run mcp:probe -- https://your-authorized-host.example/mcp`. A local read probe is still separate from an actual Platform turn.
 
-## 手工配置与托管
+## Manual setup and hosting
 
 ```sh
 cp .env.example .env
-# 填写服务端 ZOOWORK_API_KEY、明确的 ZOOWORK_BASE_URL、MCP_PUBLIC_URL。
-# APP_COOKIE_SECRET 可选；不填则自动生成并保存。
-# 默认 APP_ORIGIN=http://localhost:4310。
+# Set server-side ZOOWORK_API_KEY, ZOOWORK_BASE_URL, and MCP_PUBLIC_URL.
+# APP_COOKIE_SECRET is optional; it is generated and saved when omitted.
+# Default APP_ORIGIN is http://localhost:4310.
 npm run setup
 npm run dev
-# 浏览器打开 http://localhost:4310
 ```
 
-`ZOOWORK_API_KEY` 必须是 Platform Project key（`zwp_live_`）。gateway 决定 Org/Project/owner，应用不传任意 tenancy。setup 创建本应用 Agent，`.local/agent.json` 保存 exact resource、create key 和返回 ID；再次运行会复用记录。不要填现有 Work Agent 的 ID。
+The key must be a Platform Project key (`zwp_live_`). The gateway determines Org/Project/owner tenancy. Setup creates the app's own Agent and saves its exact resource, creation key, and returned ID in `.local/agent.json`. Repeating setup reuses that state. Do not supply an existing Work Agent ID.
 
-Agent 声明 `catalog` MCP Server、direct exposure 和三个 exact tools。搜索是 `always_allow`；详情/比较是 `always_ask`，同时配置 `requireConfirmation: true`。该字段比 SDK 0.9.0 的 nested type 新，代码通过 structurally compatible object 交给 published SDK 序列化，未替换 SDK。2026-10-02 已在 staging 验证详情和比较的逐次确认、允许和拒绝；其他部署仍需单独验证。
+The Agent declares the `catalog` MCP server, direct exposure, and three exact tools. Search is `always_allow`; details and comparison are `always_ask` with `requireConfirmation: true`. SDK 0.9.0 omits this nested field from its type, so this app uses a structurally compatible intersection type and the published client's normal serialization. No SDK patch is used. Separate native approvals, allow-once, and denial passed staging on 2026-10-02. The type gap is tracked in [SDK issue #39](https://github.com/SerendipityOneInc/zoowork-sdk-typescript/issues/39). Other deployments require their own verification.
 
-配置 URL、model 或 persona 改动后，先停止本地应用，再执行：
+After changing the URL, model, or persona, stop the local app and run:
 
 ```sh
 npm run configure
 npm run dev
 ```
 
-configure 验证 owned labels，先保存 exact pending resource，再发送 update。结果不明确时继续用相同 pending resource 恢复，不把新 env 配置当作已应用。不要在进行中的会话里修改 Agent。
+Configure verifies owned labels, saves the exact pending resource, and sends an update. An uncertain response is recovered with that same resource rather than assuming new environment values were applied. Do not change the Agent during an active turn.
 
-production build 的本机启动方式：
+For a local production build:
 
 ```sh
 npm run build
 npm start
 ```
 
-`APP_ORIGIN` 是浏览器使用的 exact origin，写 API 检查 Origin；默认 `localhost`，不要混用 `127.0.0.1`。`APP_HOST` / `PORT` 控制 server listen。Web 应用公开托管另需正式认证、HTTPS、访问策略和运维配置；当前 cookie 只是本地 demo 的访客归属。
+`APP_ORIGIN` must match the browser's exact origin. Write APIs validate Origin. Use `localhost` consistently; do not mix it with `127.0.0.1`. `APP_HOST` and `PORT` control the server listener. Public Web hosting additionally needs real authentication, HTTPS, access policy, and operations configuration. The demo cookie only establishes local visitor ownership.
 
-production server 和离线 UI harness 的页面、静态资源按每个 IP 每分钟 300 次限流，超出时返回 429 和 `Retry-After`。API 和 SSE 不计入这个页面限制。
+The production server and offline UI harness limit page/static requests to 300 per IP per minute. Excess requests return 429 and `Retry-After`. API and SSE requests do not count toward this page limit.
 
-## 可以完成的流程
+## Walkthrough
 
-1. 选择“笔记本 · 6500 元”示例，输入办公/编程需求和最低 16 GB 内存。实际搜索排除超过预算、内存不足和不可选购的商品。
-2. 查看最多三个推荐。卡片展示目录价格、预算差额、已知参数、unknown 和数据依据；商品事实由 receipt 填充，不采用模型抄写的价格。
-3. 点击完整参数，在原生审批里允许这次或拒绝。也可以勾选 2–4 件同版本商品，发起比较并批准，查看远程参数表。
-4. 追问“预算降到5000元”。后端同步明确的 budget 变化，模型按新条件搜索，新推荐必须满足新预算。先前 snapshot 保留原始条件和价格。
-5. 展开底部“查看 MCP 调用记录与请求 JSON”，查看工具名、实际参数 JSON、等待审批/已返回/未执行状态和 receipt。debug 保持简洁的折叠文本样式；离线预览注明 Platform 事件为模拟。
-6. 刷新后从会话历史恢复。会话、工具状态、审批、比较选择和证据保存在 SQLite；相同 cookie secret 保持访客身份。
+1. Choose the Laptop / CNY 6500 example, with office/coding needs and at least 16 GB RAM. Real catalog filtering excludes over-budget, insufficient-memory, and unavailable products.
+2. Review up to three recommendations. Cards show catalog prices, budget differences, known specifications, unknown fields, and evidence. Facts are hydrated from receipts rather than copied from the model's text.
+3. Choose **View full specifications** and allow once or deny the native approval. Select 2–4 products of the same version, choose **Compare selected products**, approve, and view the remote specification matrix.
+4. Follow up with **Lower the budget to CNY 5000.** The backend applies the explicit budget change. New recommendations must meet the new budget; earlier snapshots keep their original conditions and prices.
+5. Expand **View MCP calls and request JSON** for tool names, real arguments, approval/returned/unexecuted states, and receipts. Debug stays a compact text disclosure. The offline harness explicitly labels simulated Platform events.
+6. Reload and restore the conversation from history. SQLite retains tool states, approvals, comparison selection, and evidence. The persistent cookie secret preserves visitor identity across restarts.
 
-表单是应用确认的硬条件。自然语言中明确的数字预算、内存和重量约束也会同步；其他含糊变更需要澄清或修改表单。模型没有严格 JSON output API，最终 block 无效时仍显示已有候选，并说明未形成可验证推荐，不自动发起付费修复回合。
+The form defines confirmed hard requirements. Explicit English budget, RAM, and maximum-weight statements also update those requirements. Ambiguous changes require clarification or editing the form. The model has no strict JSON-output API; an invalid final block leaves validated candidates available with an explanation, without an automatic paid repair turn.
 
-## 审批与故障恢复
+## Approval and failure recovery
 
-| 状态 | 应用行为 |
+| State | Application behavior |
 | --- | --- |
-| tool phase=blocked，且没有 deniedReason | 尚未执行；等待同 Session 的原生 approval |
-| tool deniedReason=approval-denied | 已拒绝，显示“未执行”；这个实际事件序列没有 tool-end |
-| resolve 返回 signaled / 202 | 显示“决策已提交”，继续等原生审批和执行事件；不能将提交当作已执行 |
-| 拒绝 / 超时 | 不调用本地替代工具，不取被拒绝操作的 receipt；保留成功 search 的摘要 |
-| 审批响应不明确 | 保存原 decision，只能重新提交原决策；禁止切换另一决定 |
-| approvals API 为 501 | 显示原生审批不可用，停止等待；不能模拟批准 |
-| MCP connection/authentication failed | 明确目录故障；没有新 evidence 时不产生新推荐 |
-| receipt 缺失或过期 | 保存 hydration job，有限 read retry 或显式重新读取 |
-| 发送结果不明确 | 保留原请求和 key；“恢复本次发送”复用 exact body，不新建 paid turn |
-| event stream 中断 | cursor resume + REST replay；按 seq 去重，start/end 按 toolCallId 配对 |
+| tool phase=blocked without deniedReason | Not executed; await the native approval for the same Session |
+| tool deniedReason=approval-denied | Denied and shown as “Not executed”; the actual event sequence has no tool-end |
+| resolve returns signaled / 202 | Show “Decision submitted” and wait for native approval/execution events; submission is not execution |
+| Denial / timeout | No substitute local tool or receipt read for the denied action; keep successful search summaries |
+| Uncertain approval delivery | Persist the original decision; only that decision may be resubmitted |
+| approvals API returns 501 | Show native approvals unavailable and stop waiting; never simulate approval |
+| MCP connection/authentication failed | Show the catalog failure; no new recommendation without new evidence |
+| Missing/expired receipt | Persist a hydration job; bounded read retries or explicit read recovery |
+| Uncertain message delivery | Keep the exact request/key; Resume delivery reuses it without creating a new paid turn |
+| Event stream interrupted | Resume cursor and replay REST events, deduplicate by seq, pair tools by toolCallId |
 
-receipt 远程保留至少 24 小时；应用读到后保存本地 snapshot，历史不依赖远程永久可达。Engine 的 resultPreview 当前最多 512 字符，receipt 放在 structuredContent 前部；后端只从实际成功 tool-end event 提取受限 ID，读取固定 origin 的 evidence endpoint。模型写出的 receipt 或 URL 不能替代成功事件。
+Remote receipts are retained for at least 24 hours. Once hydrated, local snapshots preserve history independently of remote availability. Engine currently limits `resultPreview` to 512 characters. The receipt appears near the start of structuredContent. The backend extracts a constrained ID only from a successful tool-end event and reads evidence from the fixed configured origin. A model-generated receipt or URL cannot replace execution evidence.
 
-新一轮推荐还必须引用本轮成功调用的 receipt。连接失败时，之前的 snapshot 仍可查看，但不能据此生成新推荐。同一会话的并发追问只接受一个，其余返回进行中状态，不覆盖已保存的请求。
+Each new recommendation must cite a successful receipt from that turn. During connection failure, earlier snapshots remain readable but cannot support a new recommendation. Concurrent follow-ups in one conversation accept only one active request and preserve its saved body.
 
-public receipt 只含 synthetic facts，没有 user text、visitor、Session、runtime context 或 key。私有 audit 只留有限 runtime coordinates；context 用于关联调用，不是认证。浏览器不收到 key，也不能指定任意 Agent/Session/actor。
+Public receipts contain only synthetic facts, with no user text, visitor identity, Session, runtime context, or key. Private audit retains bounded runtime coordinates for correlation; context is not authentication. The browser receives no Project key and cannot select an arbitrary Agent/Session/actor.
 
-## 离线浏览器验证
+## Offline browser verification
 
 ```sh
 npm run build
@@ -157,40 +156,40 @@ npm run test:ui
 # http://localhost:4390
 ```
 
-这是 test-only harness：Platform lifecycle/events/approvals 为 mock，目录来自实际 HTTP MCP，不使用 key。它明确标记离线，不属于 `npm start` bundle，也不会作为真实运行的 fallback。可演示选购、拒绝、批准比较、预算追问、刷新和响应式界面。它不证明真实 Platform 的 MCP 或 approval 部署效果。
+This test-only harness uses mock Platform lifecycle/events/approvals and an actual HTTP MCP catalog. It needs no key, is excluded from the production bundle, and never serves as a live fallback. It demonstrates shopping, denial, approved comparison, budget follow-ups, reload, and responsive layout. It is not proof of deployed Platform MCP or approval behavior.
 
-## Staging 和清理
+## Staging and cleanup
 
-仅在已有明确授权时运行。foundation smoke 用 1 个临时 Agent/Session 和 1 个 model turn，不依赖目录，不算 feature evidence：
+Run live checks only with explicit authorization. The foundation smoke uses one temporary Agent/Session and one model turn without the catalog, so it is not feature evidence:
 
 ```sh
 npm run test:staging -- --confirm-staging
 ```
 
-功能验证需要已获授权的 public endpoint 和同一 MCP 实例的私有 audit DB（`MCP_AUDIT_DB`），用于核对拒绝后实际调用数为零：
+Feature verification needs an authorized public endpoint and `MCP_AUDIT_DB` for that same MCP instance, to verify zero execution after denial:
 
 ```sh
 npm run test:feature-staging -- --confirm-staging
 ```
 
-它最多创建 1 个临时 Agent、2 个 Sessions、4 个 user turns：搜索+分别批准详情和比较、降低预算、搜索+拒绝详情、同测试 Agent 的 unavailable endpoint。不自动重试 paid turns。缺少 approval、receipt、比较结果或 runtime audit correlation 都判失败。2026-10-02 真实 staging 通过，SDK 和 Server audit 共同确认拒绝后的工具执行次数为 0。
+This creates at most one temporary Agent, two Sessions, and four user turns: search plus separately approved details/comparison, a lower-budget follow-up, search plus denied details, and an unavailable endpoint on the same test Agent. Paid turns are never retried automatically. Missing approval, receipt, comparison, or audit correlation fails the check. Actual staging passed on 2026-10-02; SDK events and server audit agreed on zero denied-tool execution.
 
 ```sh
-# 先停止本地 Web 服务，再清理记录的 Sessions 和 Agent。
+# Stop the local Web app before cleaning recorded Sessions and Agent.
 npm run cleanup
-# smoke/feature 清理失败时，用脚本输出的 exact filename：
+# If smoke/feature cleanup failed, use the exact reported filename.
 npm run cleanup -- feature-<recorded-instance>.json
 ```
 
-清理只用 ledger 中的 IDs 和匹配的 Agent labels，Session metadata 也必须匹配。创建结果不明确或删除失败时保留恢复状态，不能扫描 Project 选择资源、删除 `.local` 或自动换 Agent。SQLite 保留到 Agent stop/delete 成功后再清除对应会话。
+Cleanup uses only recorded IDs, matching Agent labels, and matching Session metadata. Ambiguous creation or failed deletion retains recovery state. Never scan a Project to choose resources, delete `.local`, or create a replacement Agent automatically. SQLite conversation records are cleared only after Agent stop/delete succeeds.
 
-## 结构与验证记录
+## Structure and evidence
 
-- `mcp/`、`data/`：独立 readonly MCP 和自制目录。
-- `src/server/`：SDK 会话、native approvals、receipt hydration、同源 API。
-- `src/storage/`：SQLite conversation ledger、receipt/audit store。
-- `src/ui/`、`public/products/`：业务界面、自制 SVG。
-- `test/`：domain、HTTP MCP、approval、delivery recovery、ownership、foundation。
-- [PLAN.md](PLAN.md)：范围、平台来源、完成标准。
-- [VALIDATION.md](VALIDATION.md)：实际结果和仍需 live 验证的项目。
-- [REFERENCES.md](REFERENCES.md)：protocol/source snapshots。
+- `mcp/`, `data/`: standalone read-only MCP and original catalog.
+- `src/server/`: SDK Sessions, native approvals, receipt hydration, same-origin API.
+- `src/storage/`: SQLite conversation ledger and receipt/audit stores.
+- `src/ui/`, `public/products/`: interface and original SVG illustrations.
+- `test/`: domain, HTTP MCP, approval, delivery recovery, ownership, and foundation checks.
+- [PLAN.md](PLAN.md): scope, platform contract, implementation, and acceptance criteria.
+- [VALIDATION.md](VALIDATION.md): actual results and verification boundaries.
+- [REFERENCES.md](REFERENCES.md): protocol and source snapshots.

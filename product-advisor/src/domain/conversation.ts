@@ -251,7 +251,7 @@ export function recommendations(
     const reasons: string[] = [];
     if (c.requirements.maxPriceMinor !== undefined)
       reasons.push(
-        `目录价格 ${formatMoney(p.priceMinor)}，比预算低 ${formatMoney(c.requirements.maxPriceMinor - p.priceMinor)}`,
+        `Catalog price ${formatMoney(p.priceMinor)}, ${formatMoney(c.requirements.maxPriceMinor - p.priceMinor)} below budget`,
       );
     const reasonsMap = {
       ram: "ramGB",
@@ -267,12 +267,12 @@ export function recommendations(
         const value = p.specs[key];
         if (value !== null && value !== undefined)
           reasons.push(
-            `${{ ramGB: "内存", weightKg: "重量", batteryHours: "目录续航", refreshHz: "刷新率", usbPowerW: "USB-C 供电", anc: "主动降噪" }[key]}：${formatSpec(key, value)}`,
+            `${{ ramGB: "RAM", weightKg: "Weight", batteryHours: "Catalog battery life", refreshHz: "Refresh rate", usbPowerW: "USB-C power", anc: "Noise cancellation" }[key]}: ${formatSpec(key, value)}`,
           );
       }
     const caveats = Object.entries(p.specs)
       .filter(([, v]) => v === null)
-      .map(([k]) => `${attributeInfo[k]?.label ?? k}：目录未提供`);
+      .map(([k]) => `${attributeInfo[k]?.label ?? k}: Not provided by catalog`);
     all.push({ product: p, reasons, caveats, receiptId: e.receiptId });
   }
   return all;

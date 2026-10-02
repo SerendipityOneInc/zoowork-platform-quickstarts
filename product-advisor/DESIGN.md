@@ -208,9 +208,9 @@ History entries are full-width, left-aligned buttons on desktop. The active conv
 
 ### Product Records / Tags
 
-Product records place the illustration field above name, record ID, price and a definition list of parameters. Reasons and caveats follow those facts. The detail action and a native “数据依据” disclosure sit last. Checkbox selection and optional rank labels overlay the illustration field.
+Product records place the illustration field above name, record ID, price and a definition list of parameters. Reasons and caveats follow those facts. The detail action and a native “Evidence” disclosure sit last. Checkbox selection and optional rank labels overlay the illustration field.
 
-The selected state uses the selection border and outline while keeping the comparison checkbox checked. Rank tags are factual ordering labels, not independent product claims. Unknown values stay visibly written as “目录未提供”. Do not replace them with a dash or a favorable value.
+The selected state uses the selection border and outline while keeping the comparison checkbox checked. Rank tags are factual ordering labels, not independent product claims. Unknown values stay visibly written as “Not provided by catalog”. Do not replace them with a dash or a favorable value.
 
 ### Conversation / Approval
 

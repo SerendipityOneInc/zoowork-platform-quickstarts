@@ -12,7 +12,7 @@ Checked 2026-10-01. Application, MCP, tests, catalog descriptions and SVGs are o
 
 Internal source snapshots are evidence for this implementation; they are not copied code or proof that a deployment already has those revisions. See PLAN.md for capability details and VALIDATION.md for actual tests.
 
-The SDK 0.9.0 nested `McpToolPermissionOverride` type omits Engine's `requireConfirmation` field. This app declares an intersection type for its original Agent resource and passes the object through the published client; no dependency patch or consumer workaround that simulates approval is used. A future SDK update can expose that field directly. Live validation must confirm mandatory approvals rather than relying on this type annotation.
+The SDK 0.9.0 nested `McpToolPermissionOverride` type omits Engine's `requireConfirmation` field. This app declares an intersection type for its original Agent resource and passes the object through the published client; no dependency patch or consumer workaround that simulates approval is used. [SDK issue #39](https://github.com/SerendipityOneInc/zoowork-sdk-typescript/issues/39) tracks the type gap. Live validation must confirm mandatory approvals rather than relying on this type annotation.
 
 2026-10-02 staging verified mandatory approvals through the published client, including separate approval of details/comparison and zero remote tool execution after denial. [Cloudflare Quick Tunnels documentation](https://developers.cloudflare.com/tunnel/get-started/quick-tunnels/) supports the account-free temporary catalog endpoint used by `npm run demo`; the implementation uses JSON HTTP responses and does not tunnel the Web SSE stream. No Cloudflare source code was copied.
 

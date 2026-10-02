@@ -24,7 +24,7 @@ Product records emphasize price and known parameters before reasons, caveats and
 ## Interaction and state contract
 
 - Search can execute automatically. Complete details and comparisons wait for native approval. Allow, deny, submitted and uncertain-delivery states remain explicit.
-- Comparison uses 2–4 selected same-category records. Its output is a factual parameter table, with unknown values preserved as “目录未提供”.
+- Comparison uses 2–4 selected same-category records. Its output is a factual parameter table, with unknown values preserved as “Not provided by catalog”.
 - Comparison and saved-snapshot tables have focusable, labelled horizontal scroll regions. Their minimum table width remains inside that container on mobile.
 - Conditions and submission are disabled while a turn is running. Recovery resubmits or reads the existing operation; it does not imply a new paid turn.
 - Conversation history restores persisted state. A budget change produces a new query; saved snapshots retain their original conditions and evidence.
@@ -32,14 +32,14 @@ Product records emphasize price and known parameters before reasons, caveats and
 
 ## Evidence and review boundary
 
-The existing screenshots are local offline-harness artifacts:
+The original screenshots are local offline-harness artifacts:
 
 - `.impeccable/review/desktop.png`
 - `.impeccable/review/mobile.png`
 - `.impeccable/review/empty-desktop.png`
 - `.impeccable/review/empty-mobile.png`
 
-They are visibly labelled “离线测试” and exercise the local UI with simulated Platform lifecycle and approval behavior. They are not staging evidence, remote Engine connectivity evidence, or proof of live approval enforcement.
+They visibly identify the offline test environment and exercise the local UI with simulated Platform lifecycle and approval behavior. They are not staging evidence, remote Engine connectivity evidence, or proof of live approval enforcement. English desktop/mobile screenshots are recorded in `.impeccable/review/english-desktop.png` and `english-mobile.png`; actual SDK evidence is recorded separately in VALIDATION.md.
 
 The independent review reported `ship` after four scoped mobile/accessibility corrections: mobile input-before-results flow, the shortened first-session introduction, 16px mobile fields with 12px parameter rows, and focusable labelled table scrolling. All four were reported resolved. That disposition covers those four findings and is not a broader live-service certification.
 

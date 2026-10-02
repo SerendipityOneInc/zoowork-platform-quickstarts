@@ -82,7 +82,7 @@ try {
       // 2 Sessions, 4 user turns. Details and comparison share the first turn.
       const a = await advisor.create(
         visitor,
-        "预算6500元，编程用，至少16GB内存。先搜索，再调用 get_products 读取前两个候选完整参数，然后调用 compare_products 比较这两个商品。每次需要审批都等我批准，最后推荐。",
+        "Budget CNY 6500 for coding, with at least 16 GB RAM. Search first, then use get_products for full details of the first two candidates, then compare_products for those two products. Wait for my approval each time before recommending.",
         requirements,
         "feature-first",
       );
@@ -119,7 +119,7 @@ try {
       await advisor.message(
         visitor,
         a.id,
-        "预算降到5000元，请按新条件搜索并推荐。",
+        "Lower the budget to CNY 5000. Search and recommend using the new budget.",
         requirements,
         "feature-budget",
       );
@@ -131,7 +131,7 @@ try {
       console.log(JSON.stringify({ phase: "budget_followup", pass: true }));
       const b = await advisor.create(
         visitor,
-        "预算6500元，至少16GB内存。先搜索，再用 get_products 读取一个候选的完整参数，等待我审批。",
+        "Budget CNY 6500, with at least 16 GB RAM. Search first, then use get_products for full details of one candidate. Wait for my approval.",
         requirements,
         "feature-deny",
       );
@@ -160,7 +160,7 @@ try {
       await advisor.message(
         visitor,
         b.id,
-        "请按当前条件重新查询。",
+        "Search again using the current requirements.",
         requirements,
         "feature-unavailable",
       );

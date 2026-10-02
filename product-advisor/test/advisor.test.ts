@@ -14,7 +14,7 @@ test("search, native deny/allow, factual comparison, budget change and saved own
   try {
     const c = await f.advisor.create(
       "alice",
-      "预算 6500 元，编程，16 GB 内存",
+      "Budget CNY 6500 for coding, with 16 GB RAM",
       requirements,
       "request-first",
     );
@@ -25,7 +25,7 @@ test("search, native deny/allow, factual comparison, budget change and saved own
       "alice",
       c.id,
       "lap-01",
-      "demo-2026-10-01",
+      "demo-2026-10-02-en",
       "request-detail",
     );
     await waitFor(() => f.store.get(c.id).approvals.length === 1);
@@ -75,7 +75,7 @@ test("search, native deny/allow, factual comparison, budget change and saved own
     await f.advisor.message(
       "alice",
       c.id,
-      "预算降到 5000 元",
+      "Lower the budget to CNY 5000",
       requirements,
       "request-budget",
     );
@@ -97,7 +97,7 @@ test("ambiguous create and message retry preserve the exact request identity", a
   try {
     f.fake.ambiguousCreate = true;
     await assert.rejects(
-      f.advisor.create("alice", "编程", requirements, "request-create"),
+      f.advisor.create("alice", "Coding", requirements, "request-create"),
       /message_delivery_uncertain/,
     );
     const c = f.store.list("alice")[0]!;
@@ -110,7 +110,7 @@ test("ambiguous create and message retry preserve the exact request identity", a
       f.advisor.message(
         "alice",
         c.id,
-        "预算降到 5000 元",
+        "Lower the budget to CNY 5000",
         requirements,
         "request-retry",
       ),
@@ -131,7 +131,7 @@ test("prototype-named approval IDs persist as own keys and retain the submitted 
   try {
     const c = await f.advisor.create(
       "alice",
-      "编程",
+      "Coding",
       requirements,
       "request-prototype",
     );
@@ -140,7 +140,7 @@ test("prototype-named approval IDs persist as own keys and retain the submitted 
       "alice",
       c.id,
       "lap-01",
-      "demo-2026-10-01",
+      "demo-2026-10-02-en",
       "request-prototype-detail",
     );
     await waitFor(() => f.store.get(c.id).approvals.length === 1);
@@ -170,7 +170,7 @@ test("native denial can end with blocked + deniedReason and no tool-end event", 
   try {
     const c = await f.advisor.create(
       "alice",
-      "编程",
+      "Coding",
       requirements,
       "request-real-denial",
     );
@@ -185,7 +185,10 @@ test("native denial can end with blocked + deniedReason and no tool-end event", 
           phase: "start",
           toolName: "mcp__catalog__get_products",
           toolCallId: callId,
-          args: { productIds: ["lap-01"], catalogVersion: "demo-2026-10-01" },
+          args: {
+            productIds: ["lap-01"],
+            catalogVersion: "demo-2026-10-02-en",
+          },
         },
       ],
       [
@@ -248,7 +251,7 @@ test("receipt failure keeps retryable evidence state; connection failure supplie
     });
     const c = await f.advisor.create(
       "alice",
-      "编程",
+      "Coding",
       requirements,
       "request-receipt",
     );
@@ -262,7 +265,7 @@ test("receipt failure keeps retryable evidence state; connection failure supplie
     f.fake.failConnection = true;
     const failure = await f.advisor.create(
       "alice",
-      "编程",
+      "Coding",
       requirements,
       "request-failure",
     );
@@ -288,7 +291,7 @@ test("API cookie ownership and Origin checks protect all conversation writes and
     const init = await fetch(http.url + "/api/status");
     const cookie = init.headers.get("set-cookie")!.split(";")[0]!;
     const body = JSON.stringify({
-      text: "编程",
+      text: "Coding",
       requirements,
       requestId: "request-http",
     });
@@ -342,7 +345,7 @@ test("concurrent follow-ups accept one request without replacing its saved ident
   try {
     const c = await f.advisor.create(
       "alice",
-      "编程",
+      "Coding",
       requirements,
       "request-race",
     );
@@ -351,14 +354,14 @@ test("concurrent follow-ups accept one request without replacing its saved ident
       f.advisor.message(
         "alice",
         c.id,
-        "预算降到5000元",
+        "Lower the budget to CNY 5000",
         requirements,
         "request-race-a",
       ),
       f.advisor.message(
         "alice",
         c.id,
-        "预算降到4000元",
+        "Lower the budget to CNY 4000",
         requirements,
         "request-race-b",
       ),
@@ -392,7 +395,7 @@ test("connection failure in a follow-up cannot turn an earlier receipt into a ne
   try {
     const c = await f.advisor.create(
       "alice",
-      "编程",
+      "Coding",
       requirements,
       "request-stale",
     );
@@ -402,7 +405,7 @@ test("connection failure in a follow-up cannot turn an earlier receipt into a ne
     await f.advisor.message(
       "alice",
       c.id,
-      "预算降到5000元",
+      "Lower the budget to CNY 5000",
       requirements,
       "request-stale-next",
     );

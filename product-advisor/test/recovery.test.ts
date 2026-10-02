@@ -22,12 +22,12 @@ test("restart replays approvals and retains immutable facts in a private SQLite 
   const path = join(dir, "conversations.sqlite");
   let store: Conversations | undefined, advisor: Advisor | undefined;
   try {
-    const c = await f.advisor.create("alice", "编程", req, "request-restart");
+    const c = await f.advisor.create("alice", "Coding", req, "request-restart");
     await f.advisor.idle(c.id);
     await f.advisor.message(
       "alice",
       c.id,
-      "get_products lap-01 完整参数",
+      "get_products lap-01 full specifications",
       req,
       "request-pending",
     );
@@ -92,11 +92,14 @@ test("expired receipt cannot be read and runtime audit does not enter public evi
 test("malformed model blocks and unknown or out-of-budget recommendations supply no fabricated facts", async () => {
   const f = await fixture();
   try {
-    const c = await f.advisor.create("alice", "编程", req, "request-guard");
+    const c = await f.advisor.create("alice", "Coding", req, "request-guard");
     await f.advisor.idle(c.id);
     const saved = f.store.get(c.id),
       receipt = Object.keys(saved.evidence)[0]!;
-    assert.equal(parseReply("推荐一台不存在的商品"), undefined);
+    assert.equal(
+      parseReply("Recommend a product that does not exist"),
+      undefined,
+    );
     assert.equal(
       parseReply(
         '```product-advisor-result\n{"type":"recommendation","items":[]}\n```',
@@ -123,7 +126,7 @@ test("malformed model blocks and unknown or out-of-budget recommendations supply
 test("native approvals unavailable is visible and interrupts the waiting turn", async () => {
   const f = await fixture();
   try {
-    const c = await f.advisor.create("alice", "编程", req, "request-501");
+    const c = await f.advisor.create("alice", "Coding", req, "request-501");
     await f.advisor.idle(c.id);
     f.fake.client.listApprovals = async () => {
       throw new ZooworkError(501, "synthetic");
@@ -131,7 +134,7 @@ test("native approvals unavailable is visible and interrupts the waiting turn", 
     await f.advisor.message(
       "alice",
       c.id,
-      "get_products lap-01 完整参数",
+      "get_products lap-01 full specifications",
       req,
       "request-noapprove",
     );
