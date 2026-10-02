@@ -97,6 +97,8 @@ npm start
 
 `APP_ORIGIN` 是浏览器使用的 exact origin，写 API 检查 Origin；默认 `localhost`，不要混用 `127.0.0.1`。`APP_HOST` / `PORT` 控制 server listen。Web 应用公开托管另需正式认证、HTTPS、访问策略和运维配置；当前 cookie 只是本地 demo 的访客归属。
 
+production server 和离线 UI harness 的页面、静态资源按每个 IP 每分钟 300 次限流，超出时返回 429 和 `Retry-After`。API 和 SSE 不计入这个页面限制。
+
 ## 可以完成的流程
 
 1. 选择“笔记本 · 6500 元”示例，输入办公/编程需求和最低 16 GB 内存。实际搜索排除超过预算、内存不足和不可选购的商品。

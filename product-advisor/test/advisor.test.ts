@@ -125,6 +125,44 @@ test("ambiguous create and message retry preserve the exact request identity", a
     await f.close();
   }
 });
+test("prototype-named approval IDs persist as own keys and retain the submitted decision", async () => {
+  const f = await fixture();
+  try {
+    const c = await f.advisor.create(
+      "alice",
+      "编程",
+      requirements,
+      "request-prototype",
+    );
+    await f.advisor.idle(c.id);
+    await f.advisor.details(
+      "alice",
+      c.id,
+      "lap-01",
+      "demo-2026-10-01",
+      "request-prototype-detail",
+    );
+    await waitFor(() => f.store.get(c.id).approvals.length === 1);
+    const pending = f.store.get(c.id).approvals[0]!;
+    const approvalId = "__proto__";
+    f.fake.pending.delete(pending.approval_id!);
+    f.fake.pending.set(approvalId, { ...pending, approval_id: approvalId });
+    await f.advisor.decide("alice", c.id, approvalId, "deny");
+    await f.advisor.idle(c.id);
+    const saved = f.store.get(c.id).approvalRequests!;
+    assert.equal(Object.getPrototypeOf(saved), Object.prototype);
+    assert.equal(Object.hasOwn(saved, approvalId), true);
+    assert.deepEqual(saved[approvalId], { decision: "deny", uncertain: false });
+    await assert.rejects(
+      f.advisor.decide("alice", c.id, approvalId, "allow-once"),
+      /approval_decision_locked/,
+    );
+    assert.equal(f.fake.calls.resolve, 1);
+    assert.equal(f.receipts.count("get_products"), 0);
+  } finally {
+    await f.close();
+  }
+});
 test("receipt failure keeps retryable evidence state; connection failure supplies no fake products", async () => {
   const f = await fixture();
   try {

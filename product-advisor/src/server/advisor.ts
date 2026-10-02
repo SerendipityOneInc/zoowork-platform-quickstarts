@@ -236,7 +236,10 @@ export class Advisor {
   ): Promise<void> {
     const c = this.store.get(id, visitor);
     if (!c.sessionId) throw new AppError("session_not_ready", 409);
-    const saved = c.approvalRequests?.[approvalId];
+    const saved =
+      c.approvalRequests && Object.hasOwn(c.approvalRequests, approvalId)
+        ? c.approvalRequests[approvalId]
+        : undefined;
     if (saved && saved.decision !== decision)
       throw new AppError("approval_decision_locked", 409);
     let pending;
@@ -258,7 +261,10 @@ export class Advisor {
     if (this.submitting.has(id)) throw new AppError("request_in_progress", 409);
     this.submitting.add(id);
     this.store.update(id, (c) => {
-      (c.approvalRequests ??= {})[approvalId] = { decision, uncertain: true };
+      c.approvalRequests = {
+        ...c.approvalRequests,
+        [approvalId]: { decision, uncertain: true },
+      };
       const a = c.approvals.find((a) => a.approval_id === approvalId);
       if (a) {
         a.signaled = true;
@@ -432,7 +438,12 @@ export class Advisor {
         c.approvals = all
           .filter((a) => a.session_id === c.sessionId)
           .map((a) => {
-            const saved = c.approvalRequests?.[a.approval_id ?? ""];
+            const approvalId = a.approval_id ?? "";
+            const saved =
+              c.approvalRequests &&
+              Object.hasOwn(c.approvalRequests, approvalId)
+                ? c.approvalRequests[approvalId]
+                : undefined;
             return saved
               ? {
                   ...a,
@@ -552,7 +563,11 @@ export class Advisor {
     await this.hydrate(id);
     if (approval) {
       const c = this.store.get(id);
-      const submitted = c.approvalRequests?.[String(p.approvalId)];
+      const approvalId = String(p.approvalId);
+      const submitted =
+        c.approvalRequests && Object.hasOwn(c.approvalRequests, approvalId)
+          ? c.approvalRequests[approvalId]
+          : undefined;
       if (c.denied && submitted?.decision !== "deny")
         await this.interrupt(c.visitorId, id);
       else await this.refreshApprovals(id);

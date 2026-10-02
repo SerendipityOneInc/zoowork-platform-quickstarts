@@ -37,3 +37,5 @@
 本次 `npm ci`、`npm run check`（TypeScript + 25 tests）和 `npm run build` 均通过。浏览器检查确认 debug 默认折叠，预算和筛选参数 JSON 与实际工具请求一致，已返回、等待审批和拒绝后的未执行状态正确；1440px 桌面和 390px 窄屏无 document 横向 overflow 或 page errors，JSON 区域支持键盘访问。截图在 ignored `.impeccable/review/mcp-json-desktop.png` 和 `mcp-json-mobile.png`。
 
 PR #19 已于 2026-10-02 合并到 main，merge commit `3696818d31d2bd42a36b05af897bf78b5f9aae0f`；#22 已集成该 main，并使用 main 为 base。未执行新的 live staging。
+
+随后修正 CodeQL 报告的审批动态 key 写入和预览页面缺少 rate limit。审批记录用 computed object key 保存，并只读取 own property；新增 `__proto__` approval ID 的持久化和决策锁定回归测试。页面和静态资源按每个 IP 每分钟 300 次限流，API 不计入这一限制。SPA fallback 使用固定文件名和 root，使 `.worktrees` 路径下的子路由也能返回页面。本机 production server 检查确认前 300 次返回 200，第 301 次返回 429，API status 仍返回 200。`npm ci`、`npm run check`（26 tests）和 `npm run build` 均通过；client bundle 与上面的 UI 检查一致。

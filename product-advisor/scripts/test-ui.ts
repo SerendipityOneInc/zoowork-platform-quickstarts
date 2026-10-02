@@ -1,5 +1,6 @@
 // Deliberately excluded from the production build. No Platform key or paid calls.
 import express from "express";
+import { rateLimit } from "express-rate-limit";
 import { resolve } from "node:path";
 import { applicationApi } from "../src/server/http.js";
 import { fixture } from "../test/helpers.js";
@@ -11,9 +12,10 @@ const app = applicationApi(f.advisor, {
   cookieSecret: "offline-test-secret-not-a-production-secret",
   testMode: true,
 });
+app.use(rateLimit({ windowMs: 60_000, limit: 300 }));
 app.use(express.static(resolve("dist", "client")));
 app.get("/{*path}", (_req, res) =>
-  res.sendFile(resolve("dist", "client", "index.html")),
+  res.sendFile("index.html", { root: resolve("dist", "client") }),
 );
 const server = app.listen(4390, "localhost", () =>
   console.log(
