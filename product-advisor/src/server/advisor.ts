@@ -279,7 +279,10 @@ export class Advisor {
         resolvedBy: `visitor:${visitor}`,
       });
       this.store.update(id, (c) => {
-        c.approvalRequests![approvalId]!.uncertain = false;
+        c.approvalRequests = {
+          ...c.approvalRequests,
+          [approvalId]: { decision, uncertain: false },
+        };
         const existing = c.approvals.find((a) => a.approval_id === approvalId);
         if (existing) {
           existing.deliveryUncertain = false;

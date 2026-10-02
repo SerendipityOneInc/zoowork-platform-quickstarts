@@ -32,7 +32,7 @@ Independent npm ci/check/build passed with 25 tests. Browser checks confirmed de
 
 PR #19 merged on 2026-10-02 at `3696818d31d2bd42a36b05af897bf78b5f9aae0f`. PR #22 integrated that main and changed its base to main.
 
-CodeQL follow-up removed dynamic approval-key writes, using computed keys and own-property reads, with a `__proto__` approval ID persistence/decision-lock regression. Page/static rate limiting permits 300 requests per IP per minute, then 429, without counting API traffic. Fixed SPA fallback filename/root works under a `.worktrees` path. Local production checks confirmed requests 1–300 return 200, request 301 returns 429, and API status remains 200. npm ci/check/build passed with 26 tests; the client bundle was unchanged.
+The initial CodeQL follow-up changed approval record creation to computed keys and added own-property reads, with a `__proto__` approval ID persistence/decision-lock regression. It did not remove the later nested assignment; that remaining finding is addressed below. Page/static rate limiting permits 300 requests per IP per minute, then 429, without counting API traffic. Fixed SPA fallback filename/root works under a `.worktrees` path. Local production checks confirmed requests 1–300 return 200, request 301 returns 429, and API status remains 200. npm ci/check/build passed with 26 tests; the client bundle was unchanged.
 
 ## Actual Platform / SDK feature staging — 2026-10-02
 
@@ -64,7 +64,7 @@ Actual browser checks passed details/matrix display, reload/history/request JSON
 
 Actual denial emits `agent.approval` resolved=deny, then `agent.tool` phase=blocked with deniedReason=approval-denied, without tool-end. The app projects that as “Not executed” and recovers it from durable history, preserving the actual blocked phase instead of inventing an end event. A regression covers this native sequence.
 
-npm ci, TypeScript + 32 offline tests, and build passed with zero reported vulnerabilities. Added coverage includes default SDK URL/explicit staging, concurrent private secret creation, same-Agent tunnel updates/pending recovery, key exclusion from the child environment, registration/DNS readiness, and native denial/history recovery. Final commit `4e46e2c` passed all app and CodeQL checks: [app workflow](https://github.com/SerendipityOneInc/zoowork-platform-quickstarts/actions/runs/37015357267), [CodeQL](https://github.com/SerendipityOneInc/zoowork-platform-quickstarts/actions/runs/37015351563).
+npm ci, TypeScript + 32 offline tests, and build passed with zero reported vulnerabilities. Added coverage includes default SDK URL/explicit staging, concurrent private secret creation, same-Agent tunnel updates/pending recovery, key exclusion from the child environment, registration/DNS readiness, and native denial/history recovery. Commit `4e46e2c` passed all app checks and completed CodeQL analysis: [app workflow](https://github.com/SerendipityOneInc/zoowork-platform-quickstarts/actions/runs/37015357267), [CodeQL](https://github.com/SerendipityOneInc/zoowork-platform-quickstarts/actions/runs/37015351563). A successful analysis job means the scan completed, not that its alert set is empty; the remaining finding is addressed below.
 
 This app-owned preview Agent and its two history Sessions were retained for the user's preview, separately from the cleaned feature-staging resources. After stopping the demo, `npm run cleanup` with the same staging configuration cleans only recorded resources with matching labels/metadata.
 
@@ -83,3 +83,9 @@ A fresh browser visitor verified the real English entry, HTML lang=en, English e
 An additional bounded English live check used one temporary Agent, one Session, and one user turn requesting search, details, and comparison. The actual MCP search returned three valid English products at version `demo-2026-10-02-en`. The expected two native approvals and comparison were not observed, so the composite check **did not pass**. Audit was search=1/get=0/compare=0. The runner reported `request_or_runner_failed`; its limited retained diagnostics do not establish a cause. It performed no automatic paid retry.
 
 Temporary Agent `agt_01m3yfffnb57fkgghz9kjq572w` and Session `9e1d8dc5ffda4f8bae5927e13e8cf3ea` were cleaned. The remaining audit/receipt evidence and cleanup result are recorded in ignored `.local/english-feature-partial-report.json`. Earlier complete live SDK/approval checks above remain valid for their recorded scope and are not relabelled as a passing English composite run.
+
+## Remaining CodeQL review — 2026-10-02
+
+Alert #7 still identified the nested approval completion assignment at commit `d0f9013`. The completion path now replaces the approval record using an object literal with a computed own key, just like the submission path, rather than mutating an object reached through a user-provided property name.
+
+Offline regressions exercise `__proto__`, `constructor`, and `toString` as approval IDs. Each persists as an own key, retains the submitted decision, completes delivery, refuses a conflicting decision, and executes no denied tool. The tests also verify that built-in objects receive no `uncertain` property. `npm ci`, TypeScript + 35 offline tests, and `npm run build` passed with zero reported vulnerabilities. The client bundle is unchanged. No new live model turn was used for this review fix.
