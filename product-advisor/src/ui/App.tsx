@@ -10,7 +10,6 @@ import {
   type Requirements,
 } from "../domain/catalog.js";
 import type { ConversationView } from "../domain/conversation.js";
-import { McpActivity } from "./McpActivity.js";
 
 const errors: Record<string, string> = {
   advisor_not_configured:
@@ -968,7 +967,56 @@ export function App() {
               })}
             </details>
           )}
-          <McpActivity conversation={conversation} testMode={testMode} />
+          {conversation && (
+            <details className="diagnostics">
+              <summary>查看 MCP 调用记录与请求 JSON</summary>
+              <p>
+                {testMode
+                  ? "Platform 事件为模拟；商品工具通过本机 HTTP MCP 实际执行。"
+                  : "以下为 Platform 工具事件记录的请求参数。"}
+              </p>
+              <div>
+                {Object.values(conversation.tools).map((t) => (
+                  <div key={t.id}>
+                    <p>
+                      <code>{t.name}</code> · {t.phase}
+                      {t.phase === "blocked"
+                        ? " · 等待审批"
+                        : t.phase === "end" && t.executionStarted === false
+                          ? " · 未执行"
+                          : t.phase === "end"
+                            ? t.isError
+                              ? " · 调用失败"
+                              : " · 已返回"
+                            : " · 工具请求已发起"}
+                    </p>
+                    {t.args && (
+                      <pre
+                        tabIndex={0}
+                        role="region"
+                        aria-label={`${t.name} 的请求参数 JSON`}
+                      >
+                        <code>{JSON.stringify(t.args, null, 2)}</code>
+                      </pre>
+                    )}
+                    {t.receiptId && (
+                      <p>
+                        receipt：<code>{t.receiptId}</code>
+                      </p>
+                    )}
+                  </div>
+                ))}
+                {evidences.map((e) => (
+                  <p key={e.receiptId}>
+                    <code>{e.receiptId}</code> · {e.tool} · {e.catalogVersion}
+                  </p>
+                ))}
+                {!Object.keys(conversation.tools).length && (
+                  <p>尚无目录工具调用。</p>
+                )}
+              </div>
+            </details>
+          )}
         </main>
       </div>
     </div>

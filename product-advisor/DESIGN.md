@@ -222,15 +222,7 @@ Native approval cards are pale green bordered regions within the log. They show 
 
 Comparison tables use a white frame, sage column headers, row labels and tabular figures. A caption names the catalog version and approved result. Their scroll wrappers have `tabIndex=0`, `role="region"` and a label explaining horizontal scrolling, so keyboard users can focus and scroll them.
 
-Saved snapshots use native `details`/`summary`. Original query conditions and facts remain under snapshots.
-
-### MCP Query Records
-
-At the user’s request, the bottom developer display is an always-visible white panel with a stronger sage border. It shows the data path from user requirements through Platform and HTTP MCP to product results. Offline mode explicitly separates simulated Platform events/approvals from real local HTTP MCP tool execution.
-
-Requests appear in arrival order as separated rows, not nested cards. Each row exposes the tool name, JSON arguments, explicit state and verified product results. Success, pending, failed and not-executed states have text labels as well as color. Success requires a hydrated receipt; blocked and denied calls cannot show product results as their own output. Full result JSON and call identifiers remain native disclosures. JSON is monospace because it is code, with 12px text, wrapping, bounded scroll height and keyboard focus.
-
-Desktop places request and response alongside each other; mobile stacks them. Long tool names and receipt IDs wrap within the panel. Counts summarize recorded tool requests, verified successes and calls that ended before execution; they do not claim network request counts or timings.
+Saved snapshots and diagnostics use native `details`/`summary`. Original query conditions and facts remain under snapshots. Tool names, actual argument JSON, execution state and long receipt IDs remain in diagnostics. JSON uses a focusable, bounded code block with 12px text. Values wrap rather than extending the page width.
 
 ### Empty / Notice States
 

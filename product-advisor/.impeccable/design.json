@@ -1,6 +1,6 @@
 {
   "schemaVersion": 2,
-  "generatedAt": "2026-10-02T03:24:12.605130Z",
+  "generatedAt": "2026-10-02T03:46:12.899047Z",
   "title": "Design System: Product Advisor",
   "extensions": {
     "colorMeta": {
@@ -301,13 +301,6 @@
       "description": "Focusable horizontal scroll region for fact comparison, with unknown values left explicit.",
       "html": "<div class=\"ds-table-scroll\" tabindex=\"0\" role=\"region\" aria-label=\"商品参数表，可横向滚动\"><table class=\"ds-table\"><caption>目录参数预览 · 模拟数据</caption><thead><tr><th scope=\"col\">参数</th><th scope=\"col\">演示记录 A</th><th scope=\"col\">演示记录 B</th></tr></thead><tbody><tr><th scope=\"row\">目录续航</th><td>目录未提供</td><td>目录未提供</td></tr></tbody></table></div>",
       "css": ".ds-table-scroll{font-family:\"PingFang SC\", \"Microsoft YaHei\", system-ui, sans-serif;overflow:auto;border:1px solid var(--line, #dde3da);border-radius:10px;background:#fff;max-width:600px;color:var(--ink, #25342b)}.ds-table-scroll:focus-visible{outline:3px solid var(--focus, #49784f);outline-offset:3px;}.ds-table{border-collapse:collapse;width:100%;min-width:480px;font-size:11.48px;font-variant-numeric:tabular-nums;text-align:left}.ds-table th,.ds-table td{padding:12px 15px;border-bottom:1px solid var(--line, #dde3da);line-height:1.6;overflow-wrap:anywhere}.ds-table thead th{background:#eff3e9}.ds-table tbody th{font-weight:500;color:var(--muted, #606a62)}.ds-table tbody tr:last-child>*{border-bottom:0}.ds-table caption{text-align:left;padding:11px 15px;font-size:10.36px;color:var(--muted, #606a62)}"
-    },
-    {
-      "name": "MCP query record",
-      "kind": "custom",
-      "description": "Always-visible developer demonstration panel. Shows actual request JSON and receipt-backed output; explicitly identifies simulated Platform events in the offline harness. Full raw JSON uses a native disclosure.",
-      "html": "<section class=\"ds-mcp\" aria-label=\"MCP 查询记录\"><h2>MCP 查询记录</h2><p class=\"ds-mcp-note\">离线演示：Platform 为模拟环境，商品工具通过本机 HTTP MCP 执行。</p><div class=\"ds-mcp-row\"><h3><code>search_products</code><span class=\"ds-mcp-state\">查询成功</span></h3><div class=\"ds-mcp-exchange\"><div><h4>请求参数</h4><pre tabindex=\"0\" role=\"region\" aria-label=\"示例请求 JSON\"><code>{\"category\":\"laptop\",\"maxPriceMinor\":650000}</code></pre></div><div><h4>MCP 返回</h4><p>返回 3 件示例商品摘要</p><details><summary>查看完整返回 JSON</summary><p>实际界面显示经验证的完整 receipt。</p></details></div></div></div></section>",
-      "css": ".ds-mcp{font-family:\"PingFang SC\",\"Microsoft YaHei\",system-ui,sans-serif;color:var(--ink,#25342b);background:#fff;border:1px solid #b7c7af;border-radius:12px;padding:24px}.ds-mcp h2{font-size:18px;margin:0;color:var(--green,#24583c)}.ds-mcp-note{font-size:12px;line-height:1.75;color:var(--muted,#606a62)}.ds-mcp-row{border-top:1px solid var(--line,#dde3da);padding-top:22px}.ds-mcp-row h3{font-size:14px;display:flex;justify-content:space-between;gap:10px}.ds-mcp-state{font-size:12px;color:var(--green,#24583c);background:var(--soft,#edf3e9);padding:3px 8px;border-radius:5px}.ds-mcp-exchange{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:28px;font-size:13px}.ds-mcp-exchange h4{font-size:13px}.ds-mcp code{font-family:ui-monospace,SFMono-Regular,Consolas,monospace;overflow-wrap:anywhere}.ds-mcp pre{font-size:12px;line-height:1.7;white-space:pre-wrap;overflow-wrap:anywhere;max-height:280px;overflow:auto;background:#f5f7f2;border-radius:6px;padding:12px}.ds-mcp summary{cursor:pointer;color:var(--green,#24583c)}.ds-mcp :focus-visible{outline:3px solid var(--focus,#49784f);outline-offset:3px}@media(max-width:650px){.ds-mcp{padding:16px}.ds-mcp-exchange{grid-template-columns:minmax(0,1fr);gap:18px}}"
     }
   ],
   "narrative": {

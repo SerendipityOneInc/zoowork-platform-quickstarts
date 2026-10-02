@@ -30,10 +30,8 @@
 
 2026-10-01 复核时，PR #19 为 OPEN，head `cd932491bcf98eddb7e6650375b6586565c911c5`；当时 feature PR 使用 `feature/platform-demo-handoffs` 为 base。
 
-## 2026-10-02：MCP 查询展示
+## 2026-10-02：MCP 请求 JSON
 
-底部 MCP 查询记录默认可见，显示数据流向、工具名、请求 JSON、执行状态、返回商品与 receipt；完整结果和调用标识可展开。离线 Platform 与实际本机 HTTP MCP 的来源分别标明。
+按用户反馈保留原有主体界面和简单的折叠 debug。仅增加工具事件中的实际请求参数 JSON，以及请求已发起、等待审批、已返回和未执行状态；移除独立展示面板、链路图和计数。离线 Platform 与实际本机 HTTP MCP 的来源仍标明。
 
-定向浏览器检查通过：空状态、实际预算/filter JSON、搜索返回 3 件商品、等待审批、拒绝后无返回商品、批准比较、完整 JSON 的键盘访问和请求/成功/未执行计数。1440px、720px、390px 均无 document 横向 overflow 和 page errors。桌面和手机截图已检查，没有新增布局修正项。此检查仍使用 test-only Platform adapter，不是 live staging。
-
-本次 `npm ci`、`npm run check`（25 tests）和 `npm run build` 均通过。PR #19 已于 2026-10-02 合并到 main，merge commit `3696818d31d2bd42a36b05af897bf78b5f9aae0f`；#22 集成到该 main，并使用 main 为 base。
+PR #19 已于 2026-10-02 合并到 main，merge commit `3696818d31d2bd42a36b05af897bf78b5f9aae0f`；#22 已集成该 main，并使用 main 为 base。未执行新的 live staging。
