@@ -1,6 +1,6 @@
 # Four session assignments
 
-Updated 2026-10-01. Public repository:
+Updated 2026-10-02. Public repository:
 [SerendipityOneInc/zoowork-platform-quickstarts](https://github.com/SerendipityOneInc/zoowork-platform-quickstarts).
 The existing Finn machine checkout is still `/Users/wangfulong/src/zoo/zoowork-quickstarts`;
 its Git remote points to the new repository name. Do not rename another session's checkout.
@@ -18,14 +18,39 @@ as the feature PR base. Create an independent worktree/branch for each app. Do n
 in the shared foundation worktree or alter another session's branch. Do not reset, stash
 or rebase automatically.
 
-## Startup assignment
+## Current integration status
 
-| Session identity | Scope | Initial action |
+Customer Support [PR #20](https://github.com/SerendipityOneInc/zoowork-platform-quickstarts/pull/20)
+was merged into `feature/platform-demo-handoffs` on 2026-10-02. That application is runnable;
+its [README](../customer-support/README.md) and [verification](../customer-support/docs/VALIDATION.md)
+contain the setup flow and feature evidence. It does not need a new implementation session.
+
+The parent [PR #19](https://github.com/SerendipityOneInc/zoowork-platform-quickstarts/pull/19)
+remains open against `main`. Merging an app PR into the handoff branch does not publish it on
+the default branch. Until #19 is merged, a fresh default checkout still has the foundation's
+former capability directories. To try the integrated app now after cloning, run:
+
+```sh
+git fetch origin
+# In a clean checkout; preserve any existing local work.
+git switch --track origin/feature/platform-demo-handoffs
+cd customer-support
+npm ci
+npm run demo:offline
+```
+
+Product Advisor [PR #22](https://github.com/SerendipityOneInc/zoowork-platform-quickstarts/pull/22)
+and Research Assistant [PR #21](https://github.com/SerendipityOneInc/zoowork-platform-quickstarts/pull/21)
+remain separate deliveries. Their unmerged code is not part of this branch's runnable-app status.
+
+## Session ownership
+
+| Session identity | Scope | Current action |
 | --- | --- | --- |
-| [customer-support](handoffs/customer-support.md) | `customer-support/` | Start implementation now; first complete app |
-| [product-advisor](handoffs/product-advisor.md) | `product-advisor/` | Read context and propose implementation; wait for Finn to start |
+| [customer-support](handoffs/customer-support.md) | `customer-support/` | Delivered in #20; continue only for an assigned follow-up |
+| [product-advisor](handoffs/product-advisor.md) | `product-advisor/` | Feature delivery in #22; continue only for an assigned follow-up |
 | [knowledge-assistant](handoffs/knowledge-assistant.md) | `knowledge-assistant/` | Continue RAG research/design discussion; keep decisions in this app |
-| [research-assistant](handoffs/research-assistant.md) | `research-assistant/` | Read context and propose implementation; wait for Finn to start |
+| [research-assistant](handoffs/research-assistant.md) | `research-assistant/` | Feature delivery in #21; continue only for an assigned follow-up |
 
 Send the same [shared prompt](SESSION-PROMPT.md) with a different `本 session 负责` line.
 The four linked files contain ready-to-copy versions. Preparation sessions may record

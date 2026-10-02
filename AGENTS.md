@@ -1,4 +1,4 @@
-# Platform Quickstarts
+# ZooWork Platform Quickstarts
 
 Read `docs/HANDOFF.md`, `docs/OUTLINE.md`, `docs/PLATFORM.md` and the target app's
 `README.md`, `PLAN.md` and any nested `AGENTS.md` first.
@@ -19,4 +19,6 @@ Read `docs/HANDOFF.md`, `docs/OUTLINE.md`, `docs/PLATFORM.md` and the target app
 - Preserve licenses when copying code; record source commits and paths in `docs/REFERENCES.md`.
 - Commit as `finn-srp <finn@srp.one>`; use Finn's active GitHub identity.
 
-Current status: runnable SDK lifecycle foundation. Feature demos are not implemented yet.
+Current status: Customer Support is implemented and verified; its evidence is in
+`customer-support/docs/VALIDATION.md`. Other applications on this branch still have lifecycle
+foundations. See the root README for their feature PRs and current delivery status.
