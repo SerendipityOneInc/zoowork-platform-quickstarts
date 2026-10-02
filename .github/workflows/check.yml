@@ -1,4 +1,4 @@
-name: Platform foundation
+name: ZooWork Platform quickstarts
 on:
   pull_request:
   push:
