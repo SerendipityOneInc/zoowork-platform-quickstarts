@@ -34,4 +34,6 @@
 
 按用户反馈保留原有主体界面和简单的折叠 debug。仅增加工具事件中的实际请求参数 JSON，以及请求已发起、等待审批、已返回和未执行状态；移除独立展示面板、链路图和计数。离线 Platform 与实际本机 HTTP MCP 的来源仍标明。
 
+本次 `npm ci`、`npm run check`（TypeScript + 25 tests）和 `npm run build` 均通过。浏览器检查确认 debug 默认折叠，预算和筛选参数 JSON 与实际工具请求一致，已返回、等待审批和拒绝后的未执行状态正确；1440px 桌面和 390px 窄屏无 document 横向 overflow 或 page errors，JSON 区域支持键盘访问。截图在 ignored `.impeccable/review/mcp-json-desktop.png` 和 `mcp-json-mobile.png`。
+
 PR #19 已于 2026-10-02 合并到 main，merge commit `3696818d31d2bd42a36b05af897bf78b5f9aae0f`；#22 已集成该 main，并使用 main 为 base。未执行新的 live staging。
