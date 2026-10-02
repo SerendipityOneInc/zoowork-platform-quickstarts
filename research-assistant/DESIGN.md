@@ -1,6 +1,6 @@
 ---
 name: Research Assistant
-description: 以简报和来源为主的本地研究阅读界面
+description: Local research reading interface centered on briefs and sources
 colors:
   accent: "#36523d"
   accent-hover: "#243f2b"
@@ -77,120 +77,126 @@ components:
 
 ## Overview
 
-**Creative North Star: "研究简报阅读界面"**
+**Creative North Star: Research brief reading interface**
 
-界面保留 Claude 官方 Chat SDK 示例的历史侧栏和阅读布局。视觉重点是连续阅读：暖色背景、清楚的正文层级和独立的来源区域。简报标题使用 serif，操作和辅助信息使用 sans-serif。
+Preserve the official Claude Chat SDK sample's history sidebar and reading layout.
+Warm surfaces, clear body hierarchy and a separate sources area support continuous
+reading. Brief headlines use serif; controls and supporting information use sans-serif.
 
-容器保持扁平。背景色和细边框划分区域，绿色用于主要操作、链接和当前选择。本文记录 `web/app.css` 与 `web/app.tsx` 中已实现的样式；单页装饰与一次性尺寸不作为通用 token。
-
-**Key Characteristics:**
-
-- 暖色中性背景配低饱和绿色。
-- serif 简报标题配 sans-serif 正文与控件。
-- 连续阅读区域、细边框和轻量选择状态。
-- 桌面并列、窄屏顺序阅读，键盘 focus 清楚可见。
+Keep containers flat. Surface colors and thin borders separate regions; muted green
+marks actions, links and selection. This document describes `web/app.css` and the
+implemented components, rather than promoting one-off values into general tokens.
 
 ## Colors
 
-颜色以中性表面为主，绿色提供交互层级。frontmatter 保存颜色的规范值。
+Frontmatter defines the canonical palette. `accent` serves primary buttons, links,
+active tabs, icons and tool status; `accent-hover` handles primary hover. `on-accent`
+is reserved for text on the green primary action.
 
-### Primary
-
-- **低饱和绿色**：`accent` 用于主要按钮、链接、激活 tab、图标与工具状态；`accent-hover` 用于主要按钮 hover。
-- **白色按钮文字**：`on-accent` 只用于绿色主操作的文字。
-
-### Neutral
-
-- **暖色背景**：`background` 用于全局阅读底色，`paper` 用于输入容器和 composer。
-- **侧栏底色**：`sidebar` 用于历史侧栏和手机顶部栏。
-- **正文与辅助文字**：`text` 用于正文；`muted` 用于状态、日期、域名和说明。
-- **边界与选择**：`line` 用于区域和列表分隔；`control-hover`、`history-selected` 分别表示 hover 和当前历史项。
-- **失败提示**：`failure` 用于失败的工具事件和停止研究操作。
-
-**The 交互颜色 Rule.** 绿色用于操作、链接和选择状态；来源读取状态必须同时保留文字说明，不能只靠颜色表达。
+`background` is the reading surface, `paper` serves inputs and the composer, and
+`sidebar` serves history and the mobile top bar. `text` and `muted` distinguish body
+and supporting information. `line` separates regions. `control-hover` and
+`history-selected` distinguish hover and selected history. `failure` marks failed tools
+and the stop action. Source read states always include text, rather than relying on color.
 
 ## Typography
 
-**Display Font:** Georgia，中文 fallback 为 Songti SC；用于简报标题。欢迎页另有 Noto Serif CJK SC fallback。
+- **Display:** Georgia, with Songti SC as a fallback for saved non-English content.
+  The welcome page also retains Noto Serif CJK SC as a fallback.
+- **Body:** system-ui, -apple-system, Segoe UI, sans-serif for prose, controls and metadata.
+- **Code/data:** `code-data` for SDK methods, IDs, tools, seq and argument/result JSON.
+  Debug titles, tabs, purpose, states and provenance remain sans-serif.
 
-**Body Font:** system-ui、-apple-system、Segoe UI、sans-serif；用于正文、控件和辅助信息。
+Brief headlines use `headline`, reduced to 1.5rem on mobile. Section titles use
+`section-title` with greater preceding space. Briefs and conversation use `body` and
+a reading container capped at 850px. Controls, labels and metadata decrease in size.
+Dates and source numbers use tabular numerals. JSON uses 1.7 line height and wraps
+within its region. Call times and durations remain sans-serif with tabular numerals.
 
-**Code / Data Font:** frontmatter 的 `code-data`；用于 SDK 方法名、ID、工具名称、seq 和参数/结果 JSON 等代码与数据。SDK Debug 标题、tab、用途、状态和读取来源保持 sans-serif。
-
-### Hierarchy
-
-- **Headline**：简报标题使用 `headline`，手机缩小为（1.5rem）。
-- **Section title**：正文二级标题使用 `section-title`，上方留出较大间距。
-- **Body**：简报和对话使用 `body`，行高适合连续阅读；阅读容器限制最大宽度（850px）。
-- **Control / Label / Metadata**：按钮、状态说明、日期和域名逐级减小。日期与来源编号使用 tabular numerals，保证数字对齐。
-- **Code / Data**：SDK Debug 的代码与数据使用 `code-data`；参数 JSON 行高（1.7），长 ID 与 JSON 在本区域内换行。调用时间和耗时保持 sans-serif，并使用 tabular numerals。
-
-**The 阅读层级 Rule.** serif 负责简报主标题；正文、列表、导航和操作保持 sans-serif，不用不同字体区分来源可信度。
+Use serif for the main brief headline, not to distinguish source credibility.
 
 ## Layout
 
-桌面外层是历史与内容两列：历史宽度（248px），内容允许收缩。历史侧栏使用 sticky，内部列表单独滚动。研究内容内再分为阅读与来源两列，来源宽度（240px）。宽度达到（1500px）时，来源增至（280px），阅读区居中并增加内边距。
+Desktop has a 248px sticky history sidebar and a shrinkable content column. History
+scrolls internally. The reading area has a separate 240px sources column; at 1500px
+and wider it grows to 280px, with centered reading content and larger insets.
 
-宽度不超过（1150px）时，来源移到正文后，来源列表暂为两列。宽度不超过（760px）时，历史改为（270px）drawer，来源单列，顶部显示历史入口。手机 composer 放在内容之后并随页面滚动；桌面 composer 使用底部 sticky。
+At 1150px and below, sources follow the brief and initially use two columns. At
+760px and below, history becomes a 270px drawer, sources become one column, and the
+top bar opens history. The mobile composer follows the document; desktop uses a
+sticky bottom composer. Reading insets shrink to 23px on mobile. Long titles, URLs,
+tables and code wrap or scroll within their own regions.
 
-间距按用途取值：小间隔用于按钮和行内图标，紧凑间距用于历史项和列表行，较大间距用于阅读段落与区域内边距。桌面阅读区主要水平内边距使用 `reading-inset`，手机统一缩小到（23px）。长标题、URL、表格和代码必须在自身区域内换行或滚动。
+SDK Debug appears above both welcome and research views. Agent and Session IDs are
+two columns on desktop and one on mobile. Mobile summaries and controls wrap, call
+times occupy a separate line, purpose sits below the method, and parameter indentation
+is removed. Logs scroll within a 360px desktop or 330px mobile maximum height.
 
-SDK Debug 位于内容顶部，欢迎页和已有研究共用同一组件。Agent / Session ID 桌面并列；宽度不超过（760px）时单列，摘要和控件可堆叠，调用时间单独一行，用途移到方法名下方，参数区取消左侧缩进。记录保持连续列表，列表自身滚动，高度上限为桌面（360px）、手机（330px）。
+## Elevation and Shapes
 
-## Elevation & Depth
-
-当前系统没有 box-shadow。历史、来源、输入和阅读区域通过背景差异与细边框分层。手机 drawer 使用半透明 backdrop；focus 使用轮廓，不使用阴影。
-
-**The 扁平容器 Rule.** 常驻表面使用背景与边框区分，不为历史项、简报或来源添加浮起阴影。
-
-## Shapes
-
-按钮使用小圆角 `control`，版本选择使用更紧凑的 `compact`。tab 和示例问题入口保持直边，通过底部分隔线表达结构。用户对话消息使用轻微圆角容器。图标使用 inline SVG 线条，不使用字符代替图标。
+No box shadows. Surfaces and thin borders distinguish history, sources, inputs and
+reading. The drawer has a translucent backdrop; keyboard focus uses an outline.
+Buttons use `control` radius; version selection uses `compact`. Tabs and example
+questions use straight edges and bottom borders. User messages have slight rounding.
+Icons use consistent inline SVG strokes.
 
 ## Components
 
-### Buttons
+### Buttons and Inputs
 
-主按钮为绿色实底，次按钮为透明背景加细边框。hover 使用已定义的表面颜色；disabled 降低透明度（.48）并显示不可操作 cursor。按钮、链接、选择框、textarea 和来源项的键盘 focus 使用轮廓（2px），与元素保持间距（3px）。
+Primary buttons are solid green. Secondary buttons are transparent with thin borders.
+Disabled controls use .48 opacity and a disabled cursor. Buttons, links, select,
+textarea and source items use a 2px keyboard focus outline with a 3px offset.
+Textareas are transparent, borderless internally, inherit text color, use 1.7 line
+height and resize vertically. Labels remain visible; placeholders supply examples.
+The caret uses accent.
 
-### Inputs / Fields
+### Navigation and Reading
 
-textarea 透明、无内边框，继承正文颜色，行高（1.7），可垂直调整。主题输入通过外层表面与边框组织；继续研究输入位于 composer 内。label 保持可见，placeholder 只提供示例。caret 使用 accent。
-
-### Navigation
-
-历史项按主题和状态日期两行排列。主题最多显示两行，完整标题通过 title 保留；当前项使用 `history-selected`。tab 用绿色文字和底边表示激活状态。手机复用同一历史内容，并通过顶部按钮打开 drawer。
-
-### Cards / Containers
-
-简报直接排在阅读区域中。对话中的用户消息使用浅色圆角容器，assistant 内容沿用连续正文。来源和活动使用列表与分隔线，保持结构清楚。
+History items show topic, status and date. Topics are limited visually to two lines
+and retain their full text in `title`. Selection uses `history-selected`; active tabs
+use green text and a bottom border. Mobile reuses the same history inside its drawer.
+Briefs occupy the reading surface directly; user messages use a pale rounded container.
+Assistant text remains continuous prose. All app labels, examples, statuses, recovery
+messages and accessible names are English. Content from saved research is displayed verbatim.
 
 ### Sources and Activity
 
-来源按编号、标题、域名和读取状态排列，点击正文编号定位相应来源，外部来源链接可单独打开。来源 hover 增加下划线，键盘 focus 保持可见。
-
-研究过程使用原生 details，可通过「查看研究过程」展开。chevron 随展开状态旋转，状态文字与调用计数保持可见；研究运行期间展开，结束后可折叠。工具行明确区分进行中、完成、未执行、待处理和失败。
+Sources show number, title, domain and read status. Inline citation numbers focus the
+matching source; external source links open independently. Links underline on hover
+and show keyboard focus. `Research activity` uses native details with a rotating
+chevron, status and actual call count. It opens while research runs and can collapse
+afterward. Tool rows distinguish In progress, Completed, Not executed, Needs attention
+and Failed.
 
 ### SDK Debug
 
-扁平的原生 details 区域通过细边框与研究内容分隔。折叠时保留「SDK Debug」、当前研究或所有会话的范围，以及执行中调用数、暂停或读取故障状态；chevron 随展开状态旋转，summary 有键盘 focus 轮廓。展开状态保存在当前浏览器 session 中。
+Native details separates this flat area from research with a thin border. Its summary
+retains SDK Debug, Current research/All sessions scope, running-call count, paused or
+unavailable state. Expansion is remembered in browser session storage.
 
-「SDK 调用」和「Platform 事件」使用独立 tab。当前 tab 使用绿色文字和 `paper` 底色；左右方向键切换并聚焦，Home / End 定位首尾，只有当前 tab 进入 Tab 顺序。两个 panel 始终挂载，用 hidden 切换，并通过 aria-controls / aria-labelledby 相互关联。调用区默认勾选「显示历史和状态读取调用」；每条调用的「参数与结果」使用独立原生 details。「暂停显示」冻结记录展示，按钮变为「继续显示」，研究继续执行。
+SDK calls and Platform events have separate tabs. The selected tab uses green text
+and `paper`. Left/right keys switch and focus tabs; Home/End choose first/last. Only
+the selected tab joins the tab order. Both panels stay mounted, switch with `hidden`,
+and maintain aria-controls/aria-labelledby linkage.
 
-调用列表按最新在前排列时间、SDK 方法、用途、状态和耗时，最多展示（40）条。状态明确写出「执行中」「返回成功」「调用失败」「读取已结束」；执行中使用 accent，失败使用 failure，成功返回不表示研究已完成。事件列表最多展示（60）条，按 seq、事件类型、读取来源、工具阶段和 Run ID 阅读；「历史读取」与「实时 stream」同时保留文字，历史工具事件不表示重新执行工具。
+Show history and status reads is enabled by default. Arguments and results uses
+native details per call. Pause display freezes records, becoming Resume display;
+research continues. Call rows show newest first: time, method, purpose, status and
+measured duration, up to 40 entries. Running, Succeeded, Failed and Closed are distinct;
+a successful SDK return does not mean research completed.
 
-首次读取、当前范围无记录和暂时无法读取各有说明。读取故障以文字提示自动重连及研究仍在执行。模拟模式在记录前明确标注未连接 Platform；参数只展示允许公开的 ID、类型和数量等摘要，代码字体用于数据，不扩展到装饰标签。
+Events show up to 60 records with seq, type, provenance, tool phase and Run ID.
+History read and Live stream remain text labels; historical tools are not new execution.
+Loading, empty scope and read failures have explicit copy. Fault copy explains automatic
+reconnection and continuing research. Offline mode explicitly states that Platform is
+not connected. Only safe argument/result summaries are shown.
 
 ## Do's and Don'ts
 
-### Do:
-
-- **Do** 沿用 frontmatter 的表面、文字和交互颜色，新增控件保持小圆角与细边框。
-- **Do** 保持正文、来源和历史的清楚层级，并在窄屏按阅读顺序堆叠。
-- **Do** 为操作保留文字和键盘 focus，为来源状态保留明确的文字依据。
-
-### Don't:
-
-- **Don't** 给常驻阅读区域增加浮起阴影或渐变背景。
-- **Don't** 用装饰标签、不同字体或仅颜色表达来源已验证。
-- **Don't** 在手机上固定 composer 遮住正文或来源。
+- Preserve the documented surface, text and interaction palette, thin borders and small radii.
+- Maintain reading, source and history hierarchy; stack in reading order on narrow screens.
+- Keep action text, keyboard focus and explicit source status explanations.
+- Avoid shadows or gradients on persistent reading surfaces.
+- Do not imply fact verification using decoration, font differences or color alone.
+- Do not fix the mobile composer over the brief or sources.

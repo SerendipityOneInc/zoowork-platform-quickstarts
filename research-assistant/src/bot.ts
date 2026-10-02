@@ -14,7 +14,7 @@ export function localRequest(request: Request): boolean {
 export function createBot(research: Research) {
   const logger = new ConsoleLogger('silent')
   const adapters = { web: createWebAdapter({ userName: 'research-assistant', persistMessageHistory: false,
-    logger, getUser: request => localRequest(request) ? { id: localOwner, name: '你' } : null }) }
+    logger, getUser: request => localRequest(request) ? { id: localOwner, name: 'You' } : null }) }
   const bot = new Chat({ userName: 'research-assistant', adapters, state: createMemoryState(), concurrency: 'concurrent', logger })
   bot.onDirectMessage(async (thread, message) => {
     if (message.author.isMe) return
@@ -26,7 +26,7 @@ export function createBot(research: Research) {
     } catch (error) {
       const code = safeError(error)
       console.error(`Research observer: ${code}`)
-      await thread.post('暂时无法确认本次研究状态。请重新读取会话；已提交的问题不会自动重发。').catch(() => {})
+      await thread.post('Research status is unconfirmed. Refresh the session; submitted questions will not be resent automatically.').catch(() => {})
     }
   })
   return bot

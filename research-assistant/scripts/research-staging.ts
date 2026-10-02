@@ -18,7 +18,7 @@ try {
     const model = process.env.ZOOWORK_MODEL || models.find(m => /sonnet/i.test(m.model))?.model || models[0]?.model
     if (!model || !models.some(m => m.model === model)) throw new FoundationError('model_unavailable')
     const state = newState(config, demo, { ...agentResource(), model: { primary: model, max_tokens: sessionOnly ? 128 : 2200 },
-      ...(sessionOnly ? { tool_policy: { deny: ['*'] }, persona: { docs: [{ name: 'AGENTS.md', content: '你是会话验证助手。严格按用户要求回复很短的文字。不使用工具。' }] } } : {}) })
+      ...(sessionOnly ? { tool_policy: { deny: ['*'] }, persona: { docs: [{ name: 'AGENTS.md', content: 'You verify conversation continuity. Follow the request exactly and reply very briefly. Do not use tools.' }] } } : {}) })
     const store = new Conversations(resolve('.local', filename.slice(0, -5) + '-conversations'), state, rt.client)
     const research = new Research(store, 150_000)
     let failure: unknown
@@ -26,7 +26,7 @@ try {
       console.log('RUN: bounded research staging (1 Agent, at most 2 Sessions / 2 turns)')
       await setupAgent(rt.client, state, path)
       const c = await store.create('Node.js release policy', randomUUID())
-      await research.send(c.id, sessionOnly ? `请记住字符串 ${marker}，现在只回复这个字符串。` : '请用 web_search 查找 Node.js 官方发布计划，再用 web_fetch 读取 https://nodejs.org/en/about/previous-releases 和 https://github.com/nodejs/Release 。用中文写一份很短的简报，说明 LTS 与 Current 的选择原则。只做一次搜索、两次读取，不讨论具体版本号。', randomUUID(), async () => {})
+      await research.send(c.id, sessionOnly ? `Remember the string ${marker}. Reply with only this string now.` : 'Use web_search to find the official Node.js release schedule, then use web_fetch to read https://nodejs.org/en/about/previous-releases and https://github.com/nodejs/Release . Write a very short English brief about choosing between LTS and Current. Make only one search and two fetches. Do not discuss specific version numbers.', randomUUID(), async () => {})
       const first = await research.history(c.id)
       const events = await allEvents(rt.client, state.agentId!, c.sessionId!)
       if (!events.some(e => runOutcome(e) === 'succeeded') || first.status !== 'succeeded') throw new FoundationError('research_turn_not_successful')
@@ -37,7 +37,7 @@ try {
         if (exported.status !== 200 || await exported.text() !== brief.markdown) throw new FoundationError('export_mismatch')
         console.log(`PASS: search/fetch, cited brief, durable replay and exact Markdown export (${events.length} events)`)
       } else console.log(`PASS: first minimal Session turn (${events.length} events)`)
-      await research.send(c.id, sessionOnly ? '上一轮让你记住的字符串是什么？只回复这个字符串。' : '基于刚才读过的资料，简单回答：为什么生产环境通常先考虑 LTS？不要检索，不要重新输出完整简报。', randomUUID(), async () => {})
+      await research.send(c.id, sessionOnly ? 'What string did I ask you to remember? Reply with only that string.' : 'Using the sources you just read, answer briefly: why is LTS usually considered first for production? Do not search or produce another complete brief.', randomUUID(), async () => {})
       const continued = await new Research(store).history(c.id)
       if (continued.status !== 'succeeded' || continued.messages.filter(m => m.role === 'user').length !== 2 || continued.briefs.length !== (sessionOnly ? 0 : 1) ||
         (sessionOnly && !continued.messages.at(-1)?.text.includes(marker))) throw new FoundationError('continuation_or_restart_failed')

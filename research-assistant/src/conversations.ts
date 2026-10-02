@@ -93,7 +93,7 @@ export class Conversations {
           !validId(m.conversation_id) || !session.session_id) continue
         try { await readFile(join(this.directory, m.conversation_id + '.json'), 'utf8'); await this.read(m.conversation_id); continue }
         catch (e) { if ((e as NodeJS.ErrnoException).code !== 'ENOENT') throw e }
-        const now = new Date().toISOString(), title = String(m.title ?? '研究').slice(0, 120)
+        const now = new Date().toISOString(), title = String(m.title ?? 'Research').slice(0, 120)
         await this.save({ version: 1, id: m.conversation_id, instance: this.state.instance, owner: localOwner,
           baseUrl: this.state.baseUrl, agentId: this.state.agentId!, sessionId: session.session_id, title,
           createdAt: now, updatedAt: now, createRequestId: `recovered-${session.session_id}`, createBody: { metadata: m as Record<string, string> },

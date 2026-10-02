@@ -9,7 +9,7 @@ import { Conversations } from '../src/conversations.js'
 import { Research } from '../src/turns.js'
 
 export const urls = ['https://nodejs.org/en/about/previous-releases', 'https://github.com/nodejs/Release']
-export const report = (title = 'Node.js 支持周期（模拟资料）') => `# ${title}\n\n## 摘要\n这是离线 fixture，用于验证研究流程，内容不是实时研究结果。\n\n## 主要发现\n选择版本时，应检查支持周期 [1](${urls[0]}) 和发布计划 [2](${urls[1]})。\n\n## 限制与待确认\n这里只提供模拟资料，实际版本需要重新查询。\n\n## 来源\n1. [Node.js 官方版本说明](${urls[0]})\n2. [Node.js 官方发布计划](${urls[1]})`
+export const report = (title = 'Node.js support timelines (simulated sources)') => `# ${title}\n\n## Summary\nThis offline fixture verifies the research flow. It is not a live research result.\n\n## Key findings\nWhen choosing a version, check support timelines [1](${urls[0]}) and release schedules [2](${urls[1]}).\n\n## Limitations and open questions\nThese sources are simulated. Check current versions with a new search.\n\n## Sources\n1. [Official Node.js versions](${urls[0]})\n2. [Official Node.js release schedule](${urls[1]})`
 type Session = { record: SessionRecord; events: SessionEvent[]; notify: Set<() => void>; run?: string; turns: number }
 export class FakePlatform {
   readonly state = newState({ apiKey: 'zwp_live_fixture_only', baseUrl: STAGING_URL }, 'research-assistant', agentResource())
@@ -61,7 +61,7 @@ export class FakePlatform {
       const message = this.emit(id, 'user.message', { content: input.content })
       const run = randomUUID(); s.run = run; s.turns++; s.record.run_status = 'running'
       this.emit(id, 'run.started', { inboundMessageId: this.separateInboundIds ? randomUUID() : message.id, trigger: 'user_message', surface: 'api' }, run)
-      this.emit(id, 'agent.assistant', { message: { content: [{ type: 'text', text: '正在检索和阅读资料（离线模拟）。' }] } }, run)
+      this.emit(id, 'agent.assistant', { message: { content: [{ type: 'text', text: 'Searching and reading sources (offline simulation).' }] } }, run)
       this.later(() => {
         if (s.run !== run) return
         const search = randomUUID()
@@ -72,7 +72,7 @@ export class FakePlatform {
           this.emit(id, 'agent.tool', { phase: 'start', toolName: 'web_fetch', toolCallId: fetch, args: { url } }, run)
           this.emit(id, 'agent.tool', { phase: 'end', toolName: 'web_fetch', toolCallId: fetch, isError: false, executionStarted: true }, run)
         })
-        this.emit(id, 'agent.assistant', { message: { content: [{ type: 'text', text: report(s.turns === 1 ? undefined : '更新的研究简报（模拟资料）') }] } }, run)
+        this.emit(id, 'agent.assistant', { message: { content: [{ type: 'text', text: report(s.turns === 1 ? undefined : 'Updated research brief (simulated sources)') }] } }, run)
         this.emit(id, 'run.finished', { status: 'succeeded' }, run); s.record.run_status = 'idle'; s.run = undefined
       })
       if (this.ambiguousInput) throw new Error('fixture_lost_input_receipt')

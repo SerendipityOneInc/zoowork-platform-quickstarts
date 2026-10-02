@@ -1,4 +1,4 @@
-# Research Assistant 产品范围
+# Research Assistant Product Scope
 
 <!-- impeccable:product-schema 1 -->
 
@@ -8,52 +8,59 @@ web
 
 ## Users
 
-首版是本地单用户 starter。Finn 于 2026-10-01 在当前 session 明确确认此范围。
-使用者输入研究主题，阅读简报、检查来源，再通过追问继续研究。
+A local, single-user starter, confirmed by Finn on 2026-10-01. Users enter a topic,
+read a brief, inspect its sources and continue the research through follow-ups.
+The interface, example topics and default replies are in English. Saved input and
+brief text retain their original language.
 
 ## Product Purpose
 
-完成「提出问题 → 检索资料 → 查看实际进度 → 获得带来源的简报 → 保存历史 →
-继续研究 → 导出 Markdown」的完整流程。简报是主要成果，对话承载输入和追问，
-tool trace 用于解释研究过程。
+Complete the flow from question to public-source research, actual progress, a cited
+brief, saved history, follow-ups and Markdown export. The brief is the primary result;
+conversation carries input and follow-ups, and activity explains the research process.
 
-本项目同时用于展示 SDK 的实际能力。页面顶部的 SDK Debug 展示真实的方法调用、
-状态、耗时和安全参数摘要；Platform 事件区展示运行及工具事件，并区分历史读取与
-实时 stream。研究结果和 SDK 接入过程都可以直接查看。
+The project also demonstrates SDK capabilities. SDK Debug at the top of the page shows
+actual methods, state, duration and safe argument summaries. Platform events expose
+run and tool phases, distinguishing history reads from live stream delivery.
 
 ## Operating Context
 
-- 本机运行，一个 Node 服务同时提供浏览器界面和后端 API。
-- 使用 Vercel Chat SDK 的官方 Web adapter，后端连接 ZooWork Platform Session。
-- 通过 Project key 和已发布的 SDK 创建本应用 Agent；key 留在服务端。
-- Platform 保存对话和事件，本地保存应用归属映射、请求身份和恢复记录。
-- 服务重启和页面刷新后可以恢复，依赖保留 `.local/` 数据及同一 Agent。
+- One local Node service hosts both the browser UI and backend API.
+- Vercel Chat SDK's official Web adapter connects to ZooWork Platform Sessions.
+- A Project key and the published SDK create this application's Agent. The key stays server-side.
+- Platform stores conversation text and events. Local state stores ownership mappings,
+  stable request identities and recovery records.
+- Refresh and server restart recovery require the same Agent and retained `.local/` data.
 
 ## Capabilities and Constraints
 
-- 使用 `web_search` 和 `web_fetch`；已在 staging 完成一次搜索、两次网页读取及带来源简报。
-- 当前发布 SDK 提供完整 assistant 消息和 durable events，不提供 token preview。
-- Session metadata 只能创建时写入；标题在首次提交主题时确定。
-- 继续研究复用原 Session，不重发历史、不默认创建新 Session。
-- 首版不包含公开部署、多人登录、IM adapters、定时研究、文件上传或独立 RAG。
-- Finn 已在当前 session 以「搞。」批准开始实现。staging 验证遵守交接文档的小规模授权。
+- Uses `web_search` and `web_fetch`, verified in staging with actual tools and a cited brief.
+- The published SDK supplies complete assistant messages and durable events, without token previews.
+- Session metadata is written at creation. The first submitted topic sets the title.
+- Follow-ups reuse the same Session, without resending history.
+- Public hosting, multi-user authentication, IM adapters, schedules, uploads and separate RAG are outside scope.
+- Finn authorized implementation in this session. Staging verification follows the bounded handoff authorization.
 
 ## Evidence on Hand
 
-研究界面、会话恢复、来源区、版本和导出已经实现。离线测试覆盖输入幂等、归属、停止、
-事件恢复和来源判定；桌面和手机浏览器验证了完整用户流程。
-staging 已分别验证研究首轮及修复后的会话延续，具体证据和未覆盖项见 [VALIDATION.md](VALIDATION.md)。
-Claude 官方示例的实际改写路径和 MIT notice 见 [REFERENCES.md](REFERENCES.md)。
-离线 fixture 明确标注为模拟资料；截图不能作为 staging 证据。
+Research UI, history recovery, sources, versions and export are implemented. Offline tests
+cover idempotency, ownership, interruption, event recovery and source classification;
+desktop and mobile browser tests cover the complete user flow.
+
+[VALIDATION.md](VALIDATION.md) separates offline evidence from actual staging results and
+uncovered areas. [REFERENCES.md](REFERENCES.md) records adapted source paths and the MIT notice.
+Offline fixtures are labeled as simulated; fixture screenshots are not staging evidence.
 
 ## Product Principles
 
-- 用户能看到事实的来源及研究限制。
-- 进度来自实际事件，不用百分比暗示不存在的完成程度。
-- 连接丢失与研究失败分别处理，不通过自动重发问题恢复连接。
-- 简报主视图、历史版本和导出使用同一份持久消息正文。
+- Show sources and research limitations.
+- Derive progress from actual events; never invent a completion percentage.
+- Distinguish connection loss from research failure. Reconnect without resending input.
+- Display, history versions and export use the same durable message text.
+- Keep interface terminology, accessible labels and default output consistently English.
 
-## 已确定的实施范围
+## Agreed Implementation Scope
 
-按 [PLAN.md](PLAN.md) 实施本地单用户 starter，保留官方示例的历史侧栏和阅读布局基础。
-没有独立视觉稿；当前界面由代码和桌面、手机实测截图提供证据。
+Implement the local starter in [PLAN.md](PLAN.md), retaining the official sample's history
+sidebar and reading layout. Code and desktop/mobile screenshots document the current UI;
+there is no separate visual mockup.

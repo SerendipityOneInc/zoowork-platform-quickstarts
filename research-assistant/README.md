@@ -1,6 +1,6 @@
 # Research Assistant
 
-A local, single-user research starter using Vercel Chat SDK’s Web adapter and ZooWork Platform Sessions. Enter a topic, follow actual search/fetch activity, read a cited brief, return to saved research, ask follow-ups, choose brief versions, and export Markdown.
+A local, single-user research starter using Vercel Chat SDK’s Web adapter and ZooWork Platform Sessions. The interface, sample topics and default research replies are in English. Enter a topic, follow actual search/fetch activity, read a cited brief, return to saved research, ask follow-ups, choose brief versions, and export Markdown.
 
 The brief is the primary result. Conversation and expandable activity provide context. Source labels distinguish a successful fetch, earlier research, search results, and unconfirmed links. A successful fetch does not independently verify facts.
 
@@ -30,7 +30,7 @@ calls: `getAgent`, `createSession`, `getSession`, `postEvents`, `listEventsPage`
 time and an allow-listed argument/result summary. Interrupts appear as `postEvents`
 with `user.interrupt`. Agent and Session IDs identify the current research.
 
-The **Platform 事件** tab shows durable event types, sequence numbers, Run IDs and
+The **Platform events** tab shows durable event types, sequence numbers, Run IDs and
 `web_search`/`web_fetch` phases. History reads and live stream deliveries are labeled
 separately and deduplicated per Session/sequence; reading a historical tool event
 does not execute that tool again. SDK call success is distinct from run completion.
@@ -40,14 +40,14 @@ the UI shows the latest 40 calls or 60 events in the selected scope. Restarting 
 the journal; setup calls from an earlier process are not invented. Completed routine
 reads are evicted first. The debug endpoint is local, read-only and does not call
 Platform. It never stores keys, headers, input text, tool output, raw metadata,
-cursor values or provider error bodies. **暂停显示** freezes display only; it does not
+cursor values or provider error bodies. **Pause display** freezes display only; it does not
 interrupt research. Offline fixtures are explicitly labeled in this panel.
 
 ## History and recovery
 
 Platform is authoritative for messages, tools, run outcomes and brief text. Ignored private `.local/agent.json` records the immutable create body/key and Agent ID. `.local/conversations/` records app conversation → Session mappings, ownership, input intents and cursors. Completed input text is removed from local intents. Keep this directory and the same Agent to resume after server restart. Browser storage remembers the active conversation and per-conversation drafts.
 
-Each Session accepts one active input. Server locks protect against different inputs from multiple tabs; stable request identities prevent reposting the same input. Refreshing, disconnecting, or switching conversations never reposts history. Closing the browser does not stop the Platform run. **停止研究** sends `user.interrupt` and waits for an actual terminal.
+Each Session accepts one active input. Server locks protect against different inputs from multiple tabs; stable request identities prevent reposting the same input. Refreshing, disconnecting, or switching conversations never reposts history. Closing the browser does not stop the Platform run. **Stop research** sends `user.interrupt` and waits for an actual terminal.
 
 Public input event IDs and internal `inboundMessageId` can differ. Under this starter’s single-writer contract, the bridge associates the matching input echo with the sole new external run after the pre-submit history boundary. An older terminal cannot finish a new input. Do not use these Sessions through another writer, schedules or an external client. Ambiguous submissions remain pending until read-only reconciliation; they are not automatically retried or silently cleared.
 
@@ -58,11 +58,11 @@ npm run update-agent
 npm run recover
 ```
 
-`update-agent` explicitly updates the recorded Agent’s research configuration. It keeps the original create body immutable, persists pending sections before writing, and reconciles a lost response by reading the Agent. An existing foundation Agent requires this command before using the research UI.
+`update-agent` explicitly updates the recorded Agent’s research configuration. It keeps the original create body immutable, persists pending sections before writing, and reconciles a lost response by reading the Agent. Run this command for an existing Agent after changing the research prompt, including when switching to the English default. Saved conversation text keeps its original language.
 
 `recover` rebuilds missing conversation records only from this Agent’s matching app/instance/owner metadata. It refuses corrupt or foreign files. The Agent record is still required; do not substitute an ID. Recovered Sessions retain Platform history but not lost local input request identities.
 
-Archived Sessions are readable/exportable and cannot accept input. Unknown, deleted or mismatched Sessions fail closed. For an unresolved run, use **重新读取** and retain `.local/` for investigation. A crashed process leaves `web.lock`; the next start removes it only if the recorded PID no longer exists. An invalid lock needs manual review.
+Archived Sessions are readable/exportable and cannot accept input. Unknown, deleted or mismatched Sessions fail closed. For an unresolved run, use **Refresh** and retain `.local/` for investigation. A crashed process leaves `web.lock`; the next start removes it only if the recorded PID no longer exists. An invalid lock needs manual review.
 
 ## Offline checks and demo
 
