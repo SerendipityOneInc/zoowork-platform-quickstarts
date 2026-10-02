@@ -1,6 +1,9 @@
 # Customer Support implementation plan
 
-Startup: implement first. Technical focus: application-executed Custom Tools.
+Status: implemented and verified on 2026-10-01. Technical focus: application-executed Custom Tools.
+
+See [README](README.md) for the runnable application and [verification](docs/VALIDATION.md) for
+offline and actual staging evidence. The scope and acceptance criteria below guided implementation.
 
 ## Product flow
 
