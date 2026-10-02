@@ -19,7 +19,7 @@ transaction rollback, conversation ID collision, pending-call and result-deliver
 acceptance, process exclusivity, cleanup scope and failure retention. Fresh-directory subprocess checks exercise the actual setup/server entry points with missing keys, missing URLs and no recorded Agent. They verify actionable instructions, no credential reflection and no created resource state.
 
 Browser scenarios cover order/shipment lookup and follow-up, cancellation and confirmation, reload
-with pending/committed state, unknown orders, escaped hostile tool data, mobile layout, switching to
+with pending/committed state, unknown orders, escaped hostile tool data (lowercase, uppercase and mixed-case script tags plus image event attributes in messages, confirmation and raw tool details), mobile layout, switching to
 an empty conversation and keyboard focus surviving a polling interval. The tool-visibility follow-up also verifies chronological inline lookup summaries, cancellation/failure/confirmation outcomes, pending review focus across polling, mobile navigation to confirmation and ticket summaries after reload. The starter onboarding scenario verifies the Console link, key/configuration/startup guidance, a stable open disclosure across polling and no overflow at 390px.
 
 An independent UI source/screenshot review found stale messages when switching to an empty
@@ -27,6 +27,11 @@ conversation and lost keyboard focus during polling. Both were repaired and cove
 regressions. The mechanical design detector had unavailable parser modules; its regex-only output
 was not treated as full accessibility verification. Contrast was reviewed from source colors;
 full assistive-technology testing was not performed.
+
+The 2026-10-02 CodeQL follow-up removes tag recognition from the offline fixture. Ticket reasons
+preserve the untrusted input rather than selecting a canned HTML payload. Browser regressions verify
+that all three rendering regions display this input as text, create no script/image elements and
+trigger no dialogs. This is offline verification; it does not consume Platform credits.
 
 ## Actual staging evidence
 

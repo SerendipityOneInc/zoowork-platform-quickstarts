@@ -94,9 +94,8 @@ export function fixtureClient() {
                 : /damage/i.test(text)
                   ? "damage"
                   : "delivery",
-            reason: /<script>/.test(text)
-              ? '<script>alert("fixture")</script> Please investigate the delayed shipment.'
-              : "Please investigate the delayed shipment and provide a delivery update.",
+            // Preserve untrusted text; the UI must escape every rendering sink.
+            reason: text,
           });
         else {
           request(id, "lookup_order", { order_id: orderId });

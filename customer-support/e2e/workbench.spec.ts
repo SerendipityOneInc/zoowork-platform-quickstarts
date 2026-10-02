@@ -139,6 +139,11 @@ test("track an order, ask a follow-up, cancel and then confirm a ticket; reload 
 test("unknown orders and hostile tool data render safely without a ticket write", async ({
   page,
 }) => {
+  const dialogs: string[] = [];
+  page.on("dialog", (dialog) => {
+    dialogs.push(dialog.message());
+    void dialog.dismiss();
+  });
   await page.goto("/");
   await send(page, "Check ORD-9999.");
   await expect(page.locator("#status")).toHaveText("Ready");
@@ -147,17 +152,30 @@ test("unknown orders and hostile tool data render safely without a ticket write"
     "No matching order",
     "No matching order",
   ]);
-  await send(
-    page,
-    'Create a ticket for ORD-1001. <script>alert("fixture")</script>',
-  );
-  await expect(page.locator("#confirmation")).toContainText(
+  await page.getByText("Tool call details", { exact: false }).click();
+  for (const payload of [
     '<script>alert("fixture")</script>',
-  );
-  expect(await page.locator("#confirmation script").count()).toBe(0);
-  await page.getByRole("button", { name: "Cancel request" }).click();
-  await expect(page.locator("#status")).toHaveText("Ready");
-  await expect(page.locator("#ticket-count")).toHaveText("0");
+    '<SCRIPT>alert("uppercase")</SCRIPT>',
+    '<ScRiPt>alert("mixed")</ScRiPt><IMG src=x onerror=alert("event")>',
+  ]) {
+    await send(page, `Create a ticket for ORD-1001. ${payload}`);
+    await expect(page.locator("#confirmation")).toContainText(payload);
+    await expect(page.locator("#messages")).toContainText(payload);
+    await expect(page.locator("#trace")).toContainText(
+      JSON.stringify(payload).slice(1, -1),
+    );
+    expect(
+      await page
+        .locator(
+          "#confirmation script, #confirmation img, #messages script, #messages img, #trace script, #trace img",
+        )
+        .count(),
+    ).toBe(0);
+    await page.getByRole("button", { name: "Cancel request" }).click();
+    await expect(page.locator("#status")).toHaveText("Ready");
+    await expect(page.locator("#ticket-count")).toHaveText("0");
+  }
+  expect(dialogs).toEqual([]);
 });
 test("mobile layout retains conversation, order and confirmation controls without overflow", async ({
   page,
