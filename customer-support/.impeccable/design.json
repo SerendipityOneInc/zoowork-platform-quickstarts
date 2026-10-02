@@ -1,0 +1,543 @@
+{
+  "schemaVersion": 2,
+  "generatedAt": "2026-10-01T12:05:42Z",
+  "title": "Design System: Customer Support",
+  "extensions": {
+    "colorMeta": {
+      "ink": {
+        "role": "neutral",
+        "displayName": "Ink",
+        "tonalRamp": [
+          "oklch(15.00% 0.0236 178.34)",
+          "oklch(26.43% 0.0236 178.34)",
+          "oklch(37.86% 0.0236 178.34)",
+          "oklch(49.29% 0.0236 178.34)",
+          "oklch(60.71% 0.0236 178.34)",
+          "oklch(72.14% 0.0236 178.34)",
+          "oklch(83.57% 0.0236 178.34)",
+          "oklch(95.00% 0.0236 178.34)"
+        ]
+      },
+      "muted": {
+        "role": "neutral",
+        "displayName": "Muted Text",
+        "tonalRamp": [
+          "oklch(15.00% 0.0204 169.46)",
+          "oklch(26.43% 0.0204 169.46)",
+          "oklch(37.86% 0.0204 169.46)",
+          "oklch(49.29% 0.0204 169.46)",
+          "oklch(60.71% 0.0204 169.46)",
+          "oklch(72.14% 0.0204 169.46)",
+          "oklch(83.57% 0.0204 169.46)",
+          "oklch(95.00% 0.0204 169.46)"
+        ]
+      },
+      "line": {
+        "role": "neutral",
+        "displayName": "Divider",
+        "tonalRamp": [
+          "oklch(15.00% 0.0101 155.08)",
+          "oklch(26.43% 0.0101 155.08)",
+          "oklch(37.86% 0.0101 155.08)",
+          "oklch(49.29% 0.0101 155.08)",
+          "oklch(60.71% 0.0101 155.08)",
+          "oklch(72.14% 0.0101 155.08)",
+          "oklch(83.57% 0.0101 155.08)",
+          "oklch(95.00% 0.0101 155.08)"
+        ]
+      },
+      "paper": {
+        "role": "neutral",
+        "displayName": "Paper",
+        "tonalRamp": [
+          "oklch(15.00% 0.0000 0.00)",
+          "oklch(26.43% 0.0000 0.00)",
+          "oklch(37.86% 0.0000 0.00)",
+          "oklch(49.29% 0.0000 0.00)",
+          "oklch(60.71% 0.0000 0.00)",
+          "oklch(72.14% 0.0000 0.00)",
+          "oklch(83.57% 0.0000 0.00)",
+          "oklch(95.00% 0.0000 0.00)"
+        ]
+      },
+      "canvas": {
+        "role": "neutral",
+        "displayName": "Canvas",
+        "tonalRamp": [
+          "oklch(15.00% 0.0054 117.92)",
+          "oklch(26.43% 0.0054 117.92)",
+          "oklch(37.86% 0.0054 117.92)",
+          "oklch(49.29% 0.0054 117.92)",
+          "oklch(60.71% 0.0054 117.92)",
+          "oklch(72.14% 0.0054 117.92)",
+          "oklch(83.57% 0.0054 117.92)",
+          "oklch(95.00% 0.0054 117.92)"
+        ]
+      },
+      "green": {
+        "role": "primary",
+        "displayName": "Muted Green",
+        "tonalRamp": [
+          "oklch(15.00% 0.0435 178.95)",
+          "oklch(26.43% 0.0435 178.95)",
+          "oklch(37.86% 0.0435 178.95)",
+          "oklch(49.29% 0.0435 178.95)",
+          "oklch(60.71% 0.0435 178.95)",
+          "oklch(72.14% 0.0435 178.95)",
+          "oklch(83.57% 0.0435 178.95)",
+          "oklch(95.00% 0.0435 178.95)"
+        ]
+      },
+      "green-soft": {
+        "role": "primary",
+        "displayName": "Soft Green",
+        "tonalRamp": [
+          "oklch(15.00% 0.0116 153.67)",
+          "oklch(26.43% 0.0116 153.67)",
+          "oklch(37.86% 0.0116 153.67)",
+          "oklch(49.29% 0.0116 153.67)",
+          "oklch(60.71% 0.0116 153.67)",
+          "oklch(72.14% 0.0116 153.67)",
+          "oklch(83.57% 0.0116 153.67)",
+          "oklch(95.00% 0.0116 153.67)"
+        ]
+      },
+      "green-hover": {
+        "role": "primary",
+        "displayName": "Green Hover",
+        "tonalRamp": [
+          "oklch(15.00% 0.0579 172.08)",
+          "oklch(26.43% 0.0579 172.08)",
+          "oklch(37.86% 0.0579 172.08)",
+          "oklch(49.29% 0.0579 172.08)",
+          "oklch(60.71% 0.0579 172.08)",
+          "oklch(72.14% 0.0579 172.08)",
+          "oklch(83.57% 0.0579 172.08)",
+          "oklch(95.00% 0.0579 172.08)"
+        ]
+      },
+      "focus": {
+        "role": "primary",
+        "displayName": "Focus Green",
+        "tonalRamp": [
+          "oklch(15.00% 0.0589 172.29)",
+          "oklch(26.43% 0.0589 172.29)",
+          "oklch(37.86% 0.0589 172.29)",
+          "oklch(49.29% 0.0589 172.29)",
+          "oklch(60.71% 0.0589 172.29)",
+          "oklch(72.14% 0.0589 172.29)",
+          "oklch(83.57% 0.0589 172.29)",
+          "oklch(95.00% 0.0589 172.29)"
+        ]
+      },
+      "amber": {
+        "role": "secondary",
+        "displayName": "Review Amber",
+        "tonalRamp": [
+          "oklch(15.00% 0.0982 61.09)",
+          "oklch(26.43% 0.0982 61.09)",
+          "oklch(37.86% 0.0982 61.09)",
+          "oklch(49.29% 0.0982 61.09)",
+          "oklch(60.71% 0.0982 61.09)",
+          "oklch(72.14% 0.0982 61.09)",
+          "oklch(83.57% 0.0982 61.09)",
+          "oklch(95.00% 0.0982 61.09)"
+        ]
+      },
+      "amber-soft": {
+        "role": "secondary",
+        "displayName": "Review Surface",
+        "tonalRamp": [
+          "oklch(15.00% 0.0237 79.75)",
+          "oklch(26.43% 0.0237 79.75)",
+          "oklch(37.86% 0.0237 79.75)",
+          "oklch(49.29% 0.0237 79.75)",
+          "oklch(60.71% 0.0237 79.75)",
+          "oklch(72.14% 0.0237 79.75)",
+          "oklch(83.57% 0.0237 79.75)",
+          "oklch(95.00% 0.0237 79.75)"
+        ]
+      },
+      "danger": {
+        "role": "tertiary",
+        "displayName": "Error Red",
+        "tonalRamp": [
+          "oklch(15.00% 0.1388 24.02)",
+          "oklch(26.43% 0.1388 24.02)",
+          "oklch(37.86% 0.1388 24.02)",
+          "oklch(49.29% 0.1388 24.02)",
+          "oklch(60.71% 0.1388 24.02)",
+          "oklch(72.14% 0.1388 24.02)",
+          "oklch(83.57% 0.1388 24.02)",
+          "oklch(95.00% 0.1388 24.02)"
+        ]
+      },
+      "error-soft": {
+        "role": "tertiary",
+        "displayName": "Error Surface",
+        "tonalRamp": [
+          "oklch(15.00% 0.0163 17.44)",
+          "oklch(26.43% 0.0163 17.44)",
+          "oklch(37.86% 0.0163 17.44)",
+          "oklch(49.29% 0.0163 17.44)",
+          "oklch(60.71% 0.0163 17.44)",
+          "oklch(72.14% 0.0163 17.44)",
+          "oklch(83.57% 0.0163 17.44)",
+          "oklch(95.00% 0.0163 17.44)"
+        ]
+      },
+      "nav-hover": {
+        "role": "neutral",
+        "displayName": "Navigation Hover",
+        "tonalRamp": [
+          "oklch(15.00% 0.0113 141.26)",
+          "oklch(26.43% 0.0113 141.26)",
+          "oklch(37.86% 0.0113 141.26)",
+          "oklch(49.29% 0.0113 141.26)",
+          "oklch(60.71% 0.0113 141.26)",
+          "oklch(72.14% 0.0113 141.26)",
+          "oklch(83.57% 0.0113 141.26)",
+          "oklch(95.00% 0.0113 141.26)"
+        ]
+      },
+      "nav-active": {
+        "role": "neutral",
+        "displayName": "Current Conversation",
+        "tonalRamp": [
+          "oklch(15.00% 0.0130 141.81)",
+          "oklch(26.43% 0.0130 141.81)",
+          "oklch(37.86% 0.0130 141.81)",
+          "oklch(49.29% 0.0130 141.81)",
+          "oklch(60.71% 0.0130 141.81)",
+          "oklch(72.14% 0.0130 141.81)",
+          "oklch(83.57% 0.0130 141.81)",
+          "oklch(95.00% 0.0130 141.81)"
+        ]
+      },
+      "input-border": {
+        "role": "neutral",
+        "displayName": "Input Stroke",
+        "tonalRamp": [
+          "oklch(15.00% 0.0223 154.04)",
+          "oklch(26.43% 0.0223 154.04)",
+          "oklch(37.86% 0.0223 154.04)",
+          "oklch(49.29% 0.0223 154.04)",
+          "oklch(60.71% 0.0223 154.04)",
+          "oklch(72.14% 0.0223 154.04)",
+          "oklch(83.57% 0.0223 154.04)",
+          "oklch(95.00% 0.0223 154.04)"
+        ]
+      },
+      "input-focus": {
+        "role": "primary",
+        "displayName": "Focused Input Stroke",
+        "tonalRamp": [
+          "oklch(15.00% 0.0711 166.82)",
+          "oklch(26.43% 0.0711 166.82)",
+          "oklch(37.86% 0.0711 166.82)",
+          "oklch(49.29% 0.0711 166.82)",
+          "oklch(60.71% 0.0711 166.82)",
+          "oklch(72.14% 0.0711 166.82)",
+          "oklch(83.57% 0.0711 166.82)",
+          "oklch(95.00% 0.0711 166.82)"
+        ]
+      },
+      "secondary-border": {
+        "role": "neutral",
+        "displayName": "Secondary Control Stroke",
+        "tonalRamp": [
+          "oklch(15.00% 0.0206 154.81)",
+          "oklch(26.43% 0.0206 154.81)",
+          "oklch(37.86% 0.0206 154.81)",
+          "oklch(49.29% 0.0206 154.81)",
+          "oklch(60.71% 0.0206 154.81)",
+          "oklch(72.14% 0.0206 154.81)",
+          "oklch(83.57% 0.0206 154.81)",
+          "oklch(95.00% 0.0206 154.81)"
+        ]
+      },
+      "order-border": {
+        "role": "neutral",
+        "displayName": "Order Selector Stroke",
+        "tonalRamp": [
+          "oklch(15.00% 0.0164 148.38)",
+          "oklch(26.43% 0.0164 148.38)",
+          "oklch(37.86% 0.0164 148.38)",
+          "oklch(49.29% 0.0164 148.38)",
+          "oklch(60.71% 0.0164 148.38)",
+          "oklch(72.14% 0.0164 148.38)",
+          "oklch(83.57% 0.0164 148.38)",
+          "oklch(95.00% 0.0164 148.38)"
+        ]
+      },
+      "order-active-border": {
+        "role": "neutral",
+        "displayName": "Selected Order Stroke",
+        "tonalRamp": [
+          "oklch(15.00% 0.0456 159.94)",
+          "oklch(26.43% 0.0456 159.94)",
+          "oklch(37.86% 0.0456 159.94)",
+          "oklch(49.29% 0.0456 159.94)",
+          "oklch(60.71% 0.0456 159.94)",
+          "oklch(72.14% 0.0456 159.94)",
+          "oklch(83.57% 0.0456 159.94)",
+          "oklch(95.00% 0.0456 159.94)"
+        ]
+      },
+      "badge-soft": {
+        "role": "neutral",
+        "displayName": "Order Badge Surface",
+        "tonalRamp": [
+          "oklch(15.00% 0.0177 148.10)",
+          "oklch(26.43% 0.0177 148.10)",
+          "oklch(37.86% 0.0177 148.10)",
+          "oklch(49.29% 0.0177 148.10)",
+          "oklch(60.71% 0.0177 148.10)",
+          "oklch(72.14% 0.0177 148.10)",
+          "oklch(83.57% 0.0177 148.10)",
+          "oklch(95.00% 0.0177 148.10)"
+        ]
+      },
+      "badge-delayed": {
+        "role": "secondary",
+        "displayName": "Delayed Shipment Surface",
+        "tonalRamp": [
+          "oklch(15.00% 0.0406 86.73)",
+          "oklch(26.43% 0.0406 86.73)",
+          "oklch(37.86% 0.0406 86.73)",
+          "oklch(49.29% 0.0406 86.73)",
+          "oklch(60.71% 0.0406 86.73)",
+          "oklch(72.14% 0.0406 86.73)",
+          "oklch(83.57% 0.0406 86.73)",
+          "oklch(95.00% 0.0406 86.73)"
+        ]
+      },
+      "confirmation-ink": {
+        "role": "secondary",
+        "displayName": "Review Heading",
+        "tonalRamp": [
+          "oklch(15.00% 0.0652 65.67)",
+          "oklch(26.43% 0.0652 65.67)",
+          "oklch(37.86% 0.0652 65.67)",
+          "oklch(49.29% 0.0652 65.67)",
+          "oklch(60.71% 0.0652 65.67)",
+          "oklch(72.14% 0.0652 65.67)",
+          "oklch(83.57% 0.0652 65.67)",
+          "oklch(95.00% 0.0652 65.67)"
+        ]
+      },
+      "confirmation-muted": {
+        "role": "secondary",
+        "displayName": "Review Supporting Text",
+        "tonalRamp": [
+          "oklch(15.00% 0.0647 66.96)",
+          "oklch(26.43% 0.0647 66.96)",
+          "oklch(37.86% 0.0647 66.96)",
+          "oklch(49.29% 0.0647 66.96)",
+          "oklch(60.71% 0.0647 66.96)",
+          "oklch(72.14% 0.0647 66.96)",
+          "oklch(83.57% 0.0647 66.96)",
+          "oklch(95.00% 0.0647 66.96)"
+        ]
+      }
+    },
+    "typographyMeta": {
+      "headline": {
+        "displayName": "Welcome Headline",
+        "purpose": "Centered empty-conversation heading; 24px on mobile."
+      },
+      "title": {
+        "displayName": "Conversation Title",
+        "purpose": "Main task heading; 23px on mobile."
+      },
+      "section": {
+        "displayName": "Section Heading",
+        "purpose": "Navigation and context sections, with documented contextual size variants."
+      },
+      "body": {
+        "displayName": "Interface Body",
+        "purpose": "Standard system UI reading text."
+      },
+      "message": {
+        "displayName": "Message Body",
+        "purpose": "Open line-height for preserved conversation paragraphs."
+      },
+      "label": {
+        "displayName": "Control Label",
+        "purpose": "Composer label and primary/secondary actions."
+      },
+      "small": {
+        "displayName": "Metadata",
+        "purpose": "Status, timestamps, and contextual supporting text."
+      },
+      "trace": {
+        "displayName": "Structured Results",
+        "purpose": "Wrapping JSON inside the technical disclosure."
+      }
+    },
+    "shadows": [],
+    "motion": [
+      {
+        "name": "message-scroll",
+        "value": "scroll-behavior: smooth",
+        "purpose": "Message log following when near the bottom or after a user message; reduced-motion changes to auto. No decorative transitions are implemented."
+      }
+    ],
+    "breakpoints": [
+      {
+        "name": "mobile-stack",
+        "value": "680px"
+      },
+      {
+        "name": "compact-navigation",
+        "value": "900px"
+      },
+      {
+        "name": "compact-columns",
+        "value": "1100px"
+      },
+      {
+        "name": "wide-columns",
+        "value": "1400px"
+      }
+    ]
+  },
+  "components": [
+    {
+      "name": "Primary Button",
+      "kind": "button",
+      "refersTo": "button-primary",
+      "description": "The committed action, used for Send and explicit ticket confirmation.",
+      "html": "<button class=\"ds-primary\">Send <svg viewBox=\"0 0 24 24\" aria-hidden=\"true\"><path d=\"m5 12 14-7-4 14-3-7-7 0Zm7 0 7-7\"/></svg></button>",
+      "css": ".ds-primary{font-family:-apple-system,BlinkMacSystemFont,\"Segoe UI\",sans-serif;font-size:12px;font-weight:550;line-height:1.55;border-radius:7px;padding:9px 13px;display:inline-flex;align-items:center;justify-content:center;gap:8px;cursor:pointer;border:0;background:var(--green,#183c35);color:var(--paper,#fff)}.ds-primary:hover{background:#29594b}.ds-primary svg{width:16px;height:16px;fill:none;stroke:currentColor;stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round}.ds-primary:focus-visible{outline:3px solid var(--focus,#437465);outline-offset:4px}.ds-primary:disabled{cursor:wait;opacity:.5}"
+    },
+    {
+      "name": "Secondary Button",
+      "kind": "button",
+      "refersTo": "button-secondary",
+      "description": "Recovery and cancellation beside the primary action.",
+      "html": "<button class=\"ds-secondary\">Cancel request</button>",
+      "css": ".ds-secondary{font-family:-apple-system,BlinkMacSystemFont,\"Segoe UI\",sans-serif;font-size:12px;font-weight:550;line-height:1.55;border-radius:7px;padding:9px 13px;display:inline-flex;align-items:center;justify-content:center;gap:8px;cursor:pointer;border:1px solid #b9c7bd;background:var(--paper,#fff);color:var(--ink,#20312d)}.ds-secondary:hover{background:var(--green-soft,#e9f1eb)}.ds-secondary:focus-visible{outline:3px solid var(--focus,#437465);outline-offset:4px}.ds-secondary:disabled{cursor:wait;opacity:.5}"
+    },
+    {
+      "name": "New Conversation",
+      "kind": "button",
+      "refersTo": "button-icon",
+      "description": "Compact labeled icon control in saved conversation navigation.",
+      "html": "<button class=\"ds-icon\" aria-label=\"Start a new conversation\"><svg viewBox=\"0 0 24 24\" aria-hidden=\"true\"><path d=\"M12 5v14M5 12h14\"/></svg></button>",
+      "css": ".ds-icon{display:grid;place-items:center;border:1px solid var(--line,#dce3de);border-radius:8px;background:var(--paper,#fff);color:var(--ink,#20312d);width:32px;height:32px;cursor:pointer}.ds-icon svg{width:22px;height:22px;fill:none;stroke:currentColor;stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round}.ds-icon:hover{background:var(--green-soft,#e9f1eb)}.ds-icon:focus-visible{outline:3px solid var(--focus,#437465);outline-offset:4px}.ds-icon:disabled{cursor:wait;opacity:.5}"
+    },
+    {
+      "name": "Message Composer",
+      "kind": "input",
+      "refersTo": "composer",
+      "description": "Visible label, resizable textarea, and a single surface focus treatment.",
+      "html": "<label class=\"ds-composer-label\" for=\"ds-message\">Message Customer Support</label><div class=\"ds-composer\"><textarea id=\"ds-message\" class=\"ds-textarea\" rows=\"2\" maxlength=\"4000\" placeholder=\"Ask about an order or request after-sales help…\" required></textarea><button class=\"ds-send\">Send</button></div>",
+      "css": ".ds-composer-label{display:block;font-family:-apple-system,BlinkMacSystemFont,\"Segoe UI\",sans-serif;font-size:12px;font-weight:550;line-height:1.55;color:var(--ink,#20312d);margin-bottom:8px}.ds-composer{display:flex;align-items:flex-end;border:1px solid #bccbc0;border-radius:var(--radius,12px);padding:8px;gap:8px;background:var(--paper,#fff)}.ds-composer:focus-within{border-color:#3c7660}.ds-textarea{font-family:-apple-system,BlinkMacSystemFont,\"Segoe UI\",sans-serif;font-size:14px;line-height:1.55;border:0;resize:vertical;background:transparent;padding:8px;min-width:0;flex:1;min-height:64px;max-height:200px;color:var(--ink,#20312d);caret-color:var(--green,#183c35)}.ds-textarea:focus{outline:none}.ds-textarea::placeholder{color:#65766c;font-size:13px}.ds-send{font-family:-apple-system,BlinkMacSystemFont,\"Segoe UI\",sans-serif;font-size:12px;font-weight:550;line-height:1.55;border-radius:7px;padding:9px 13px;display:inline-flex;align-items:center;justify-content:center;gap:8px;cursor:pointer;border:0;background:var(--green,#183c35);color:var(--paper,#fff)}.ds-send:hover{background:#29594b}.ds-send:focus-visible{outline:3px solid var(--focus,#437465);outline-offset:4px}.ds-send:disabled{cursor:wait;opacity:.5}"
+    },
+    {
+      "name": "Saved Conversation",
+      "kind": "nav",
+      "refersTo": "conversation-link",
+      "description": "Current conversation uses aria-current and remains compact in horizontal navigation.",
+      "html": "<nav aria-label=\"Saved conversations\"><button class=\"ds-conversation\" aria-current=\"true\"><strong>Conversation 1</strong><span>Oct 1, 08:00 PM</span></button></nav>",
+      "css": ".ds-conversation{font-family:-apple-system,BlinkMacSystemFont,\"Segoe UI\",sans-serif;font-size:14px;line-height:1.55;padding:12px;text-align:left;border:0;border-radius:8px;background:transparent;color:var(--ink,#20312d);width:100%;display:grid;gap:3px;cursor:pointer}.ds-conversation:hover{background:#eaf0e9}.ds-conversation[aria-current=\"true\"]{background:#e4ebe3}.ds-conversation span{font-size:12px;color:var(--muted,#5e6d67);font-variant-numeric:tabular-nums}.ds-conversation:focus-visible{outline:3px solid var(--focus,#437465);outline-offset:4px}@media(max-width:900px){.ds-conversation{padding:7px 10px;min-width:145px}.ds-conversation span{display:none}}"
+    },
+    {
+      "name": "Order Selector",
+      "kind": "button",
+      "refersTo": "order-selector",
+      "description": "Native pressed-state buttons for choosing the order context.",
+      "html": "<div class=\"ds-order-selectors\" aria-label=\"Choose order\"><button class=\"ds-order-selector\" aria-pressed=\"true\">ORD-1001</button><button class=\"ds-order-selector\" aria-pressed=\"false\">ORD-1002</button></div>",
+      "css": ".ds-order-selectors{display:flex;gap:8px}.ds-order-selector{font-family:-apple-system,BlinkMacSystemFont,\"Segoe UI\",sans-serif;line-height:1.55;border:1px solid #c8d2c9;border-radius:6px;background:transparent;padding:7px 11px;color:var(--muted,#5e6d67);font-size:12px;font-variant-numeric:tabular-nums;cursor:pointer}.ds-order-selector[aria-pressed=\"true\"]{background:var(--paper,#fff);color:var(--green,#183c35);border-color:#648472;font-weight:600}.ds-order-selector:hover{background:var(--green-soft,#e9f1eb)}.ds-order-selector:focus-visible{outline:3px solid var(--focus,#437465);outline-offset:4px}"
+    },
+    {
+      "name": "Conversation Status",
+      "kind": "chip",
+      "refersTo": "status",
+      "description": "Text accompanies the ready, pending-review, and error colors.",
+      "html": "<div class=\"ds-status-set\"><span class=\"ds-status\" role=\"status\">Ready</span><span class=\"ds-status\" data-state=\"waiting_confirmation\">Review needed</span><span class=\"ds-status\" data-state=\"error\">Needs attention</span></div>",
+      "css": ".ds-status-set{display:flex;gap:8px;flex-wrap:wrap}.ds-status{font-family:-apple-system,BlinkMacSystemFont,\"Segoe UI\",sans-serif;line-height:1.55;font-size:11px;white-space:nowrap;padding:5px 9px;background:var(--green-soft,#e9f1eb);color:var(--green,#183c35);border-radius:6px;font-weight:550}.ds-status[data-state=\"waiting_confirmation\"]{background:var(--amber-soft,#fff5e5);color:var(--amber,#86501a)}.ds-status[data-state=\"error\"]{background:#f9eaea;color:var(--danger,#9c3434)}"
+    },
+    {
+      "name": "Inline Ticket Review",
+      "kind": "card",
+      "refersTo": "confirmation",
+      "description": "Protected confirmation remains beside the business context, with separate confirm and cancel actions.",
+      "html": "<section class=\"ds-review\" aria-label=\"Review ticket request\"><h2>Review your ticket</h2><p>We’ll save the request below. Creating a ticket does not approve a refund or a return.</p><dl class=\"ds-facts\"><dt>Order</dt><dd>ORD-1001</dd><dt>Request</dt><dd>Delivery issue</dd></dl><div class=\"ds-reason\">The shipment is delayed.</div><div class=\"ds-review-actions\"><button class=\"ds-confirm\">Confirm &amp; create ticket</button><button class=\"ds-cancel\">Cancel request</button></div><p class=\"ds-expiry\">Confirmation expires <time>Oct 1, 08:10 PM</time>. No ticket is created if it expires.</p></section>",
+      "css": ".ds-review{font-family:-apple-system,BlinkMacSystemFont,\"Segoe UI\",sans-serif;font-size:14px;line-height:1.55;background:var(--amber-soft,#fff5e5);padding:18px;border-radius:var(--radius,12px);color:#573816}.ds-review h2{font-size:16px;color:#573816;font-weight:650;margin:0 0 9px}.ds-review p{color:#775735;font-size:12px;line-height:1.7;margin:0}.ds-facts{display:grid;grid-template-columns:1fr auto;gap:7px 10px;margin:15px 0;font-size:12px}.ds-facts dt{color:#775735}.ds-facts dd{margin:0;text-align:right;font-variant-numeric:tabular-nums}.ds-reason{white-space:pre-wrap;overflow-wrap:anywhere;font-size:13px;margin:12px 0 16px}.ds-review-actions{display:flex;gap:8px;flex-wrap:wrap}.ds-confirm,.ds-cancel{font-family:-apple-system,BlinkMacSystemFont,\"Segoe UI\",sans-serif;font-size:12px;font-weight:550;line-height:1.55;border-radius:7px;padding:9px 13px;display:inline-flex;align-items:center;justify-content:center;gap:8px;cursor:pointer;}.ds-confirm{border:0;background:var(--green,#183c35);color:var(--paper,#fff)}.ds-confirm:hover{background:#29594b}.ds-cancel{background:var(--paper,#fff);border:1px solid #b9c7bd;color:var(--ink,#20312d)}.ds-cancel:hover{background:var(--green-soft,#e9f1eb)}.ds-review .ds-expiry{font-size:10px;margin-top:12px}.ds-confirm:focus-visible{outline:3px solid var(--focus,#437465);outline-offset:4px}.ds-cancel:focus-visible{outline:3px solid var(--focus,#437465);outline-offset:4px}.ds-confirm:disabled{cursor:wait;opacity:.5}.ds-cancel:disabled{cursor:wait;opacity:.5}"
+    },
+    {
+      "name": "Shipment Timeline",
+      "kind": "custom",
+      "description": "Newest-first shipment records with a dark latest marker and muted history.",
+      "html": "<ol class=\"ds-timeline\"><li>Shipment delayed<time>Oct 1, 08:00 AM</time></li><li>Package accepted by carrier<time>Sep 30, 06:00 PM</time></li></ol>",
+      "css": ".ds-timeline{font-family:-apple-system,BlinkMacSystemFont,\"Segoe UI\",sans-serif;line-height:1.55;list-style:none;margin:20px 0 0;padding:0;color:var(--ink,#20312d)}.ds-timeline li{position:relative;padding:0 0 17px 21px;font-size:12px}.ds-timeline li::before{content:\"\";position:absolute;width:7px;height:7px;border-radius:50%;background:#91a899;left:0;top:6px}.ds-timeline li:first-child::before{background:var(--green,#183c35)}.ds-timeline li:not(:last-child)::after{content:\"\";position:absolute;width:1px;background:#c9d7cc;left:3px;top:16px;bottom:0}.ds-timeline time{display:block;font-size:10px;color:var(--muted,#5e6d67);margin-top:3px;font-variant-numeric:tabular-nums}.ds-timeline li:last-child{padding-bottom:0}"
+    },
+    {
+      "name": "Tool Activity Disclosure",
+      "kind": "custom",
+      "description": "Initially closed native disclosure keeps structured handler output secondary.",
+      "html": "<details class=\"ds-trace\"><summary>Tool call details (1)</summary><div class=\"ds-trace-entry\"><strong>lookup_order</strong><p>Resolved</p><pre>{\"order_id\":\"ORD-1001\"}</pre></div></details>",
+      "css": ".ds-trace{font-family:-apple-system,BlinkMacSystemFont,\"Segoe UI\",sans-serif;line-height:1.55;margin-top:25px;border-top:1px solid var(--line,#dce3de);padding-top:16px;font-size:11px;color:var(--ink,#20312d)}.ds-trace summary{cursor:pointer;color:var(--muted,#5e6d67);padding:4px 0;outline-offset:4px}.ds-trace summary:hover{color:var(--green,#183c35)}.ds-trace summary:focus-visible{outline:3px solid #437465;outline-offset:4px}.ds-trace-entry{margin-top:12px;border-bottom:1px solid var(--line,#dce3de);padding-bottom:10px}.ds-trace-entry strong{font-size:11px}.ds-trace-entry p{font-size:10px;color:var(--muted,#5e6d67);margin:3px 0 0}.ds-trace-entry pre{font-family:monospace;font-size:10px;white-space:pre-wrap;overflow-wrap:anywhere;background:transparent;margin:8px 0 0;color:var(--muted,#5e6d67)}"
+    },
+    {
+      "name": "Conversation Tool Step",
+      "description": "Visible Custom Tool function, order, business outcome and actual saved lifecycle state in the conversation. Warm emphasis and a keyboard-accessible review button identify pending confirmation. Raw call IDs, inputs and results stay in the closed contextual disclosure.",
+      "html": "<article class=\"ds-tool-step\"><strong>Shipment lookup</strong><span>Result returned</span><p><code>lookup_shipment</code> · ORD-1001</p><p>Delayed · Estimated 2026-10-02 · Demo Express</p><small>Agent requested → Backend result returned to Agent</small></article>",
+      "css": ".ds-tool-step{font-family:-apple-system,BlinkMacSystemFont,\"Segoe UI\",sans-serif;line-height:1.55;padding:14px 16px;border:1px solid var(--line,#dce3de);border-left:3px solid #618575;border-radius:8px;background:#f6f9f6;color:var(--ink,#20312d);overflow-wrap:anywhere}.ds-tool-step strong{font-size:12px}.ds-tool-step span{float:right;font-size:11px;color:var(--green,#183c35)}.ds-tool-step p{margin:7px 0;font-size:13px}.ds-tool-step code,.ds-tool-step small{font-size:11px;color:var(--muted,#5e6d67)}",
+      "kind": "custom"
+    },
+    {
+      "name": "Offline Platform Connection Guide",
+      "kind": "custom",
+      "description": "Offline-only muted-green notice with a stable native disclosure. Explains simulated replies and links to Platform Console, server-side Project key configuration, billing and setup/dev commands. It has no credential input or automatic connection action.",
+      "html": "<section class=\"ds-connect\"><p><strong>Offline preview</strong> · Replies are simulated. Connect your Project key to run a real Agent.</p><details><summary>Connect to ZooWork Platform</summary><p>Sign in to Platform Console, select a Project and create a key in API Keys. Set ZOOWORK_API_KEY in your server-side .env.</p><pre>npm run setup\nnpm run dev</pre></details></section>",
+      "css": ".ds-connect{font-family:-apple-system,BlinkMacSystemFont,\"Segoe UI\",sans-serif;line-height:1.55;padding:12px 16px;background:var(--green-soft,#e9f1eb);border-radius:8px;font-size:12px;overflow-wrap:anywhere;color:var(--ink,#20312d)}.ds-connect p{color:var(--muted,#5e6d67)}.ds-connect summary{margin-top:8px;color:var(--green,#183c35);cursor:pointer;font-weight:600}.ds-connect pre{white-space:pre-wrap;padding:10px 12px;background:var(--paper,#fff);border-radius:6px}.ds-connect summary:focus-visible{outline:3px solid #437465;outline-offset:4px}"
+    }
+  ],
+  "narrative": {
+    "northStar": "Practical Operate Workbench",
+    "overview": "The interface gives conversation and saved business context comparable visual weight. Muted green, an off-white canvas, a white conversation surface, and thin dividers support a compact working interface. Headings identify the task; small labels and tabular numbers make records easy to scan.\n\nThe signature interaction is an inline ticket review in the context panel. Its warm surface distinguishes a pending human decision from ordinary order information. Custom Tool summaries appear in the conversation timeline; raw call details stay in a closed disclosure at rest. System UI fonts and authored geometric SVG line icons provide the entire visual vocabulary; the app has no external font, image, or shipping raster asset.\n\nThis document records the code-built implementation in `public/index.html`, `public/style.css`, and `public/app.js`. There was no approved raster comp. The final independent verdict was **ship** for the two reviewed fixes: clearing stale messages when selecting an empty conversation and retaining keyboard focus during polling. That verdict is bounded to those fixes, rather than a whole-surface approval.",
+    "keyCharacteristics": [
+      "Compact working density with a clearly separated conversation and business context.",
+      "Flat surfaces, restrained green actions, and warm pending-review emphasis.",
+      "Explicit inline confirmation and recoverable error states.",
+      "Responsive navigation and a vertical mobile reading order.",
+      "Native controls, visible focus, and stable interactive regions during polling."
+    ],
+    "rules": [
+      {
+        "name": "The State Meaning Rule",
+        "body": "Keep status text alongside color. Warm emphasis means a review or delay; red means the conversation needs attention.",
+        "section": "colors"
+      },
+      {
+        "name": "The Flat Surface Rule",
+        "body": "Preserve the current tonal and divider hierarchy when extending this workbench; do not add shadows to ordinary panels or records.",
+        "section": "elevation"
+      },
+      {
+        "name": "The Stable Interaction Rule",
+        "body": "A background refresh must not replace an unchanged interactive region or move keyboard focus away from its current control.",
+        "section": "components"
+      }
+    ],
+    "dos": [
+      "**Do** keep conversation and saved order context visible together on desktop, and preserve navigation → conversation → context reading order on mobile.",
+      "**Do** use the system UI font stack, compact typography, tabular record numbers, and authored inline SVG icons.",
+      "**Do** keep status words alongside green, warm, and error colors.",
+      "**Do** preserve explicit inline ticket review, exact request text, cancellation, and expiry information.",
+      "**Do** preserve visible keyboard focus and DOM identity for unchanged interactive regions during polling.",
+      "**Do** show tool names, outcomes and confirmation states in the conversation; keep raw parameters and JSON in the initially closed Tool call details disclosure."
+    ],
+    "donts": [
+      "**Don't** add shadows, decorative gradients, external fonts, or stock imagery to this flat working interface.",
+      "**Don't** replace the mobile stack with narrow desktop columns or hide the context data permanently.",
+      "**Don't** submit a starter suggestion or pending ticket simply because it becomes visible.",
+      "**Don't** retain another conversation's messages when switching to an empty conversation.",
+      "**Don't** claim all context nodes are stable; reading-only regions are currently rebuilt.",
+      "**Don't** describe a ticket as an approved refund, return, or carrier action."
+    ]
+  }
+}

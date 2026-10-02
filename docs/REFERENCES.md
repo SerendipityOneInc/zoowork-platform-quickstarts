@@ -15,3 +15,11 @@ is original, following the public SDK and the SDK repository's existing E2E sequ
 
 Before copying code, read its license, pin the source commit and retain copyright/license
 notices. Record copied paths and adaptations here. Adapt runtime calls to Platform.
+
+## Application source records
+
+- [Customer Support references and license review](../customer-support/docs/REFERENCES.md)
+  record the complete-example sources used by the delivered workbench.
+
+Feature deliveries maintain their own source commits, copied paths and license notices in the
+application directory. The foundation source record above does not replace those app records.

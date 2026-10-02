@@ -1,4 +1,17 @@
-# Foundation validation
+# ZooWork Platform Quickstarts verification
+
+## Application verification
+
+Customer Support has a runnable browser application and its own
+[feature verification record](../customer-support/docs/VALIDATION.md): 41 offline Node tests,
+6 browser scenarios, and the authorized actual staging Custom Tool workflow. The key/onboarding
+and tool-visibility updates were verified offline without an additional paid run.
+
+Other applications on this branch retain lifecycle foundations. Their baseline verification below
+does not demonstrate their planned product features. New feature deliveries must add their own
+application-specific evidence.
+
+## Historical lifecycle foundation validation
 
 2026-10-01, Node 22.23.2, published `@zoowork-ai/sdk@0.9.0`.
 
@@ -13,7 +26,7 @@
   The recovery record was removed after successful cleanup. No key or live ID is recorded here.
 - Relative documentation links and Git whitespace checks passed.
 
-The lifecycle sources are identical across the four directories; demo identity/configuration
+At the foundation verification snapshot, lifecycle sources were identical across the four directories; demo identity/configuration
 is local. The single live check validates this common foundation, not Custom Tool execution,
 MCP calls/approval, external retrieval, Chat SDK UI or production deployment.
 Feature sessions must add their own implementation and verification evidence.
