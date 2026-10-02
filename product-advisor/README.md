@@ -6,7 +6,7 @@
 
 ## 安装与离线检查
 
-需要 Node **22.20+**、npm。本目录独立安装，不需要 sibling repositories 或本地 SDK override。
+需要 Node **22.20+**、npm。本目录独立安装，不需要 sibling repositories 或本地 SDK override。默认完整 demo 还需要本机有 `cloudflared`，用它把示例 MCP 提供给云端 Platform；它不要求额外的账号或 key。macOS 可用 `brew install cloudflared`，其他系统按 [官方安装说明](https://developers.cloudflare.com/tunnel/get-started/)安装。
 
 ```sh
 npm ci
@@ -17,6 +17,24 @@ npm run build
 `check` 运行 TypeScript 和离线测试。测试通过官方 MCP client 调用实际本地 HTTP Server；Platform 的 lifecycle、events 和 approvals 使用 test-only adapter，不花费 model tokens。`check` 不依赖 credentials 或 staging。
 
 没有 Project key 时，`npm run dev` 可以打开界面，显示“服务尚未配置”，不会生成模拟推荐。
+
+## 配置一把 key，运行完整 demo
+
+```sh
+npm ci
+cp .env.example .env
+# 只填写 ZOOWORK_API_KEY，使用自己的 Platform Project key（zwp_live_）。
+npm run demo
+# 打开 http://localhost:4310
+```
+
+这个入口使用真实 SDK 和 Platform。启动时自动运行自带的 synthetic MCP、建立临时 HTTPS tunnel、验证工具 discovery、创建或复用本应用 Agent，并启动 Web。Project key 只留在应用进程，tunnel 进程不会收到它；公开入口只转发示例目录，不转发 Web API。cookie secret 自动生成到 private `.local/cookie-secret`，重启沿用，用户不需要再配一个 secret。
+
+默认 API 地址直接采用已发布 SDK 的 production 默认值。测试 staging 时另外设置 `ZOOWORK_BASE_URL=https://claw-interface.ecap.yesy.live/service/v1`，不要把 staging key 发到默认 production 地址。本机开发配置和临时 tunnel 不会写进 Git。
+
+临时 hostname 每次启动会变化。入口更新会先保存 exact pending resource，再通过 SDK 更新同一个 owned Agent；模糊结果保留原请求，不创建替代 Agent。按 Ctrl+C 关闭本机 Web、MCP 和 tunnel，Agent/Session 及历史保留；`npm run cleanup` 清理这些记录的远程资源。
+
+Quick Tunnel 适合本机 demo，没有稳定地址或 uptime 保证。这个 Server 使用 JSON response 的 Streamable HTTP；Web 的 SSE 走本机，不经过 Quick Tunnel。[Cloudflare 的限制](https://developers.cloudflare.com/tunnel/get-started/quick-tunnels/)不适合需要远程 SSE 的其他 Server。已经托管了本项目 MCP 时，可填写 `MCP_PUBLIC_URL`，`demo` 会使用它并跳过本机 MCP/tunnel。
 
 ## 先验证 MCP Server
 
@@ -41,7 +59,7 @@ npm run mcp:probe -- http://localhost:4311/mcp
 
 Engine 从远端执行 MCP，不能访问浏览器或开发者电脑的 localhost。当前 Project-key 路径支持公开、无需认证的 HTTP MCP，不能通过 public gateway 配置 authenticated MCP credentials。这个 Server 因此只提供可公开的 synthetic facts。
 
-准备一个**经过授权**的 Node host 或临时开发 tunnel，使以下路径在同一固定 HTTPS origin 可达：
+`npm run demo` 自动准备临时开发 tunnel。自行托管时，准备 Node host 或开发 tunnel，使以下路径在同一固定 HTTPS origin 可达：
 
 - `POST /mcp`：stateless Streamable HTTP，支持 JSON response。
 - `GET /health`：目录版本和 synthetic 标记。
@@ -63,12 +81,12 @@ docker run --rm -p 127.0.0.1:4311:4311 \
 
 确认 public endpoint 后，运行 `npm run mcp:probe -- https://your-authorized-host.example/mcp`。这仍是本机 read probe；实际 Platform turn 才能证明 Engine 接通。
 
-## 运行真实选购应用
+## 手工配置与托管
 
 ```sh
 cp .env.example .env
 # 填写服务端 ZOOWORK_API_KEY、明确的 ZOOWORK_BASE_URL、MCP_PUBLIC_URL。
-# 设置一个至少 32 字符、重启保持不变的 APP_COOKIE_SECRET。
+# APP_COOKIE_SECRET 可选；不填则自动生成并保存。
 # 默认 APP_ORIGIN=http://localhost:4310。
 npm run setup
 npm run dev
@@ -77,7 +95,7 @@ npm run dev
 
 `ZOOWORK_API_KEY` 必须是 Platform Project key（`zwp_live_`）。gateway 决定 Org/Project/owner，应用不传任意 tenancy。setup 创建本应用 Agent，`.local/agent.json` 保存 exact resource、create key 和返回 ID；再次运行会复用记录。不要填现有 Work Agent 的 ID。
 
-Agent 声明 `catalog` MCP Server、direct exposure 和三个 exact tools。搜索是 `always_allow`；详情/比较是 `always_ask`，同时显式配置源代码支持的 `requireConfirmation: true`。该字段比 SDK 0.9.0 的 nested type 新，代码通过 structurally compatible object 交给 published SDK 序列化，未替换 SDK。部署若不支持强制确认，功能 staging 会失败，不能宣称审批通过。
+Agent 声明 `catalog` MCP Server、direct exposure 和三个 exact tools。搜索是 `always_allow`；详情/比较是 `always_ask`，同时配置 `requireConfirmation: true`。该字段比 SDK 0.9.0 的 nested type 新，代码通过 structurally compatible object 交给 published SDK 序列化，未替换 SDK。2026-10-02 已在 staging 验证详情和比较的逐次确认、允许和拒绝；其他部署仍需单独验证。
 
 配置 URL、model 或 persona 改动后，先停止本地应用，再执行：
 
@@ -154,7 +172,7 @@ npm run test:staging -- --confirm-staging
 npm run test:feature-staging -- --confirm-staging
 ```
 
-它最多创建 1 个临时 Agent、2 个 Sessions、4 个 user turns：搜索+批准详情、降低预算、搜索+拒绝详情、同测试 Agent 的 unavailable endpoint。比较在离线 HTTP 集成和浏览器中覆盖；脚本不会把它称为 live comparison。不自动重试 paid turns。缺少 approval、receipt 或 runtime audit correlation 都判失败。
+它最多创建 1 个临时 Agent、2 个 Sessions、4 个 user turns：搜索+分别批准详情和比较、降低预算、搜索+拒绝详情、同测试 Agent 的 unavailable endpoint。不自动重试 paid turns。缺少 approval、receipt、比较结果或 runtime audit correlation 都判失败。2026-10-02 真实 staging 通过，SDK 和 Server audit 共同确认拒绝后的工具执行次数为 0。
 
 ```sh
 # 先停止本地 Web 服务，再清理记录的 Sessions 和 Agent。

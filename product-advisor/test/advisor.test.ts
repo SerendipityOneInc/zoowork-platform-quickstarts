@@ -2,6 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { applicationApi } from "../src/server/http.js";
 import { fixture, listen, waitFor } from "./helpers.js";
+import { view } from "../src/domain/conversation.js";
 
 const requirements = {
   category: "laptop" as const,
@@ -159,6 +160,80 @@ test("prototype-named approval IDs persist as own keys and retain the submitted 
     );
     assert.equal(f.fake.calls.resolve, 1);
     assert.equal(f.receipts.count("get_products"), 0);
+  } finally {
+    await f.close();
+  }
+});
+
+test("native denial can end with blocked + deniedReason and no tool-end event", async () => {
+  const f = await fixture();
+  try {
+    const c = await f.advisor.create(
+      "alice",
+      "编程",
+      requirements,
+      "request-real-denial",
+    );
+    await f.advisor.idle(c.id);
+    const base = f.store.get(c.id).events.at(-1)!;
+    let seq = base.seq;
+    const callId = "native-denied-call";
+    for (const [eventType, payload] of [
+      [
+        "agent.tool",
+        {
+          phase: "start",
+          toolName: "mcp__catalog__get_products",
+          toolCallId: callId,
+          args: { productIds: ["lap-01"], catalogVersion: "demo-2026-10-01" },
+        },
+      ],
+      [
+        "agent.approval",
+        {
+          phase: "requested",
+          approvalId: "native-approval",
+          toolCallId: callId,
+          toolName: "mcp__catalog__get_products",
+        },
+      ],
+      [
+        "agent.approval",
+        {
+          phase: "resolved",
+          approvalId: "native-approval",
+          toolCallId: callId,
+          resolution: "deny",
+        },
+      ],
+      [
+        "agent.tool",
+        {
+          phase: "blocked",
+          toolName: "mcp__catalog__get_products",
+          toolCallId: callId,
+          deniedReason: "approval-denied",
+        },
+      ],
+      ["run.finished", { status: "succeeded" }],
+    ] as const)
+      await f.advisor.processEvent(c.id, {
+        ...base,
+        seq: ++seq,
+        eventType,
+        payload,
+      });
+    const saved = f.store.get(c.id);
+    assert.equal(saved.denied, true);
+    assert.equal(saved.tools[callId]!.phase, "blocked");
+    assert.equal(saved.tools[callId]!.executionStarted, false);
+    assert.equal(saved.tools[callId]!.deniedReason, "approval-denied");
+    assert.equal(f.receipts.count("get_products"), 0);
+    // History written by older versions still renders the native denial.
+    delete saved.tools[callId]!.deniedReason;
+    delete saved.tools[callId]!.executionStarted;
+    assert.equal(view(saved).tools[callId]!.deniedReason, "approval-denied");
+    assert.equal(view(saved).tools[callId]!.executionStarted, false);
   } finally {
     await f.close();
   }

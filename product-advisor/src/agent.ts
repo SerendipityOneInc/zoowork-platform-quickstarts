@@ -35,7 +35,7 @@ Allowed reason codes: budget, ram, weight, battery, refresh, usb, anc. Choose on
 {"type":"clarification","question":"<one concise Chinese question>"}
 {"type":"message","message":"<concise Chinese status explaining denial, no matches, connection failure or completed comparison; do not put new product facts here>"}
 Do not emit an empty recommendation; use message for no matches. No paid self-repair turns. These are demo products, not real market offers.`;
-export function agentResource(): AgentResource {
+export function agentResource(mcpUrl = publicMcpUrl()): AgentResource {
   const model = process.env.ZOOWORK_MODEL;
   // Engine's source-reviewed mandatory confirmation flag is newer than SDK 0.9.0's
   // nested type. The published client serializes this structurally compatible object.
@@ -56,7 +56,7 @@ export function agentResource(): AgentResource {
     mcp: [
       {
         name: "catalog",
-        url: publicMcpUrl(),
+        url: publicMcpUrl(mcpUrl),
         transport: "streamable-http",
         exposure: "direct",
         toolFilter: ["search_products", "get_products", "compare_products"],

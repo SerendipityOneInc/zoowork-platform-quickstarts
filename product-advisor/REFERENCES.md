@@ -14,4 +14,8 @@ Internal source snapshots are evidence for this implementation; they are not cop
 
 The SDK 0.9.0 nested `McpToolPermissionOverride` type omits Engine's `requireConfirmation` field. This app declares an intersection type for its original Agent resource and passes the object through the published client; no dependency patch or consumer workaround that simulates approval is used. A future SDK update can expose that field directly. Live validation must confirm mandatory approvals rather than relying on this type annotation.
 
+2026-10-02 staging verified mandatory approvals through the published client, including separate approval of details/comparison and zero remote tool execution after denial. [Cloudflare Quick Tunnels documentation](https://developers.cloudflare.com/tunnel/get-started/quick-tunnels/) supports the account-free temporary catalog endpoint used by `npm run demo`; the implementation uses JSON HTTP responses and does not tunnel the Web SSE stream. No Cloudflare source code was copied.
+
+Startup waits for tunnel registration and checks the generated hostname through [Cloudflare's documented DNS-over-HTTPS JSON endpoint](https://developers.cloudflare.com/1.1.1.1/encryption/dns-over-https/make-api-requests/), before making the first local lookup. Only the public generated hostname is sent, without Project credentials or user content.
+
 All 18 products are invented. Illustrations in `public/products/*.svg` use original simple geometry, share category artwork, and are not physical model photos. No real review, merchant, stock photo, or trademark claim is introduced.

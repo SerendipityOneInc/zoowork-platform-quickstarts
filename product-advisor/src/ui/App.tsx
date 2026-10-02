@@ -980,15 +980,17 @@ export function App() {
                   <div key={t.id}>
                     <p>
                       <code>{t.name}</code> · {t.phase}
-                      {t.phase === "blocked"
-                        ? " · 等待审批"
-                        : t.phase === "end" && t.executionStarted === false
-                          ? " · 未执行"
-                          : t.phase === "end"
-                            ? t.isError
-                              ? " · 调用失败"
-                              : " · 已返回"
-                            : " · 工具请求已发起"}
+                      {t.deniedReason
+                        ? "未执行"
+                        : t.phase === "blocked"
+                          ? " · 等待审批"
+                          : t.phase === "end" && t.executionStarted === false
+                            ? " · 未执行"
+                            : t.phase === "end"
+                              ? t.isError
+                                ? " · 调用失败"
+                                : " · 已返回"
+                              : " · 工具请求已发起"}
                     </p>
                     {t.args && (
                       <pre

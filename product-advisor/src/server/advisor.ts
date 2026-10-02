@@ -506,6 +506,11 @@ export class Advisor {
         if (typeof p.isError === "boolean") t.isError = p.isError;
         if (typeof p.executionStarted === "boolean")
           t.executionStarted = p.executionStarted;
+        if (t.phase === "blocked") {
+          t.executionStarted = false;
+          if (typeof p.deniedReason === "string" && p.deniedReason)
+            t.deniedReason = p.deniedReason;
+        }
         c.tools[t.id] = t;
         if (
           t.phase === "end" &&

@@ -307,3 +307,5 @@ event worker 独立于 browser SSE。按 Session+seq 去重，在同一 SQLite t
 详情和比较逐次强制确认使用 `resource.mcp[].tools[tool].requireConfirmation: true`，同时保持 `always_ask`。Engine `mcp-permissions.ts` 对此渲染 `approval.required: true` 和 allow-once/deny。SDK 0.9.0 的 nested type 尚未声明该字段，本应用用 intersection type 传递原始 resource；source-reviewed 支持不能代替 deployment verification。
 
 实现和已验证状态以 README.md、VALIDATION.md 为准。未授权公开部署时，不把本地 HTTP probe、test-only Platform adapter 或 foundation smoke 当作远程功能接通证据。
+
+2026-10-02 按用户明确的交付要求补上默认 `npm run demo` 入口：只需填写 Project key，自动准备示例 MCP 的临时远程入口和本应用 Agent，不使用模拟 Platform。staging 的 1 Agent / 2 Sessions / 4 turns 已验证搜索、分别批准详情/比较、预算追问、拒绝零执行、连接失败、receipt/history 和清理。此验证范围使用已发布 SDK 0.9.0，无本地 SDK override。

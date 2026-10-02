@@ -1,7 +1,7 @@
 import { randomUUID } from 'node:crypto'
 import { mkdir, open, readFile, rename, rm, writeFile } from 'node:fs/promises'
 import { dirname } from 'node:path'
-import { createZooworkClient, ZooworkError, type AgentRecord, type AgentResource, type ZooworkClient } from '@zoowork-ai/sdk'
+import { createZooworkClient, DEFAULT_BASE_URL, ZooworkError, type AgentRecord, type AgentResource, type ZooworkClient } from '@zoowork-ai/sdk'
 
 export const STAGING_URL = 'https://claw-interface.ecap.yesy.live/service/v1'
 export class FoundationError extends Error {
@@ -23,7 +23,7 @@ export function readConfig(env: NodeJS.ProcessEnv = process.env): Config {
   const apiKey = env.ZOOWORK_API_KEY?.trim()
   if (!apiKey?.startsWith('zwp_live_') || apiKey.length <= 9) throw new FoundationError('platform_project_key_required')
   let url: URL
-  try { url = new URL(env.ZOOWORK_BASE_URL ?? '') } catch { throw new FoundationError('explicit_public_base_url_required') }
+  try { url = new URL(env.ZOOWORK_BASE_URL || DEFAULT_BASE_URL) } catch { throw new FoundationError('explicit_public_base_url_required') }
   if (url.protocol !== 'https:' || url.username || url.password || url.search || url.hash ||
       url.pathname.replace(/\/$/, '') !== '/service/v1') throw new FoundationError('invalid_public_base_url')
   return { apiKey, baseUrl: url.origin + '/service/v1' }

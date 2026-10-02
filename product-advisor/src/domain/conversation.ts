@@ -21,6 +21,7 @@ export interface ToolState {
   args?: Record<string, unknown>;
   isError?: boolean;
   executionStarted?: boolean;
+  deniedReason?: string;
   receiptId?: string;
 }
 export interface Message {
@@ -102,7 +103,7 @@ export function view(c: Conversation): ConversationView {
     requirements,
     status,
     messages,
-    tools,
+    tools: savedTools,
     approvals,
     evidence,
     warnings,
@@ -110,6 +111,28 @@ export function view(c: Conversation): ConversationView {
     comparison,
     selectedIds,
   } = c;
+  // Older snapshots predate deniedReason projection. Durable events retain
+  // native denials even when the runtime emits no tool-end event.
+  const denials = new Map<string, string>();
+  for (const event of c.events) {
+    const p = event.payload;
+    if (
+      event.eventType === "agent.tool" &&
+      p.phase === "blocked" &&
+      typeof p.toolCallId === "string" &&
+      typeof p.deniedReason === "string" &&
+      p.deniedReason
+    )
+      denials.set(p.toolCallId, p.deniedReason);
+  }
+  const tools = Object.fromEntries(
+    Object.entries(savedTools).map(([id, t]) => [
+      id,
+      denials.has(id)
+        ? { ...t, deniedReason: denials.get(id), executionStarted: false }
+        : t,
+    ]),
+  );
   return {
     id,
     title,

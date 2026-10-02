@@ -1,4 +1,3 @@
-import { randomBytes } from "node:crypto";
 import { mkdir } from "node:fs/promises";
 import { resolve } from "node:path";
 import { createZooworkClient } from "@zoowork-ai/sdk";
@@ -7,14 +6,15 @@ import { demo, publicMcpUrl } from "../agent.js";
 import { Conversations } from "../storage/conversations.js";
 import { Advisor } from "./advisor.js";
 import { applicationApi } from "./http.js";
+import { cookieSecret } from "./cookie-secret.js";
 
 export async function appRuntime() {
   const dir = resolve(".local");
   await mkdir(dir, { recursive: true, mode: 0o700 });
-  const secret =
-    process.env.APP_COOKIE_SECRET || randomBytes(32).toString("hex");
-  if (process.env.ZOOWORK_API_KEY && !process.env.APP_COOKIE_SECRET)
-    throw new Error("app_cookie_secret_required");
+  const secret = await cookieSecret(
+    resolve(dir, "cookie-secret"),
+    process.env.APP_COOKIE_SECRET,
+  );
   const origin = process.env.APP_ORIGIN ?? "http://localhost:4310";
   const url = new URL(origin);
   if (url.origin !== origin) throw new Error("app_origin_required");

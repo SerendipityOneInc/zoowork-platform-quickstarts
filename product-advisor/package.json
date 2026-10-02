@@ -16,6 +16,7 @@
     "test:staging": "node --env-file-if-exists=.env --import tsx scripts/staging.ts",
     "build": "vite build && tsc -p tsconfig.build.json && node -e \"require('node:fs').cpSync('data','dist/data',{recursive:true})\"",
     "dev": "node --env-file-if-exists=.env --import tsx scripts/dev.ts",
+    "demo": "node --env-file-if-exists=.env --import tsx scripts/demo.ts",
     "start": "node --env-file-if-exists=.env dist/scripts/serve.js",
     "mcp:dev": "node --env-file-if-exists=.env --import tsx scripts/mcp.ts",
     "mcp:start": "node --env-file-if-exists=.env dist/scripts/mcp.js",

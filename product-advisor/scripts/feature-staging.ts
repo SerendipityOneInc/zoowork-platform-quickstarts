@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import { randomUUID } from "node:crypto";
 import { existsSync } from "node:fs";
+import { writeFile } from "node:fs/promises";
 import { resolve } from "node:path";
 import { demo, agentResource, publicMcpUrl } from "../src/agent.js";
 import {
@@ -51,6 +52,7 @@ try {
       async function turn(
         conversationId: string,
         decision?: "allow-once" | "deny",
+        approvalLimit = 1,
       ) {
         const timeout = Date.now() + 85_000;
         let resolved = 0;
@@ -58,10 +60,13 @@ try {
           const c = store.get(conversationId);
           for (const a of c.approvals) {
             if (a.signaled) continue;
-            if (!decision || resolved >= 1)
+            if (!decision || resolved >= approvalLimit)
               throw new FoundationError("unexpected_additional_approval");
             await advisor!.decide(visitor, c.id, a.approval_id!, decision);
             resolved++;
+            console.log(
+              JSON.stringify({ phase: "approval", decision, resolved }),
+            );
           }
           if (
             ["finished", "failed", "recovering", "uncertain"].includes(c.status)
@@ -74,14 +79,14 @@ try {
         await advisor!.interrupt(visitor, conversationId);
         throw new FoundationError("turn_timeout_no_paid_retry");
       }
-      // 2 Sessions, 4 user turns. Search + approved details share the first turn.
+      // 2 Sessions, 4 user turns. Details and comparison share the first turn.
       const a = await advisor.create(
         visitor,
-        "预算6500元，编程用，至少16GB内存。先搜索，再调用 get_products 读取前两个候选完整参数，等我批准后推荐。",
+        "预算6500元，编程用，至少16GB内存。先搜索，再调用 get_products 读取前两个候选完整参数，然后调用 compare_products 比较这两个商品。每次需要审批都等我批准，最后推荐。",
         requirements,
         "feature-first",
       );
-      assert.equal(await turn(a.id, "allow-once"), 1);
+      assert.equal(await turn(a.id, "allow-once", 2), 2);
       let c = store.get(a.id);
       assert.equal(c.status, "finished");
       assert.ok(c.shortlist.length);
@@ -96,6 +101,15 @@ try {
         countsA = audit.forSession(id, sidA);
       assert.ok(countsA.search_products! >= 1);
       assert.equal(countsA.get_products, 1);
+      assert.equal(countsA.compare_products, 1);
+      assert.equal(c.comparison?.result.products.length, 2);
+      console.log(
+        JSON.stringify({
+          phase: "search_details_comparison",
+          pass: true,
+          counts: countsA,
+        }),
+      );
       const replay = await rt.client.listAllEvents(id, sidA);
       assert.ok(
         c.events.every((e) =>
@@ -114,6 +128,7 @@ try {
       assert.equal(c.status, "finished");
       assert.ok(c.shortlist.length);
       assert.ok(c.shortlist.every((s) => s.product.priceMinor <= 500000));
+      console.log(JSON.stringify({ phase: "budget_followup", pass: true }));
       const b = await advisor.create(
         visitor,
         "预算6500元，至少16GB内存。先搜索，再用 get_products 读取一个候选的完整参数，等待我审批。",
@@ -126,6 +141,9 @@ try {
       assert.ok(countsB.search_products! >= 1);
       assert.equal(countsB.get_products, 0);
       assert.ok(store.get(b.id).denied);
+      console.log(
+        JSON.stringify({ phase: "denial", pass: true, counts: countsB }),
+      );
       const broken = {
         ...state.resource,
         mcp: state.resource.mcp!.map((m) => ({
@@ -150,22 +168,26 @@ try {
       const failed = store.get(b.id);
       assert.ok(failed.warnings.includes("mcp_connection_failed"));
       assert.equal(failed.shortlist.length, 0);
-      console.log(
-        JSON.stringify({
-          pass: true,
-          scope: "feature-staging",
-          agentId: id,
-          sessionIds: [sidA, sidB],
-          turns: 4,
-          allowCounts: countsA,
-          denyCounts: countsB,
-          receiptCount: Object.keys(c.evidence).length,
-          preview: true,
-          historyReplay: true,
-          connectionFailure: true,
-          comparisonLive: false,
-        }),
+      const report = {
+        pass: true,
+        scope: "feature-staging",
+        agentId: id,
+        sessionIds: [sidA, sidB],
+        turns: 4,
+        allowCounts: countsA,
+        denyCounts: countsB,
+        receiptCount: Object.keys(c.evidence).length,
+        preview: true,
+        historyReplay: true,
+        connectionFailure: true,
+        comparisonLive: true,
+      };
+      await writeFile(
+        resolve(".local", `feature-report-${run}.json`),
+        JSON.stringify(report, null, 2),
+        { mode: 0o600 },
       );
+      console.log(JSON.stringify(report));
     } catch (error) {
       failure = error;
     } finally {
