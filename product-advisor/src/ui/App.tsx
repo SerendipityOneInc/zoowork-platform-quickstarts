@@ -10,6 +10,7 @@ import {
   type Requirements,
 } from "../domain/catalog.js";
 import type { ConversationView } from "../domain/conversation.js";
+import { McpActivity } from "./McpActivity.js";
 
 const errors: Record<string, string> = {
   advisor_not_configured:
@@ -967,29 +968,7 @@ export function App() {
               })}
             </details>
           )}
-          {conversation && (
-            <details className="diagnostics">
-              <summary>查看调用记录与目录依据</summary>
-              <div>
-                {Object.values(conversation.tools).map((t) => (
-                  <p key={t.id}>
-                    <code>{t.name}</code> · {t.phase}
-                    {t.isError ? " · 查询失败" : ""}
-                    {t.executionStarted === false ? " · 未执行" : ""}
-                    {t.receiptId ? " · 已取得 receipt" : ""}
-                  </p>
-                ))}
-                {evidences.map((e) => (
-                  <p key={e.receiptId}>
-                    <code>{e.receiptId}</code> · {e.tool} · {e.catalogVersion}
-                  </p>
-                ))}
-                {!Object.keys(conversation.tools).length && (
-                  <p>尚无目录工具调用。</p>
-                )}
-              </div>
-            </details>
-          )}
+          <McpActivity conversation={conversation} testMode={testMode} />
         </main>
       </div>
     </div>

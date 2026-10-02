@@ -28,7 +28,9 @@ Product records emphasize price and known parameters before reasons, caveats and
 - Comparison and saved-snapshot tables have focusable, labelled horizontal scroll regions. Their minimum table width remains inside that container on mobile.
 - Conditions and submission are disabled while a turn is running. Recovery resubmits or reads the existing operation; it does not imply a new paid turn.
 - Conversation history restores persisted state. A budget change produces a new query; saved snapshots retain their original conditions and evidence.
-- Service-unconfigured, error, interrupted and denied states retain their own copy and any prior evidence. Diagnostics are secondary native disclosures.
+- Service-unconfigured, error, interrupted and denied states retain their own copy and any prior evidence. The bottom MCP query display stays visible for this demonstration project; full response JSON and call identifiers remain native disclosures.
+
+The MCP panel exposes tool names, request JSON, verified returned products, receipt IDs and execution state. Its data flow and provenance text distinguish the offline Platform adapter from real local HTTP MCP calls. Request counts include blocked tool requests; only verified receipts count as success.
 
 ## Evidence and review boundary
 

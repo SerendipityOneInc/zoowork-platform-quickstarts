@@ -28,4 +28,12 @@
 
 `test:feature-staging` 脚本已准备，最多 1 Agent / 2 Sessions / 4 user turns，失败不自动重试 paid calls。它不会验证 live comparison；比较目前只有离线 HTTP / browser 证据。公开部署仍遵循 docs/HANDOFF.md 的单独授权限制。
 
-PR #19 在本轮复核仍为 OPEN，head `cd932491bcf98eddb7e6650375b6586565c911c5`；feature PR 当前应使用 `feature/platform-demo-handoffs` 为 base。
+2026-10-01 复核时，PR #19 为 OPEN，head `cd932491bcf98eddb7e6650375b6586565c911c5`；当时 feature PR 使用 `feature/platform-demo-handoffs` 为 base。
+
+## 2026-10-02：MCP 查询展示
+
+底部 MCP 查询记录默认可见，显示数据流向、工具名、请求 JSON、执行状态、返回商品与 receipt；完整结果和调用标识可展开。离线 Platform 与实际本机 HTTP MCP 的来源分别标明。
+
+定向浏览器检查通过：空状态、实际预算/filter JSON、搜索返回 3 件商品、等待审批、拒绝后无返回商品、批准比较、完整 JSON 的键盘访问和请求/成功/未执行计数。1440px、720px、390px 均无 document 横向 overflow 和 page errors。桌面和手机截图已检查，没有新增布局修正项。此检查仍使用 test-only Platform adapter，不是 live staging。
+
+本次 `npm ci`、`npm run check`（25 tests）和 `npm run build` 均通过。PR #19 已于 2026-10-02 合并到 main，merge commit `3696818d31d2bd42a36b05af897bf78b5f9aae0f`；#22 集成到该 main，并使用 main 为 base。
