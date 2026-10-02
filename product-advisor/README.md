@@ -132,8 +132,9 @@ production server 和离线 UI harness 的页面、静态资源按每个 IP 每�
 
 | 状态 | 应用行为 |
 | --- | --- |
-| tool phase=blocked | 尚未执行；等待同 Session 的原生 approval |
-| resolve 返回 signaled / 202 | 显示“决策已提交”，继续等 approval resolved、tool end 和 run.finished |
+| tool phase=blocked，且没有 deniedReason | 尚未执行；等待同 Session 的原生 approval |
+| tool deniedReason=approval-denied | 已拒绝，显示“未执行”；这个实际事件序列没有 tool-end |
+| resolve 返回 signaled / 202 | 显示“决策已提交”，继续等原生审批和执行事件；不能将提交当作已执行 |
 | 拒绝 / 超时 | 不调用本地替代工具，不取被拒绝操作的 receipt；保留成功 search 的摘要 |
 | 审批响应不明确 | 保存原 decision，只能重新提交原决策；禁止切换另一决定 |
 | approvals API 为 501 | 显示原生审批不可用，停止等待；不能模拟批准 |
