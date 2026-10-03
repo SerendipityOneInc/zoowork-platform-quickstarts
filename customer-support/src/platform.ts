@@ -15,6 +15,7 @@ export interface State {
   instance: string
   resource: AgentResource
   agentId?: string
+  database?: string
   sessionRequest?: { metadata: Record<string, string>; initial_events: { type: 'user.message'; content: string }[] }
   sessionId?: string
 }

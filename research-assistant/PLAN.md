@@ -41,6 +41,10 @@ updated main. Never reset, stash or rebase automatically.
 Keep code, dependencies, tests and design inside this application. Propose SDK/Platform gaps
 separately. Commit as `finn-srp <finn@srp.one>` and use Finn's verified GitHub account `finn930`.
 
+Integration update, 2026-10-03: PR #19 was merged as `3696818`. Merge the latest main into
+this feature branch and target PR #21 at main. Preserve this complete English application
+and use main's versions of the other demos and shared integration documents.
+
 ## 3. Platform Capabilities and UI Consequences
 
 Preparation reviewed published/source support, without credentials or live calls. Source

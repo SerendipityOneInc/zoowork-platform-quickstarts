@@ -1,6 +1,7 @@
 # Platform application quickstarts
 
-Updated 2026-10-01. The lifecycle foundation runs; application features are not implemented.
+Updated 2026-10-02. Customer Support is implemented and verified. Other applications in this
+branch have lifecycle foundations; feature delivery is tracked in the root [README](../README.md).
 
 ## Product scope
 
@@ -35,9 +36,10 @@ See [Platform contract](PLATFORM.md) for current capabilities and limitations.
 - Record source licenses and commits for copied code. Keep application-specific references
   in the app and cross-cutting references in [REFERENCES.md](REFERENCES.md).
 
-## Delivery order
+## Delivery status
 
-Start Customer Support implementation. Product Advisor and Research Assistant first read
-context and prepare plans. Knowledge Assistant continues its RAG discussion inside its own
-directory. Each session owns one app and an independent worktree/branch. See
+Customer Support is delivered through [PR #20](https://github.com/SerendipityOneInc/zoowork-platform-quickstarts/pull/20),
+with [feature verification](../customer-support/docs/VALIDATION.md). Product Advisor and Research
+Assistant have separate feature PRs; until integrated, their directories here retain the
+lifecycle foundations. Knowledge Assistant continues its RAG discussion inside its own directory. Each session owns one app and an independent worktree/branch. See
 [session assignments](HANDOFF.md) and the [shared prompt](SESSION-PROMPT.md).

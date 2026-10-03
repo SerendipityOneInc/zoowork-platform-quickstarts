@@ -107,3 +107,17 @@ desktop/mobile browser flows passed. The flows cover creation, follow-up, versio
 history, export, debug tabs and keyboard access. They assert html lang=en and an English fixture
 body, with no page errors or horizontal overflow. Desktop/mobile screenshots were inspected;
 English labels fit the existing layout without CSS changes.
+
+
+## 2026-10-03: Main Integration and Conflict Resolution
+
+Merged main at `3696818` after PR #19 was integrated. Resolved duplicated foundation
+additions by retaining the complete Research Assistant and main's versions of the other
+demos/shared integration documents. The application source and dependency files are
+unchanged from the previously verified English demo. Shared references retain both
+Customer Support and Research Assistant source/license records.
+
+`npm ci`, `npm run check` (26 Node tests, TypeScript and build), conflict-marker checks
+and `git diff --check` passed. The feature diff against main is limited to this app and
+its shared reference entry. No credentials, live model calls or resource changes were
+needed for conflict resolution. PR #21 targets main after this integration.
