@@ -20,6 +20,9 @@ notices. Record copied paths and adaptations here. Adapt runtime calls to Platfo
 
 - [Customer Support references and license review](../customer-support/docs/REFERENCES.md)
   record the complete-example sources used by the delivered workbench.
+- [Research Assistant references and retained Anthropic MIT notice](../research-assistant/REFERENCES.md)
+  record the adapted Claude Web adapter/Hono/React reading structure from
+  `3994db7dc2464d9ab255aba1dfda3594fc994c21` and its Platform adaptations.
 
 Feature deliveries maintain their own source commits, copied paths and license notices in the
 application directory. The foundation source record above does not replace those app records.
