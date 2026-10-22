@@ -20,8 +20,7 @@
     "update-agent": "node --env-file-if-exists=.env --import tsx scripts/platform.ts update",
     "recover": "node --env-file-if-exists=.env --import tsx scripts/platform.ts recover",
     "test:browser": "playwright test",
-    "test:research-staging": "node --env-file-if-exists=.env --import tsx scripts/research-staging.ts --confirm-staging",
-    "dev:fixture": "node --import tsx test/fixture-server.ts"
+    "test:research-staging": "node --env-file-if-exists=.env --import tsx scripts/research-staging.ts --confirm-staging"
   },
   "dependencies": {
     "@zoowork-ai/sdk": "0.9.0",

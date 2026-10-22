@@ -7,7 +7,7 @@ import { markdownFilename } from './brief.js'
 import { FoundationError, safeError } from './platform.js'
 import type { Research } from './turns.js'
 
-export function createApi(research: Research, fixture = false): Hono {
+export function createApi(research: Research): Hono {
   const app = new Hono(), bot = createBot(research)
   app.use('/api/*', bodyLimit({ maxSize: 128 * 1024 }))
   app.use('/api/*', async (c, next) => {
@@ -24,12 +24,12 @@ export function createApi(research: Research, fixture = false): Hono {
       typeof error === 'object' && 'status' in error && [400, 401, 402, 403, 404, 409, 429].includes(Number(error.status)) ? Number(error.status) : 503
     return new Response(JSON.stringify({ error: code }), { status, headers: { 'content-type': 'application/json', 'cache-control': 'no-store' } })
   })
-  app.get('/api/info', c => c.json({ fixture, application: 'Research Assistant' }))
+  app.get('/api/info', c => c.json({ application: 'Research Assistant' }))
   app.get('/api/debug', async c => {
     const id = c.req.query('conversation')
     const record = id ? await research.store.read(id) : undefined
     // Reading debug state causes no Platform request and cannot repost input.
-    return c.json(research.store.debug.snapshot(research.store.state.agentId!, fixture, record?.sessionId, id))
+    return c.json(research.store.debug.snapshot(research.store.state.agentId!, record?.sessionId, id))
   })
   app.get('/api/sessions', async c => {
     const offset = Math.max(0, Number(c.req.query('offset') ?? 0))
