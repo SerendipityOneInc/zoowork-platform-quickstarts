@@ -122,7 +122,6 @@ empty conversation switching and keyboard focus during polling. They start their
 `test/fixture-server.ts`, which runs the real HTTP routes, SQLite store and business handlers
 with a fake Platform transport and an in-memory database. It exists only for these tests and is
 not evidence of SDK integration. CI's `check` needs no key or browser.
-See [verification evidence](docs/VALIDATION.md).
 
 ## Persistence and recovery
 
@@ -170,9 +169,6 @@ If a CLI was killed while holding `agent.json.lock`, confirm no setup/cleanup pr
 before removing that lock. Never remove Agent records or databases to bypass uncertainty. For an
 ambiguous Session creation, restart the app and use **Recover conversation** with the same Project
 key to replay the recorded create body/key before attempting cleanup.
-
-Sources and licenses are recorded in [references](docs/REFERENCES.md). Platform boundaries are in
-[the shared contract](../docs/PLATFORM.md).
 
 ## Main files
 

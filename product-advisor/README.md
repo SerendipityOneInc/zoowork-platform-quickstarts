@@ -94,7 +94,7 @@ npm run dev
 
 The key must be a Platform Project key (`zwp_live_`). The gateway determines Org/Project/owner tenancy. Setup creates the app's own Agent and saves its exact resource, creation key, and returned ID in `.local/agent.json`. Repeating setup reuses that state. Do not supply an existing Work Agent ID.
 
-The Agent declares the `catalog` MCP server, direct exposure, and three exact tools. Search is `always_allow`; details and comparison are `always_ask` with `requireConfirmation: true`. Separate native approvals, allow-once, and denial passed a live Platform run on 2026-10-02; [VALIDATION.md](VALIDATION.md) records its scope. Other deployments require their own verification.
+The Agent declares the `catalog` MCP server, direct exposure, and three exact tools. Search is `always_allow`; details and comparison are `always_ask` with `requireConfirmation: true`.
 
 After changing the URL, model, or persona, stop the local app and run:
 
@@ -167,13 +167,10 @@ npm run cleanup
 
 Cleanup uses only recorded IDs, matching Agent labels, and matching Session metadata. Ambiguous creation or failed deletion retains recovery state. Never scan a Project to choose resources, delete `.local`, or create a replacement Agent automatically. SQLite conversation records are cleared only after Agent stop/delete succeeds.
 
-## Structure and evidence
+## Structure
 
 - `mcp/`, `data/`: standalone read-only MCP and original catalog.
 - `src/server/`: SDK Sessions, native approvals, receipt hydration, same-origin API.
 - `src/storage/`: SQLite conversation ledger and receipt/audit stores.
 - `src/ui/`, `public/products/`: interface and original SVG illustrations.
 - `test/`: domain, HTTP MCP, approval, delivery recovery, ownership, and foundation checks.
-- [PLAN.md](PLAN.md): scope, platform contract, implementation, and acceptance criteria.
-- [VALIDATION.md](VALIDATION.md): actual results and verification boundaries.
-- [REFERENCES.md](REFERENCES.md): protocol and source snapshots.

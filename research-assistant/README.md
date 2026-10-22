@@ -103,4 +103,4 @@ The published SDK supplies complete assistant messages rather than token preview
 
 No public hosting, multi-user authentication, IM adapter, scheduled research, upload, approval automation or separate RAG is included. History replays full durable pages; large-session optimization and a multi-process registry are outside this starter.
 
-See [PLAN.md](PLAN.md), [PRODUCT.md](PRODUCT.md), [REFERENCES.md](REFERENCES.md) and the retained [Anthropic MIT license](third-party/anthropic-MIT.txt).
+See [REFERENCES.md](REFERENCES.md) for reused code and the retained [Anthropic MIT license](third-party/anthropic-MIT.txt).
