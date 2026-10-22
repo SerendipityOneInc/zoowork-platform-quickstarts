@@ -18,6 +18,9 @@ notices. Record copied paths and adaptations here. Adapt runtime calls to Platfo
 
 ## Application source records
 
+- [Starter references and retained notices](../starter/REFERENCES.md) record the adapted Claude
+  Managed Agents assistant-ui quickstart (`9ec32b91df50b0d4906cae64b13c6298055ff40d`), its
+  assistant-ui copy-in components and the ZooWork adaptations.
 - [Customer Support references and license review](../customer-support/docs/REFERENCES.md)
   record the complete-example sources used by the delivered workbench.
 - [Research Assistant references and retained Anthropic MIT notice](../research-assistant/REFERENCES.md)

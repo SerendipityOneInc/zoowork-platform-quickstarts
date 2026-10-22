@@ -1,12 +1,20 @@
 # Platform application quickstarts
 
-Updated 2026-10-02. Customer Support is implemented and verified. Other applications in this
-branch have lifecycle foundations; feature delivery is tracked in the root [README](../README.md).
+Updated 2026-10-22. Starter is the general starting point. Customer Support, Product Advisor
+and Research Assistant are runnable applications; Knowledge Assistant has the lifecycle
+foundation. Delivery status is tracked in the root [README](../README.md).
 
 ## Product scope
 
-Ship four complete applications. Name each for its user outcome, and document its main
-SDK capability as a technical focus. Capabilities may overlap across applications.
+[Starter](../starter/) is the general starting point: a minimal chat app with no business
+logic, where a developer defines an Agent in one file, creates it with setup and tests it in a
+local chat page. It is the companion workspace for the
+[Publish your Agent guide](https://zoowork.ai/guides/publish-agent). Like the OpenAI ChatKit
+starter, it omits end-user authentication, per-user limits and public deployment, and lists
+them as the developer's requirements in its README.
+
+Alongside it, ship four complete capability applications. Name each for its user outcome, and
+document its main SDK capability as a technical focus. Capabilities may overlap across applications.
 
 | Application | User outcome | Main capability | Plan |
 | --- | --- | --- | --- |
