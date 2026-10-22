@@ -10,7 +10,7 @@ export const validId = (value: unknown): value is string => typeof value === 'st
 export const digest = (value: string) => createHash('sha256').update(value).digest('hex')
 export interface InputIntent { key: string; hash: string; text?: string; baseline: number; eventId?: string; seq?: number; runId?: string; outcome?: string; errorCode?: string }
 export interface Conversation {
-  version: 1; id: string; instance: string; owner: string; baseUrl: string; agentId: string
+  version: 1; id: string; instance: string; owner: string; agentId: string
   sessionId?: string; title: string; createdAt: string; updatedAt: string; createRequestId: string; topicHash?: string
   createBody: { metadata: Record<string, string> }; createKey: string; status: string
   inputs: Record<string, InputIntent>; activeInput?: string; cursor?: string; lastSeq?: number
@@ -37,7 +37,7 @@ export class Conversations {
     try { c = JSON.parse(await readFile(join(this.directory, id + '.json'), 'utf8')) as Conversation }
     catch { throw new FoundationError('conversation_not_found') }
     if (c.version !== 1 || c.id !== id || c.instance !== this.state.instance || c.owner !== localOwner ||
-      c.baseUrl !== this.state.baseUrl || c.agentId !== this.state.agentId) throw new FoundationError('conversation_not_found')
+      c.agentId !== this.state.agentId) throw new FoundationError('conversation_not_found')
     return c
   }
   async list(): Promise<Conversation[]> {
@@ -68,7 +68,7 @@ export class Conversations {
       if (record && record.topicHash !== digest(topic.trim())) throw new FoundationError('request_content_conflict')
       if (!record) {
         const id = randomUUID(), now = new Date().toISOString(), title = topic.trim().slice(0, 120)
-        record = { version: 1, id, instance: this.state.instance, owner: localOwner, baseUrl: this.state.baseUrl,
+        record = { version: 1, id, instance: this.state.instance, owner: localOwner,
           agentId: this.state.agentId!, title, createdAt: now, updatedAt: now, createRequestId: requestId, topicHash: digest(topic.trim()),
           createKey: `research:${this.state.instance}:${id}`, status: 'creating', inputs: {},
           createBody: { metadata: { app: 'research-assistant', instance: this.state.instance, owner: localOwner, conversation_id: id, title } } }
@@ -95,7 +95,7 @@ export class Conversations {
         catch (e) { if ((e as NodeJS.ErrnoException).code !== 'ENOENT') throw e }
         const now = new Date().toISOString(), title = String(m.title ?? 'Research').slice(0, 120)
         await this.save({ version: 1, id: m.conversation_id, instance: this.state.instance, owner: localOwner,
-          baseUrl: this.state.baseUrl, agentId: this.state.agentId!, sessionId: session.session_id, title,
+          agentId: this.state.agentId!, sessionId: session.session_id, title,
           createdAt: now, updatedAt: now, createRequestId: `recovered-${session.session_id}`, createBody: { metadata: m as Record<string, string> },
           createKey: `recovered:${session.session_id}`, inputs: {}, status: session.run_status ?? 'idle' }); count++
       }

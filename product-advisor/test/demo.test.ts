@@ -3,12 +3,8 @@ import assert from "node:assert/strict";
 import { mkdtemp, readFile, rm, stat, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import {
-  DEFAULT_BASE_URL,
-  type AgentResource,
-  type ZooworkClient,
-} from "@zoowork-ai/sdk";
-import { readConfig, loadState, STAGING_URL } from "../src/platform.js";
+import { type AgentResource, type ZooworkClient } from "@zoowork-ai/sdk";
+import { loadState } from "../src/platform.js";
 import { cookieSecret } from "../src/server/cookie-secret.js";
 import { prepareDemo } from "../src/server/demo-setup.js";
 import {
@@ -16,19 +12,6 @@ import {
   tunnelEnvironment,
   waitTunnelDns,
 } from "../src/server/local-catalog.js";
-
-test("a Project key alone uses the published SDK endpoint; staging stays explicit", () => {
-  const apiKey = "zwp_live_synthetic_not_a_real_key";
-  assert.deepEqual(readConfig({ ZOOWORK_API_KEY: apiKey }), {
-    apiKey,
-    baseUrl: DEFAULT_BASE_URL,
-  });
-  assert.equal(
-    readConfig({ ZOOWORK_API_KEY: apiKey, ZOOWORK_BASE_URL: STAGING_URL })
-      .baseUrl,
-    STAGING_URL,
-  );
-});
 
 test("generated visitor secret survives concurrent startup and remains private", async () => {
   const dir = await mkdtemp(join(tmpdir(), "advisor-cookie-"));
@@ -49,10 +32,7 @@ test("generated visitor secret survives concurrent startup and remains private",
 
 test("new tunnel URLs update the owned Agent and ambiguous updates replay exactly", async () => {
   const dir = await mkdtemp(join(tmpdir(), "advisor-demo-"));
-  const config = {
-    apiKey: "zwp_live_synthetic_not_a_real_key",
-    baseUrl: STAGING_URL,
-  };
+  const apiKey = "zwp_live_synthetic_not_a_real_key";
   let declared: AgentResource | undefined;
   let creates = 0,
     failUpdate = false;
@@ -74,29 +54,29 @@ test("new tunnel URLs update the owned Agent and ambiguous updates replay exactl
     },
   } as unknown as ZooworkClient;
   try {
-    await prepareDemo(client, config, "https://first.example/mcp", dir);
-    await prepareDemo(client, config, "https://second.example/mcp", dir);
+    await prepareDemo(client, "https://first.example/mcp", dir);
+    await prepareDemo(client, "https://second.example/mcp", dir);
     assert.equal(creates, 1);
     failUpdate = true;
     await assert.rejects(
-      prepareDemo(client, config, "https://third.example/mcp", dir),
+      prepareDemo(client, "https://third.example/mcp", dir),
     );
     const path = join(dir, "agent.json");
-    const before = (await loadState(path, config, "product-advisor"))!;
+    const before = (await loadState(path, "product-advisor"))!;
     assert.equal(before.resource.mcp![0]!.url, "https://second.example/mcp");
     assert.equal(
       before.pendingResource!.mcp![0]!.url,
       "https://third.example/mcp",
     );
     failUpdate = false;
-    await prepareDemo(client, config, "https://fourth.example/mcp", dir);
+    await prepareDemo(client, "https://fourth.example/mcp", dir);
     assert.equal(creates, 1);
     assert.deepEqual(updates[1], updates[2]);
-    const after = (await loadState(path, config, "product-advisor"))!;
+    const after = (await loadState(path, "product-advisor"))!;
     assert.equal(after.pendingResource, undefined);
     assert.equal(after.resource.mcp![0]!.url, "https://fourth.example/mcp");
     assert.deepEqual(after.resource.labels, before.resource.labels);
-    assert.equal((await readFile(path, "utf8")).includes(config.apiKey), false);
+    assert.equal((await readFile(path, "utf8")).includes(apiKey), false);
   } finally {
     await rm(dir, { recursive: true, force: true });
   }

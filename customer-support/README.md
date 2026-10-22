@@ -82,9 +82,9 @@ Startup errors include a safe error code and the next action, without printing t
 | `run_setup_first` | Run `npm run setup`, then `npm run dev`. Setup creates the Agent for you. |
 | `http_401` | Check that the key was copied correctly and is active. Restart after editing `.env`. |
 | `http_402` | Check Organization billing and available credits in the Console before retrying. |
-| `http_403` | Check your account access, selected Project and key permissions. Recorded resources must use the same Project and deployment. |
+| `http_403` | Check your account access, selected Project and key permissions. Recorded resources must use the same Project. |
 | `http_400` during setup | Check account setup, Organization billing and the selected model. This code can have several causes; retain `.local` state while investigating. |
-| `state_scope_mismatch` / recorded resource `http_404` | Use the original API deployment and Project key. Do not delete `.local` to force recreation; see recovery and cleanup below. |
+| `state_scope_mismatch` / recorded resource `http_404` | Use the original Project key. Do not delete `.local` to force recreation; see recovery and cleanup below. |
 | `agent_config_outdated_cleanup_then_setup` | Stop the server, run `npm run cleanup`, then `npm run setup` and `npm run dev`. Keep state if cleanup fails. |
 | `EADDRINUSE` / `request_or_runner_failed` when starting | Stop another process using port 4600 or set a free `PORT` in `.env`. The generic code can also mean a connection or runtime failure. |
 
@@ -128,7 +128,7 @@ See [verification evidence](docs/VALIDATION.md).
 
 - `.local/support.sqlite` stores fixture orders/shipments, browser identities, conversation ownership,
   exact Session-create requests, user messages, tool jobs, tickets, results and durable event cursors.
-  The database is bound to the recorded Agent instance and deployment.
+  The database is bound to the recorded app instance and Agent.
 - Each browser has an opaque HttpOnly cookie. Routes check conversation ownership. The handlers
   independently check customer ownership; the model cannot select a customer or pass confirmation.
   Mutation requests require a same-origin request and a CSRF token. The server binds to localhost.
@@ -171,8 +171,8 @@ before removing that lock. Never remove Agent records or databases to bypass unc
 ambiguous Session creation, restart the app and use **Recover conversation** with the same Project
 key to replay the recorded create body/key before attempting cleanup.
 
-Sources and licenses are recorded in [references](docs/REFERENCES.md). Platform boundaries and
-the maintainers' staging checks are in [the shared contract](../docs/PLATFORM.md).
+Sources and licenses are recorded in [references](docs/REFERENCES.md). Platform boundaries are in
+[the shared contract](../docs/PLATFORM.md).
 
 ## Main files
 
@@ -185,4 +185,3 @@ the maintainers' staging checks are in [the shared contract](../docs/PLATFORM.md
 | `public/` | English responsive workbench |
 | `src/platform.ts`, `src/cleanup.ts` | Agent setup, resource scope and recorded-resource cleanup |
 | `test/`, `e2e/` | Offline behavior and browser regressions |
-| `scripts/feature-staging.ts` | Maintainers' staging check; see [the shared contract](../docs/PLATFORM.md#customer-support) |

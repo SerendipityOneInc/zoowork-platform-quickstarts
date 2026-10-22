@@ -88,7 +88,7 @@ Browser tests start their own server, `test/fixture-server.ts`, on port 3187. It
 npm run cleanup
 ```
 
-Cleanup deletes matching recorded Sessions, then stops/deletes the Agent. It preserves recovery state when uncertain or unsuccessful. After successful application cleanup, local tombstones move to `.local/conversations.retired-<instance>/`, so a new `setup` starts a fresh registry. Smoke tombstones remain alongside their recorded state directory. Do not mix registries from different instances.
+Cleanup deletes matching recorded Sessions, then stops/deletes the Agent. It preserves recovery state when uncertain or unsuccessful. After successful application cleanup, local tombstones move to `.local/conversations.retired-<instance>/`, so a new `setup` starts a fresh registry. Do not mix registries from different instances.
 
 ## Code and limits
 
@@ -96,7 +96,7 @@ Cleanup deletes matching recorded Sessions, then stops/deletes the Agent. It pre
 - `src/main.ts`, `app.ts`, `bot.ts`: local host, application API, official Web adapter.
 - `src/conversations.ts`, `turns.ts`: ownership, intents, single reader, durable replay.
 - `src/brief.ts`: shared message/tool/brief/source projection and export text.
-- `src/platform.ts`, `web-runtime.ts`, `lifecycle.ts`: lifecycle, bounded clients and locks.
+- `src/platform.ts`, `web-runtime.ts`, `lifecycle.ts`: lifecycle, SDK client and locks.
 - `web/`: React/useChat reading UI and responsive styles.
 
 The published SDK supplies complete assistant messages rather than token previews. No progress percentage, duration estimate, typed citation verification or cost estimate is invented. Final Markdown parsing is best-effort: incomplete or uncited answers stay in the conversation; failed/aborted runs do not publish a complete brief.

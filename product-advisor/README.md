@@ -14,7 +14,7 @@ npm run check
 npm run build
 ```
 
-`check` runs TypeScript and offline tests. Tests use the official MCP client against a real local HTTP server. Platform lifecycle, events, and approvals use a test-only adapter and consume no model tokens. Checks need no credentials or staging connection.
+`check` runs TypeScript and offline tests. Tests use the official MCP client against a real local HTTP server. Platform lifecycle, events, and approvals use a test-only adapter and consume no model tokens. Checks need no credentials or Platform connection.
 
 Without a Project key, `npm run dev` opens an unconfigured interface and generates no mock recommendations.
 
@@ -94,7 +94,7 @@ npm run dev
 
 The key must be a Platform Project key (`zwp_live_`). The gateway determines Org/Project/owner tenancy. Setup creates the app's own Agent and saves its exact resource, creation key, and returned ID in `.local/agent.json`. Repeating setup reuses that state. Do not supply an existing Work Agent ID.
 
-The Agent declares the `catalog` MCP server, direct exposure, and three exact tools. Search is `always_allow`; details and comparison are `always_ask` with `requireConfirmation: true`. Separate native approvals, allow-once, and denial passed staging on 2026-10-02. Other deployments require their own verification.
+The Agent declares the `catalog` MCP server, direct exposure, and three exact tools. Search is `always_allow`; details and comparison are `always_ask` with `requireConfirmation: true`. Separate native approvals, allow-once, and denial passed a live Platform run on 2026-10-02; [VALIDATION.md](VALIDATION.md) records its scope. Other deployments require their own verification.
 
 After changing the URL, model, or persona, stop the local app and run:
 
@@ -163,8 +163,6 @@ This test-only harness uses mock Platform lifecycle/events/approvals and an actu
 ```sh
 # Stop the local Web app before cleaning recorded Sessions and Agent.
 npm run cleanup
-# If smoke/feature cleanup failed, use the exact reported filename.
-npm run cleanup -- feature-<recorded-instance>.json
 ```
 
 Cleanup uses only recorded IDs, matching Agent labels, and matching Session metadata. Ambiguous creation or failed deletion retains recovery state. Never scan a Project to choose resources, delete `.local`, or create a replacement Agent automatically. SQLite conversation records are cleared only after Agent stop/delete succeeds.

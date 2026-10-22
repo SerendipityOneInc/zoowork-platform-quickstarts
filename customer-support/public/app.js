@@ -42,7 +42,7 @@ const errors = {
   http_402: "The Project needs credits before the conversation can continue.",
   http_403: "The Project key does not have access to this resource.",
   http_404:
-    "The recorded Platform resource was not found. Check the key and deployment before recreating anything.",
+    "The recorded Platform resource was not found. Check the Project key before recreating anything.",
   timeout_or_cancelled:
     "The request timed out. Saved business results are retained.",
   turn_failed:

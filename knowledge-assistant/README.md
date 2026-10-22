@@ -33,9 +33,8 @@ Keep recovery state after failures; do not manually substitute another Agent ID.
 ## Files
 
 - `src/agent.ts`: this demo's Agent configuration.
-- `src/platform.ts`: Project-key config, bounded client, lifecycle and recovery state.
+- `src/platform.ts`: Project-key config, lifecycle and recovery state.
 - `scripts/platform.ts`: setup/status/cleanup commands.
-- `scripts/staging.ts`: maintainers' staging smoke; see [the shared contract](../docs/PLATFORM.md#staging).
 - `test/platform.test.ts`: offline lifecycle/scope/recovery checks.
 
 The feature session owns this directory. No sibling imports or workspace links.

@@ -9,8 +9,8 @@ Read `docs/HANDOFF.md`, `docs/OUTLINE.md`, `docs/PLATFORM.md` and the target app
   Keep changes in the requested demo. Propose SDK changes in the SDK repository separately.
 - Keep credentials server-side, outside Git and logs. Commit only `.env.example`.
 - Run `npm ci` and `npm run check` in the changed demo before committing. CI is offline.
-- Live tests require user authorization. The staging smoke creates one temporary Agent/Session,
-  performs one model turn and cleans up. Finding a key or passing a flag is not authorization.
+- Live runs use a real Project key and consume credits; they require user authorization.
+  Finding a key or passing a flag is not authorization.
 - Preserve recovery state after ambiguous creation or failed cleanup. Operate only on recorded
   resource IDs with matching labels; never scan a Project to choose resources for deletion.
 - Use `docs/SESSION-PROMPT.md` and `docs/handoffs/` for the four feature sessions.

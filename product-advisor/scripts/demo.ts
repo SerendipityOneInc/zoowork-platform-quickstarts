@@ -2,11 +2,11 @@ import { createServer as httpServer } from "node:http";
 import { setDefaultResultOrder } from "node:dns";
 import { resolve } from "node:path";
 import { createServer as viteServer } from "vite";
+import { createZooworkClient } from "@zoowork-ai/sdk";
 import { publicMcpUrl } from "../src/agent.js";
 import {
   FoundationError,
-  readConfig,
-  runtime,
+  readApiKey,
   safeError,
   withStateLock,
 } from "../src/platform.js";
@@ -17,7 +17,7 @@ import { appRuntime } from "../src/server/runtime.js";
 try {
   // Local VPNs may advertise IPv6 while only routing IPv4 to the tunnel edge.
   setDefaultResultOrder("ipv4first");
-  const config = readConfig();
+  const apiKey = readApiKey();
   const origin = process.env.APP_ORIGIN ?? "http://localhost:4310";
   const url = new URL(origin);
   if (
@@ -68,8 +68,7 @@ try {
       }
       console.log(`Catalog MCP: ${process.env.MCP_PUBLIC_URL}`);
       await prepareDemo(
-        runtime(config).client,
-        config,
+        createZooworkClient({ apiKey }),
         process.env.MCP_PUBLIC_URL,
       );
       app = await appRuntime();

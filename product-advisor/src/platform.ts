@@ -1,17 +1,14 @@
 import { randomUUID } from 'node:crypto'
 import { mkdir, open, readFile, rename, rm, writeFile } from 'node:fs/promises'
 import { dirname } from 'node:path'
-import { createZooworkClient, DEFAULT_BASE_URL, ZooworkError, type AgentRecord, type AgentResource, type ZooworkClient } from '@zoowork-ai/sdk'
+import { ZooworkError, type AgentRecord, type AgentResource, type ZooworkClient } from '@zoowork-ai/sdk'
 
-export const STAGING_URL = 'https://claw-interface.ecap.yesy.live/service/v1'
 export class FoundationError extends Error {
   constructor(readonly code: string) { super(code) }
 }
-export interface Config { apiKey: string; baseUrl: string }
 export interface State {
   version: 1
   demo: string
-  baseUrl: string
   instance: string
   resource: AgentResource
   agentId?: string
@@ -19,40 +16,17 @@ export interface State {
   sessionId?: string
   pendingResource?: AgentResource
 }
-export function readConfig(env: NodeJS.ProcessEnv = process.env): Config {
+/** Read the server-side Platform Project key. Other key types are rejected. */
+export function readApiKey(env: NodeJS.ProcessEnv = process.env): string {
   const apiKey = env.ZOOWORK_API_KEY?.trim()
   if (!apiKey?.startsWith('zwp_live_') || apiKey.length <= 9) throw new FoundationError('platform_project_key_required')
-  let url: URL
-  try { url = new URL(env.ZOOWORK_BASE_URL?.trim() || DEFAULT_BASE_URL) } catch { throw new FoundationError('invalid_public_base_url') }
-  if (url.protocol !== 'https:' || url.username || url.password || url.search || url.hash ||
-      url.pathname.replace(/\/$/, '') !== '/service/v1') throw new FoundationError('invalid_public_base_url')
-  return { apiKey, baseUrl: url.origin + '/service/v1' }
-}
-export function requireStaging(config: Config, confirmed: boolean): void {
-  if (!confirmed) throw new FoundationError('staging_confirmation_required')
-  if (config.baseUrl !== STAGING_URL) throw new FoundationError('staging_endpoint_required')
+  return apiKey
 }
 export function safeError(error: unknown): string {
   if (error instanceof FoundationError) return error.code
   if (error instanceof ZooworkError) return `http_${error.status}`
   if (error instanceof Error && ['AbortError', 'TimeoutError'].includes(error.name)) return 'timeout_or_cancelled'
   return 'request_or_runner_failed'
-}
-export function runtime(config: Config): { client: ZooworkClient; beginCleanup: () => void } {
-  const mainSignal = AbortSignal.timeout(180_000)
-  let cleanupSignal: AbortSignal | undefined
-  let calls = 0
-  let cleanupCalls = 0
-  const expected = new URL(config.baseUrl)
-  const client = createZooworkClient({ ...config, fetch: async (input, init = {}) => {
-    const url = new URL(input)
-    if (url.origin !== expected.origin || !url.pathname.startsWith(expected.pathname + '/') ||
-        url.username || url.password || url.hash) throw new FoundationError('out_of_scope_request')
-    if (cleanupSignal ? ++cleanupCalls > 12 : ++calls > 80) throw new FoundationError('request_budget_exceeded')
-    const signal = AbortSignal.any([cleanupSignal ?? mainSignal, AbortSignal.timeout(30_000), ...(init.signal ? [init.signal] : [])])
-    return fetch(input, { ...init, signal, redirect: 'error' })
-  } })
-  return { client, beginCleanup: () => { cleanupSignal ??= AbortSignal.timeout(60_000) } }
 }
 async function privateDirectory(path: string): Promise<void> {
   await mkdir(dirname(path), { recursive: true, mode: 0o700 })
@@ -63,11 +37,11 @@ export async function saveState(path: string, state: State): Promise<void> {
   await writeFile(temp, JSON.stringify(state, null, 2) + '\n', { mode: 0o600, flag: 'wx' })
   await rename(temp, path)
 }
-export async function loadState(path: string, config: Config, demo: string): Promise<State | undefined> {
+export async function loadState(path: string, demo: string): Promise<State | undefined> {
   let state: State
   try { state = JSON.parse(await readFile(path, 'utf8')) as State }
   catch (error) { if ((error as NodeJS.ErrnoException).code === 'ENOENT') return undefined; throw new FoundationError('invalid_state') }
-  if (state.version !== 1 || state.demo !== demo || state.baseUrl !== config.baseUrl ||
+  if (state.version !== 1 || state.demo !== demo ||
       typeof state.instance !== 'string' || !state.instance || !state.resource ||
       state.resource.labels?.starter_demo !== demo || state.resource.labels?.starter_instance !== state.instance ||
       (state.agentId !== undefined && (typeof state.agentId !== 'string' || !state.agentId))) {
@@ -75,9 +49,9 @@ export async function loadState(path: string, config: Config, demo: string): Pro
   }
   return state
 }
-export function newState(config: Config, demo: string, resource: AgentResource): State {
+export function newState(demo: string, resource: AgentResource): State {
   const instance = randomUUID()
-  return { version: 1, demo, baseUrl: config.baseUrl, instance, resource: {
+  return { version: 1, demo, instance, resource: {
     ...resource, labels: { ...resource.labels, starter_demo: demo, starter_instance: instance },
   } }
 }

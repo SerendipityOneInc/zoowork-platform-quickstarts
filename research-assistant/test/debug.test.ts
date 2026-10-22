@@ -9,6 +9,14 @@ import { fixture } from './fixtures.js'
 test('debug observes real SDK calls and deduplicates history/stream event provenance', async () => {
   const f = await fixture()
   try {
+    // The fake run finishes on a timer. If that timer fires before the observer's history
+    // replay, the run is already complete and the app correctly never opens a stream. Hold
+    // the rest of the run until the stream is open, so the live path is always exercised.
+    let streamOpened!: () => void
+    const opened = new Promise<void>(resolve => { streamOpened = resolve })
+    const later = f.platform.later.bind(f.platform), stream = f.platform.client.streamEvents
+    f.platform.later = action => { void opened.then(() => later(action)) }
+    f.platform.client.streamEvents = (...args) => { streamOpened(); return stream(...args) }
     const c = await f.store.create('topic', randomUUID())
     await f.research.send(c.id, 'private question', randomUUID(), async () => {})
     await f.research.history(c.id)

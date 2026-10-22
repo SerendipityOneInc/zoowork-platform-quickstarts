@@ -13,7 +13,6 @@
     "setup": "node --env-file-if-exists=.env --import tsx scripts/platform.ts setup",
     "status": "node --env-file-if-exists=.env --import tsx scripts/platform.ts status",
     "cleanup": "node --env-file-if-exists=.env --import tsx scripts/platform.ts cleanup",
-    "test:staging": "node --env-file-if-exists=.env --import tsx scripts/staging.ts",
     "build": "vite build && tsc -p tsconfig.build.json && node -e \"require('node:fs').cpSync('data','dist/data',{recursive:true})\"",
     "dev": "node --env-file-if-exists=.env --import tsx scripts/dev.ts",
     "demo": "node --env-file-if-exists=.env --import tsx scripts/demo.ts",
@@ -22,8 +21,7 @@
     "mcp:start": "node --env-file-if-exists=.env dist/scripts/mcp.js",
     "mcp:probe": "node --env-file-if-exists=.env --import tsx scripts/probe.ts",
     "configure": "node --env-file-if-exists=.env --import tsx scripts/platform.ts configure",
-    "test:ui": "node --import tsx scripts/test-ui.ts",
-    "test:feature-staging": "node --env-file-if-exists=.env --import tsx scripts/feature-staging.ts"
+    "test:ui": "node --import tsx scripts/test-ui.ts"
   },
   "dependencies": {
     "@modelcontextprotocol/sdk": "1.29.0",

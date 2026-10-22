@@ -13,11 +13,9 @@
     "setup": "node --env-file-if-exists=.env --import tsx scripts/platform.ts setup",
     "status": "node --env-file-if-exists=.env --import tsx scripts/platform.ts status",
     "cleanup": "node --env-file-if-exists=.env --import tsx scripts/platform.ts cleanup",
-    "test:staging": "node --env-file-if-exists=.env --import tsx scripts/staging.ts",
     "dev": "node --env-file-if-exists=.env --import tsx scripts/server.ts",
     "test:browser": "playwright test",
-    "check:ui": "node --check public/app.js",
-    "test:feature-staging": "node --env-file-if-exists=.env --import tsx scripts/feature-staging.ts"
+    "check:ui": "node --check public/app.js"
   },
   "dependencies": {
     "@zoowork-ai/sdk": "0.12.0"

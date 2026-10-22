@@ -6,16 +6,14 @@ export function startupFailure(prefix: string, error: unknown): string {
   const guidance: Record<string, string> = {
     platform_project_key_required:
       "Get a Platform Project key at https://platform.zoowork.ai: sign in, select a Project, then open API Keys and create a key.\nCopy .env.example to .env and set ZOOWORK_API_KEY to the zwp_live_ key. Keep it server-side.\nThen run npm run setup followed by npm run dev. See README.md: Get your Project key.",
-    invalid_public_base_url:
-      "ZOOWORK_BASE_URL is optional. Remove it to use the production API, or use an HTTPS API URL ending in /service/v1 with no query, credentials or fragment. The Platform Console URL is not the API URL.",
     run_setup_first:
       "Run npm run setup to create and start this application's Agent, then npm run dev. You do not need to create an Agent manually in the Console.",
     http_401:
-      "The Project key was rejected. Check ZOOWORK_API_KEY in .env, and ZOOWORK_BASE_URL if you set it, then restart. Get a Project key at https://platform.zoowork.ai.",
+      "The Project key was rejected. Check ZOOWORK_API_KEY in .env, then restart. Get a Project key at https://platform.zoowork.ai.",
     http_402:
       "Check Organization billing and available credits at https://platform.zoowork.ai. Model turns use the Organization wallet shared by its Projects. Retry after billing is ready.",
     http_403:
-      "Check the selected Project, key permissions and account access at https://platform.zoowork.ai. Keep the same Project and deployment for recorded resources.",
+      "Check the selected Project, key permissions and account access at https://platform.zoowork.ai. Keep the same Project for recorded resources.",
     http_400:
       "Check Platform account setup, Organization billing and the configured model. See README.md: Troubleshooting. Keep retained .local state before retrying.",
     agent_config_outdated_cleanup_then_setup:

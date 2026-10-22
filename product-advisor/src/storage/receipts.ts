@@ -78,20 +78,6 @@ export class Receipts {
         .get(tool) as { n: number }
     ).n;
   }
-  forSession(agentId: string, sessionId: string): Record<string, number> {
-    const counts: Record<string, number> = {
-      search_products: 0,
-      get_products: 0,
-      compare_products: 0,
-    };
-    const rows = this.db
-      .prepare(
-        "SELECT tool FROM audit WHERE json_extract(context,'$.agentId')=? AND json_extract(context,'$.sessionId')=?",
-      )
-      .all(agentId, sessionId) as { tool: string }[];
-    for (const row of rows) counts[row.tool] = (counts[row.tool] ?? 0) + 1;
-    return counts;
-  }
   close(): void {
     this.db.close();
   }

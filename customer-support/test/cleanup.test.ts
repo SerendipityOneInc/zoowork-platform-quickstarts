@@ -8,7 +8,7 @@ import {
   type ZooworkClient,
   ZooworkError,
 } from "@zoowork-ai/sdk";
-import { newState, saveState, STAGING_URL } from "../src/platform.js";
+import { newState, saveState } from "../src/platform.js";
 import { Store } from "../src/store.js";
 import { cleanupApplication } from "../src/cleanup.js";
 
@@ -24,16 +24,12 @@ async function context(
 ) {
   const dir = await mkdtemp(join(tmpdir(), "support-cleanup-")),
     path = join(dir, "agent.json");
-  const state = newState(
-    { apiKey: "zwp_live_synthetic", baseUrl: STAGING_URL },
-    "customer-support",
-    { name: "test" },
-  );
+  const state = newState("customer-support", { name: "test" });
   state.agentId = "agent-synthetic";
   await saveState(path, state);
   const store = new Store(
       join(dir, "support.sqlite"),
-      `${state.baseUrl}:${state.instance}:${state.agentId}`,
+      `${state.instance}:${state.agentId}`,
     ),
     calls: string[] = [];
   const client = {

@@ -12,8 +12,7 @@
     "check": "npm run typecheck && npm test",
     "setup": "node --env-file-if-exists=.env --import tsx scripts/platform.ts setup",
     "status": "node --env-file-if-exists=.env --import tsx scripts/platform.ts status",
-    "cleanup": "node --env-file-if-exists=.env --import tsx scripts/platform.ts cleanup",
-    "test:staging": "node --env-file-if-exists=.env --import tsx scripts/staging.ts"
+    "cleanup": "node --env-file-if-exists=.env --import tsx scripts/platform.ts cleanup"
   },
   "dependencies": {
     "@zoowork-ai/sdk": "0.12.0"

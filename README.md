@@ -23,7 +23,7 @@ feature inside a business scenario. Knowledge Assistant still has only the lifec
 | Application | User outcome | SDK focus | Status |
 | --- | --- | --- | --- |
 | [Starter](starter/) | Chat with an Agent you define in one file; take it into your product | Agent definition, setup/update, durable Session streaming, approvals | Runnable application; offline checks |
-| [Customer Support](customer-support/) | Track orders and shipments; confirm and save support tickets | Custom Tools, durable Sessions and recovery | Runnable application; offline browser and actual staging verification |
+| [Customer Support](customer-support/) | Track orders and shipments; confirm and save support tickets | Custom Tools, durable Sessions and recovery | Runnable application; offline browser checks |
 | [Product Advisor](product-advisor/) | Search, compare and shortlist products | Remote MCP | Runnable application, merged in [PR #22](https://github.com/SerendipityOneInc/zoowork-platform-quickstarts/pull/22) |
 | [Knowledge Assistant](knowledge-assistant/) | Ask an existing knowledge base and inspect citations | External RAG | Lifecycle foundation; retrieval design in progress |
 | [Research Assistant](research-assistant/) | Research a topic and continue a saved sourced brief | Vercel Chat SDK | Runnable application, merged in [PR #21](https://github.com/SerendipityOneInc/zoowork-platform-quickstarts/pull/21) |
@@ -73,8 +73,7 @@ failed cleanup. To remove an app's recorded resources, stop its server, then run
 `npm run cleanup` from that app's directory. Cleanup verifies ownership and only operates
 on recorded resources.
 
-Live tests require explicit authorization. Read [Platform and staging](docs/PLATFORM.md)
-before an optional live check. Offline verification and actual live evidence are documented
+See [the Platform contract](docs/PLATFORM.md) for the resource flow and current limits. Offline verification and actual live evidence are documented
 separately; passing offline tests do not prove SDK or deployed API integration.
 
 ## Development and references

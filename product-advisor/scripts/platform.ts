@@ -1,4 +1,5 @@
 import { resolve } from "node:path";
+import { createZooworkClient } from "@zoowork-ai/sdk";
 import { agentResource, demo } from "../src/agent.js";
 import {
   cleanupAgent,
@@ -6,8 +7,7 @@ import {
   loadState,
   newState,
   ownedAgent,
-  readConfig,
-  runtime,
+  readApiKey,
   safeError,
   saveState,
   setupAgent,
@@ -17,20 +17,14 @@ import { Conversations } from "../src/storage/conversations.js";
 import { cleanupConversations } from "../src/server/cleanup.js";
 
 const command = process.argv[2];
-const filename = process.argv[3] ?? "agent.json";
 try {
   if (!["setup", "status", "cleanup", "configure"].includes(command ?? ""))
     throw new FoundationError("expected_setup_status_configure_or_cleanup");
-  if (!/^[a-zA-Z0-9_-]+\.json$/.test(filename))
-    throw new FoundationError("state_filename_required");
-  const path = resolve(".local", filename);
-  const config = readConfig();
-  const rt = runtime(config);
+  const path = resolve(".local", "agent.json");
+  const client = createZooworkClient({ apiKey: readApiKey() });
   await withStateLock(path, async () => {
-    let state = await loadState(path, config, demo);
+    let state = await loadState(path, demo);
     if (command === "setup") {
-      if (filename !== "agent.json")
-        throw new FoundationError("setup_uses_agent_state");
       const ledger = new Conversations(
         resolve(".local", "conversations.sqlite"),
       );
@@ -40,22 +34,20 @@ try {
       } finally {
         ledger.close();
       }
-      state ??= newState(config, demo, agentResource());
-      const id = await setupAgent(rt.client, state, path);
+      state ??= newState(demo, agentResource());
+      const id = await setupAgent(client, state, path);
       console.log(`Agent ready: ${id}`);
       return;
     }
     if (!state) throw new FoundationError("run_setup_first");
     if (command === "configure") {
-      if (filename !== "agent.json")
-        throw new FoundationError("configure_uses_agent_state");
-      await ownedAgent(rt.client, state);
+      await ownedAgent(client, state);
       state.pendingResource ??= {
         ...agentResource(),
         labels: state.resource.labels,
       };
       await saveState(path, state);
-      await rt.client.updateAgent(state.agentId!, { ...state.pendingResource });
+      await client.updateAgent(state.agentId!, { ...state.pendingResource });
       state.resource = state.pendingResource;
       delete state.pendingResource;
       await saveState(path, state);
@@ -63,20 +55,19 @@ try {
       return;
     }
     if (command === "cleanup") {
-      rt.beginCleanup();
       const store = new Conversations(
         resolve(".local", "conversations.sqlite"),
       );
       try {
-        await cleanupConversations(rt.client, state, store);
-        await cleanupAgent(rt.client, state, path);
+        await cleanupConversations(client, state, store);
+        await cleanupAgent(client, state, path);
         store.clearAgent(state.agentId!);
       } finally {
         store.close();
       }
       console.log("Cleanup complete");
     } else {
-      const agent = await ownedAgent(rt.client, state);
+      const agent = await ownedAgent(client, state);
       console.log(
         JSON.stringify({
           agentId: agent.agent_id,
