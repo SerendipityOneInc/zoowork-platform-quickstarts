@@ -128,10 +128,9 @@ function useSessionThreadRuntime() {
       });
     },
 
-    // The stop button sends a real interrupt to the run.
-    onCancel: async () => {
-      if (controller) await controller.interrupt();
-    },
+    // No onCancel: assistant-ui's cancel removes the last user message and
+    // puts its text back in the composer, but the Session has already taken
+    // that message. The stop button calls useStopActiveRun() instead.
 
     onRespondToToolApproval: async ({ approvalId, approved }) => {
       await controller?.respondToApproval(approvalId, approved);
@@ -145,6 +144,14 @@ export function ZooworkRuntimeProvider({ children }: { children: React.ReactNode
     runtimeHook: useSessionThreadRuntime,
   });
   return <AssistantRuntimeProvider runtime={runtime}>{children}</AssistantRuntimeProvider>;
+}
+
+/** Stop the open conversation's run on the Platform (a real user.interrupt). */
+export function useStopActiveRun(): () => void {
+  const sessionId = useAuiState((s) => s.threadListItem.externalId ?? s.threadListItem.remoteId) ?? null;
+  return () => {
+    if (sessionId) void getSessionController(sessionId).interrupt();
+  };
 }
 
 /** The open conversation's live state, for the status strip. */
