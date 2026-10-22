@@ -36,7 +36,9 @@ git fetch origin
 git switch --track origin/feature/platform-demo-handoffs
 cd customer-support
 npm ci
-npm run demo:offline
+cp .env.example .env  # then set your Project key, see customer-support/README.md
+npm run setup
+npm run dev
 ```
 
 Product Advisor [PR #22](https://github.com/SerendipityOneInc/zoowork-platform-quickstarts/pull/22)

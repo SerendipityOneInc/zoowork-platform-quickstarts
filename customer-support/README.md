@@ -10,8 +10,7 @@ they do not approve a refund, arrange a return or contact a carrier.
 
 ## Get your Project key
 
-You can try the workbench without credentials with `npm ci` and `npm run demo:offline`.
-That preview uses simulated replies. To run the real Agent, use your own **Platform Project key**:
+The workbench runs a real Agent, so you need your own **Platform Project key** first:
 
 1. Open [Platform Console](https://platform.zoowork.ai) and sign in. Complete account and
    Organization setup if prompted.
@@ -65,9 +64,8 @@ npm run dev
 Successful setup prints `Agent ready: <agent-id>`. The server prints
 `Customer Support: http://localhost:4600 (synthetic data)`. Open **http://localhost:4600**,
 choose **Track ORD-1001**, click **Send**, and look for `lookup_order` / `lookup_shipment` results and an Agent reply.
-Real mode has no **Offline test fixture** label. Model turns consume your Organization credits;
-orders and tickets remain synthetic in both modes. Stop an offline preview before starting real
-mode on the same port. `PORT` can select another local port.
+Model turns consume your Organization credits; orders and tickets remain synthetic.
+`PORT` can select another local port.
 
 The key stays in the server process; the browser receives neither the key nor an Agent ID.
 There is no Work Agent, channels API, sibling app import or local SDK override.
@@ -94,11 +92,6 @@ Startup errors include a safe error code and the next action, without printing t
 | `agent_config_outdated_cleanup_then_setup` | Stop the server, run `npm run cleanup`, then `npm run setup` and `npm run dev`. Keep state if cleanup fails. |
 | `EADDRINUSE` / `request_or_runner_failed` when starting | Stop another process using port 4600 or set a free `PORT` in `.env`. The generic code can also mean a connection or runtime failure. |
 
-If the workbench still says **Offline test fixture**, you are running `npm run demo:offline`.
-Open **Connect to ZooWork Platform** in that page for the same key and startup steps. A real reply
-requires `npm run setup` followed by `npm run dev`. The starter never silently switches an offline
-preview into paid model calls.
-
 ## Walkthrough
 
 1. Select **Track ORD-1001**, then send the prepared message. The Agent calls `lookup_order` and
@@ -116,18 +109,7 @@ ORD-1002 is a delivered bottle order. ORD-9999 is unknown. ORD-2001 belongs to a
 synthetic customer and returns the same `order_not_found` result as an unknown order.
 Custom Tool calls appear directly in the conversation timeline, with their function names, business results and confirmation or failure states. **Review ticket request** moves focus to the protected confirmation. The closed **Tool call details** disclosure contains call IDs, input parameters, structured results and decisions.
 
-## Offline preview and checks
-
-The offline fixture runs the actual HTTP routes, SQLite store and business handlers with a
-**fake Platform transport**. It is clearly labeled **Offline test fixture** and never calls a
-model. It is useful for the workbench walkthrough; it is not evidence of SDK integration.
-It uses an in-memory database and resets when the preview process stops. Reloading a page in
-that process retains state. Platform mode uses the durable on-disk database described below.
-
-```sh
-npm run demo:offline
-# Open http://localhost:4600. Stop this process before running the Platform app on the same port.
-```
+## Checks
 
 ```sh
 npm ci
@@ -140,7 +122,10 @@ PLAYWRIGHT_CHANNEL=chrome npm run test:browser
 
 `check` typechecks the backend and tests, checks browser JavaScript syntax, and runs offline
 Node tests. Browser tests cover the complete workflow, reload, hostile tool data, mobile layout,
-empty conversation switching and keyboard focus during polling. CI's `check` needs no key or browser.
+empty conversation switching and keyboard focus during polling. They start their own server,
+`test/fixture-server.ts`, which runs the real HTTP routes, SQLite store and business handlers
+with a fake Platform transport and an in-memory database. It exists only for these tests and is
+not evidence of SDK integration. CI's `check` needs no key or browser.
 See [verification evidence](docs/VALIDATION.md).
 
 ## Persistence and recovery
