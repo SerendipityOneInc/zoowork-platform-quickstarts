@@ -3,12 +3,12 @@ import type { ZooworkClient } from "@zoowork-ai/sdk";
 import { appConfig } from "@/app.config";
 import { loadAgentDefinition } from "./agent-definition";
 import { createPlatformClient } from "./client";
-import { isPreview, readPlatformConfig } from "./config";
+import { isPreview, readPlatformConfig, type PlatformConfig } from "./config";
 import { StarterError } from "./errors";
 import { agentStatus } from "./lifecycle";
 import { createPreviewPlatform } from "./preview";
 import { fileSessionStore, memorySessionStore, sessionsPath, type SessionEntry, type SessionStore } from "./sessions";
-import { agentStatePath, loadAgentState, webPidPath, type AgentState } from "./state";
+import { agentStatePath, loadAgentState, webPidPath } from "./state";
 
 /** The Session API surface the chat routes use. The preview implements the same surface. */
 export type ChatClient = Pick<
@@ -64,24 +64,44 @@ async function createRuntime(): Promise<Runtime> {
     };
   }
   const config = readPlatformConfig();
-  const state = await loadAgentState(agentStatePath(), config.baseUrl);
+  return createPlatformRuntime(config, createPlatformClient(config));
+}
+
+/**
+ * The Platform runtime for one recorded Agent. Exported with an injectable
+ * client so tests can run the real code paths offline.
+ */
+export async function createPlatformRuntime(
+  config: PlatformConfig,
+  client: ChatClient & Pick<ZooworkClient, "getAgent">,
+  cwd = process.cwd(),
+): Promise<Runtime> {
+  const statePath = agentStatePath(cwd);
+  const state = await loadAgentState(statePath, config.baseUrl);
   if (!state) throw new StarterError("run_setup_first", 503);
   if (!state.agentId) throw new StarterError("agent_creation_uncertain_run_setup_again", 503);
-  const client = createPlatformClient(config);
-  recordWebPid();
+  recordWebPid(cwd);
   const agentId = state.agentId;
   return {
     mode: "platform",
     client,
     agentId,
     instance: state.instance,
-    sessions: fileSessionStore(sessionsPath(), { instance: state.instance, agentId }),
-    checkAgent: () => agentStatus(client, state as AgentState, loadAgentDefinition().resource),
+    sessions: fileSessionStore(sessionsPath(cwd), { instance: state.instance, agentId }),
+    // Read agent.json again on every check: a setup run in another terminal
+    // may have recorded an update (or a lost one) since this server started.
+    checkAgent: async () => {
+      const current = await loadAgentState(statePath, config.baseUrl);
+      if (!current || current.agentId !== agentId || current.instance !== state.instance) {
+        throw new StarterError("agent_changed_restart_dev", 503);
+      }
+      return agentStatus(client, current, loadAgentDefinition(cwd).resource);
+    },
   };
 }
 
-function recordWebPid() {
-  const path = webPidPath();
+function recordWebPid(cwd: string) {
+  const path = webPidPath(cwd);
   try {
     writeFileSync(path, `${process.pid}\n`, { mode: 0o600 });
     process.once("exit", () => rmSync(path, { force: true }));

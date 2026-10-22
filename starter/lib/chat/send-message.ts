@@ -2,6 +2,7 @@
 // paths can be tested directly.
 
 import { ApiError } from "./api";
+import type { AppNotice } from "./app-notice";
 
 export type ComposerSend = {
   text: string;
@@ -11,16 +12,39 @@ export type ComposerSend = {
   ensureSession: (firstText: string) => Promise<string>;
   /** Send through the Session's controller. It shows its own notice on failure. */
   send: (sessionId: string, text: string) => Promise<void>;
-  /** Put the text back in the composer so the user can send it again. */
-  restoreText: (text: string) => void;
-  /** Show or clear a page-level notice. */
-  setNotice: (message: string | null) => void;
+  /**
+   * Put the unsent text back in this conversation's composer if that is safe
+   * (see restoreIfSafe). Returns whether it did.
+   */
+  restoreText: (text: string) => boolean;
+  /** Show or clear this conversation's page notice. */
+  setNotice: (notice: AppNotice | null) => void;
+};
+
+/** What the composer looks like when a send fails. */
+export type ComposerTarget = {
+  /** The failed send's conversation is still the one on screen. */
+  isActive: boolean;
+  /** The composer's text now. */
+  text: string;
+  setText: (text: string) => void;
 };
 
 /**
- * Never throws: a failure restores the text and is shown on the page, rather
- * than being lost as an unhandled rejection. Sending the same text again
- * reuses the failed attempt's idempotency key, so it cannot be delivered twice.
+ * Put an unsent message back only into its own conversation, and only if
+ * the user has not started another draft while waiting.
+ */
+export function restoreIfSafe(target: ComposerTarget, unsent: string): boolean {
+  if (!target.isActive || target.text.trim() !== "") return false;
+  target.setText(unsent);
+  return true;
+}
+
+/**
+ * Never throws: a failure keeps the unsent text, either in the composer or
+ * in the conversation's notice with a Restore action, rather than losing it
+ * as an unhandled rejection. Sending the same text again reuses the failed
+ * attempt's idempotency key, so it cannot be delivered twice.
  */
 export async function sendFromComposer(input: ComposerSend): Promise<boolean> {
   const { text, ensureSession, send, restoreText, setNotice } = input;
@@ -30,12 +54,11 @@ export async function sendFromComposer(input: ComposerSend): Promise<boolean> {
     try {
       sessionId = await ensureSession(text);
     } catch (error) {
-      restoreText(text);
-      setNotice(
+      const message =
         error instanceof ApiError
           ? error.message
-          : "Could not start the conversation. Check that npm run dev is still running, then send again.",
-      );
+          : "Could not start the conversation. Check that npm run dev is still running, then send again.";
+      setNotice(restoreText(text) ? { message } : { message, unsentText: text });
       return false;
     }
   }
@@ -43,7 +66,8 @@ export async function sendFromComposer(input: ComposerSend): Promise<boolean> {
     await send(sessionId, text);
     return true;
   } catch {
-    restoreText(text);
+    // The controller shows why. Keep the text where the user can get it back.
+    if (!restoreText(text)) setNotice({ message: "Your message was not sent. Your new draft was kept.", unsentText: text });
     return false;
   }
 }

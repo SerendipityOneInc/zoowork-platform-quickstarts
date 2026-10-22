@@ -1,6 +1,7 @@
 "use client";
 
 import { appConfig } from "@/app.config";
+import { useStopActiveRun } from "@/lib/chat/runtime-provider";
 import { MarkdownText } from "@/components/assistant-ui/markdown-text";
 import {
   Reasoning,
@@ -288,20 +289,29 @@ const ComposerAction: FC = () => {
           </ComposerPrimitive.Send>
         </AuiIf>
         <AuiIf condition={(s) => s.thread.isRunning}>
-          <ComposerPrimitive.Cancel asChild>
-            <Button
-              type="button"
-              variant="default"
-              size="icon"
-              className="aui-composer-cancel size-7 rounded-full"
-              aria-label="Stop generating"
-            >
-              <SquareIcon className="aui-composer-cancel-icon size-3.5 fill-current" />
-            </Button>
-          </ComposerPrimitive.Cancel>
+          {/* STARTER DIVERGENCE: stop through the Session (see useStopActiveRun),
+              not ComposerPrimitive.Cancel, which would put a sent message back
+              in the composer. */}
+          <StopButton />
         </AuiIf>
       </div>
     </div>
+  );
+};
+
+const StopButton: FC = () => {
+  const stop = useStopActiveRun();
+  return (
+    <Button
+      type="button"
+      variant="default"
+      size="icon"
+      className="aui-composer-cancel size-7 rounded-full"
+      aria-label="Stop generating"
+      onClick={stop}
+    >
+      <SquareIcon className="aui-composer-cancel-icon size-3.5 fill-current" />
+    </Button>
   );
 };
 
@@ -414,6 +424,17 @@ const AssistantMessage: FC = () => {
           }}
         </MessagePrimitive.GroupedParts>
         <MessageError />
+        {/* STARTER DIVERGENCE: say when a reply ended because it was stopped. */}
+        <AuiIf
+          condition={(s) =>
+            s.message.status?.type === "incomplete" &&
+            s.message.status.reason === "cancelled"
+          }
+        >
+          <p className="aui-message-stopped text-muted-foreground mt-1 text-xs">
+            Stopped
+          </p>
+        </AuiIf>
       </div>
 
       <div

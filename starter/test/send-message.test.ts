@@ -1,10 +1,13 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 import { ApiError } from "../lib/chat/api";
-import { sendFromComposer, type ComposerSend } from "../lib/chat/send-message";
+import type { AppNotice } from "../lib/chat/app-notice";
+import { restoreIfSafe, sendFromComposer, type ComposerSend, type ComposerTarget } from "../lib/chat/send-message";
 
+/** A composer and conversation that can change while a send is in flight, as in the browser. */
 function harness(overrides: Partial<ComposerSend> = {}) {
-  const log = { restored: [] as string[], notices: [] as (string | null)[], sent: [] as [string, string][] };
+  const composer: ComposerTarget = { isActive: true, text: "", setText: (t) => (composer.text = t) };
+  const log = { notices: [] as (AppNotice | null)[], sent: [] as [string, string][] };
   const input: ComposerSend = {
     text: "hello",
     sessionId: null,
@@ -12,57 +15,80 @@ function harness(overrides: Partial<ComposerSend> = {}) {
     send: async (id, text) => {
       log.sent.push([id, text]);
     },
-    restoreText: (text) => log.restored.push(text),
-    setNotice: (message) => log.notices.push(message),
+    restoreText: (text) => restoreIfSafe(composer, text),
+    setNotice: (notice) => log.notices.push(notice),
     ...overrides,
   };
-  return { input, log };
+  return { input, log, composer };
 }
 
+/** A request whose result arrives when the test says so. */
+function deferred<T>() {
+  let resolve!: (v: T) => void;
+  let reject!: (e: unknown) => void;
+  const promise = new Promise<T>((res, rej) => ((resolve = res), (reject = rej)));
+  return { promise, resolve, reject };
+}
+
+const createFailure = () => new ApiError("http_502", 502, "Could not start the conversation (http_502)");
+
 test("a new chat creates its Session, then sends", async () => {
-  const { input, log } = harness();
+  const { input, log, composer } = harness();
   assert.equal(await sendFromComposer(input), true);
   assert.deepEqual(log.sent, [["ses_1", "hello"]]);
-  assert.deepEqual(log.restored, []);
+  assert.equal(composer.text, "");
 });
 
-test("a failed Session create keeps the text and shows why, without throwing", async () => {
-  const { input, log } = harness({
-    ensureSession: async () => {
-      throw new ApiError("http_502", 502, "Could not start the conversation (http_502)");
-    },
-  });
+test("a failed create puts the text back in an empty composer and shows why", async () => {
+  const { input, log, composer } = harness({ ensureSession: async () => Promise.reject(createFailure()) });
   assert.equal(await sendFromComposer(input), false);
-  assert.deepEqual(log.restored, ["hello"]);
-  assert.equal(log.notices.at(-1), "Could not start the conversation (http_502)");
-  assert.deepEqual(log.sent, []);
+  assert.equal(composer.text, "hello");
+  assert.deepEqual(log.notices.at(-1), { message: "Could not start the conversation (http_502)" });
 });
 
-test("a network failure during create gets a readable notice", async () => {
-  const { input, log } = harness({
-    ensureSession: async () => {
-      throw new TypeError("Failed to fetch");
-    },
-  });
-  assert.equal(await sendFromComposer(input), false);
-  assert.match(log.notices.at(-1) ?? "", /Could not start the conversation/);
-  assert.deepEqual(log.restored, ["hello"]);
+test("a draft typed while the create was pending is kept; the unsent message is offered in the notice", async () => {
+  const create = deferred<string>();
+  const { input, log, composer } = harness({ ensureSession: () => create.promise });
+  const sending = sendFromComposer(input);
+  composer.text = "a newer draft"; // typed while waiting
+  create.reject(createFailure());
+  assert.equal(await sending, false);
+  assert.equal(composer.text, "a newer draft");
+  assert.deepEqual(log.notices.at(-1), { message: "Could not start the conversation (http_502)", unsentText: "hello" });
 });
 
-test("a failed send keeps the text; the controller shows its own notice", async () => {
-  const { input, log } = harness({
-    sessionId: "ses_9",
-    send: async () => {
-      throw new Error("http_402");
-    },
-  });
+test("after switching to another conversation, the unsent message is not written into it", async () => {
+  const create = deferred<string>();
+  const { input, log, composer } = harness({ ensureSession: () => create.promise });
+  const sending = sendFromComposer(input);
+  composer.isActive = false; // the user opened another conversation
+  create.reject(new TypeError("Failed to fetch"));
+  assert.equal(await sending, false);
+  assert.equal(composer.text, "");
+  assert.equal(log.notices.at(-1)?.unsentText, "hello");
+  assert.match(log.notices.at(-1)?.message ?? "", /Could not start the conversation/);
+});
+
+test("a failed send to an existing Session keeps a newer draft and offers the unsent message", async () => {
+  const send = deferred<void>();
+  const { input, log, composer } = harness({ sessionId: "ses_9", send: () => send.promise });
+  const sending = sendFromComposer(input);
+  composer.text = "typed meanwhile";
+  send.reject(new Error("http_402"));
+  assert.equal(await sending, false);
+  assert.equal(composer.text, "typed meanwhile");
+  assert.equal(log.notices.at(-1)?.unsentText, "hello");
+});
+
+test("a failed send with an empty composer puts the text back; the controller shows the reason", async () => {
+  const { input, log, composer } = harness({ sessionId: "ses_9", send: async () => Promise.reject(new Error("http_402")) });
   assert.equal(await sendFromComposer(input), false);
-  assert.deepEqual(log.restored, ["hello"]);
+  assert.equal(composer.text, "hello");
   assert.deepEqual(log.notices, [null], "only the earlier notice is cleared");
 });
 
-test("a new attempt clears the previous page notice", async () => {
-  const { input, log } = harness({ sessionId: "ses_9" });
-  await sendFromComposer(input);
-  assert.deepEqual(log.notices, [null]);
+test("restoreIfSafe treats a whitespace-only composer as empty", () => {
+  const composer: ComposerTarget = { isActive: true, text: "  \n", setText: (t) => (composer.text = t) };
+  assert.equal(restoreIfSafe(composer, "x"), true);
+  assert.equal(composer.text, "x");
 });

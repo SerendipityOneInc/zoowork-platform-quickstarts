@@ -2,6 +2,7 @@
 // and safe to show; see the README troubleshooting table.
 
 export const NOTICES: Record<string, string> = {
+  agent_changed_restart_dev: "The recorded Agent changed since this server started (cleanup or a new setup). Restart npm run dev.",
   run_setup_first: "The Agent is not set up yet. Run npm run setup, then reload.",
   platform_project_key_required: "ZOOWORK_API_KEY is missing or is not a Platform Project key (zwp_live_). Check .env and restart.",
   explicit_public_base_url_required: "ZOOWORK_BASE_URL is missing. Check .env and restart.",

@@ -22,10 +22,10 @@ import {
   type AppendMessage,
   type ThreadMessageLike,
 } from "@assistant-ui/react";
-import { useEffect, useMemo, useSyncExternalStore } from "react";
+import { useEffect, useMemo, useRef, useSyncExternalStore } from "react";
 import { setAppNotice } from "./app-notice";
 import { initialProjection, type ThreadMessage } from "./reducer";
-import { sendFromComposer } from "./send-message";
+import { restoreIfSafe, sendFromComposer } from "./send-message";
 import { getSessionController, type ControllerSnapshot, type SessionController } from "./session-controller";
 import { rememberFirstMessage, sessionListAdapter } from "./session-list-adapter";
 
@@ -80,6 +80,9 @@ function useSessionThreadRuntime() {
   // concurrent connections per origin. The controller keeps its state and
   // cursor, so returning resumes after the last event it saw.
   const isActive = useAuiState((s) => s.threads.mainThreadId === s.threadListItem.id);
+  // Read at failure time, after awaiting: the user may have switched away.
+  const isActiveRef = useRef(isActive);
+  isActiveRef.current = isActive;
   useEffect(() => {
     if (!controller || !isActive) return;
     controller.attach();
@@ -116,15 +119,18 @@ function useSessionThreadRuntime() {
         sessionId: sessionId ?? null,
         ensureSession,
         send: (id, t) => getSessionController(id).sendMessage(t),
-        restoreText: (t) => aui.composer().setText(t),
-        setNotice: setAppNotice,
+        restoreText: (t) => {
+          if (!isActiveRef.current) return false;
+          const composer = aui.composer();
+          return restoreIfSafe({ isActive: true, text: composer.getState().text, setText: (x) => composer.setText(x) }, t);
+        },
+        setNotice: (notice) => setAppNotice(threadId, notice),
       });
     },
 
-    // The stop button sends a real interrupt to the run.
-    onCancel: async () => {
-      if (controller) await controller.interrupt();
-    },
+    // No onCancel: assistant-ui's cancel removes the last user message and
+    // puts its text back in the composer, but the Session has already taken
+    // that message. The stop button calls useStopActiveRun() instead.
 
     onRespondToToolApproval: async ({ approvalId, approved }) => {
       await controller?.respondToApproval(approvalId, approved);
@@ -138,6 +144,14 @@ export function ZooworkRuntimeProvider({ children }: { children: React.ReactNode
     runtimeHook: useSessionThreadRuntime,
   });
   return <AssistantRuntimeProvider runtime={runtime}>{children}</AssistantRuntimeProvider>;
+}
+
+/** Stop the open conversation's run on the Platform (a real user.interrupt). */
+export function useStopActiveRun(): () => void {
+  const sessionId = useAuiState((s) => s.threadListItem.externalId ?? s.threadListItem.remoteId) ?? null;
+  return () => {
+    if (sessionId) void getSessionController(sessionId).interrupt();
+  };
 }
 
 /** The open conversation's live state, for the status strip. */

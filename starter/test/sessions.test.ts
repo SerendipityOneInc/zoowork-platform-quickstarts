@@ -66,12 +66,26 @@ test("a retry from the same thread reuses the saved request and finds the same S
   assert.equal((await store.list()).length, 1);
 });
 
-test("a first attempt the Platform rejects with 400 leaves no pending record", async () => {
+test("a first attempt the Platform refuses with a 4xx leaves no pending record", async () => {
   const { file, platform } = await setup();
   const store = fileSessionStore(file, scope);
-  const rejecting = { ...platform, createSession: async () => Promise.reject(new ZooworkError(400, "bad request")) };
-  await assert.rejects(createRecordedSession(rejecting, AGENT, store, request("t1")));
+  for (const [status, type] of [[400, "invalid_request"], [409, "agent_not_running"], [403, "forbidden"], [429, "rate_limited"]] as const) {
+    const refusing = { ...platform, createSession: async () => Promise.reject(new ZooworkError(status, "refused", type)) };
+    await assert.rejects(createRecordedSession(refusing, AGENT, store, request(`t${status}`)));
+  }
   assert.equal((await store.listPendingCreates()).length, 0);
+  assert.equal(platform.sessionCount(), 0);
+});
+
+test("a first attempt with an unknown result (5xx, 408, network) keeps its record", async () => {
+  const { file, platform } = await setup();
+  const store = fileSessionStore(file, scope);
+  const failures = [new ZooworkError(502, "bad gateway"), new ZooworkError(408, "timeout"), new TypeError("fetch failed")];
+  for (const [i, failure] of failures.entries()) {
+    const failing = { ...platform, createSession: async () => Promise.reject(failure) };
+    await assert.rejects(createRecordedSession(failing, AGENT, store, request(`t${i}`)));
+  }
+  assert.equal((await store.listPendingCreates()).length, 3);
 });
 
 test("recovery keeps the record on any failure, including a 4xx", async () => {
