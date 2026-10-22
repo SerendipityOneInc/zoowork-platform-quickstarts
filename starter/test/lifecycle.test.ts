@@ -5,6 +5,7 @@ import { join } from "node:path";
 import { test } from "node:test";
 import { ZooworkError, type AgentRecord, type AgentResource } from "@zoowork-ai/sdk";
 import { agentStatus, applyAgent, cleanupAgent, declares, type LifecycleClient } from "../lib/zoowork/lifecycle";
+import { createRecordedSession } from "../lib/zoowork/session-create";
 import { fileSessionStore } from "../lib/zoowork/sessions";
 import { loadAgentState, newAgentState, saveAgentState } from "../lib/zoowork/state";
 
@@ -375,4 +376,30 @@ test("cleanup stops and keeps state when a lost Session create cannot be resolve
   await assert.rejects(cleanupAgent(p.client, path, state, sessions), /session_creation_uncertain_retry_cleanup/);
   assert.ok(p.agents.has(agentId), "the Agent is not deleted");
   assert.equal((await sessions.listPendingCreates()).length, 1);
+});
+
+test("a Session create refused while the Agent was stopped does not block cleanup", async () => {
+  const dir = await tempDir();
+  const path = join(dir, "agent.json");
+  const p = fakePlatform();
+  const { agentId, state } = await applyAgent(p.client, path, undefined, BASE, resource());
+  const sessions = fileSessionStore(join(dir, "sessions.json"), { instance: state.instance, agentId });
+  const create = p.client.createSession;
+  p.client.createSession = async () => {
+    throw new ZooworkError(409, "agent is not running", "agent_not_running");
+  };
+  await assert.rejects(
+    createRecordedSession(p.client, agentId, sessions, {
+      threadId: "t1",
+      idempotencyKey: "k1",
+      title: "t",
+      metadata: {},
+      requestedAt: new Date().toISOString(),
+    }),
+    /agent is not running/,
+  );
+  assert.equal((await sessions.listPendingCreates()).length, 0);
+  p.client.createSession = create;
+  await cleanupAgent(p.client, path, state, sessions);
+  assert.equal(p.agents.size, 0);
 });

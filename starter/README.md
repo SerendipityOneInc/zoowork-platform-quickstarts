@@ -196,6 +196,7 @@ Errors print a stable code and never the key or a provider response body.
 | `platform_project_key_required` | Copy `.env.example` to `.env` and set `ZOOWORK_API_KEY` to a `zwp_live_` Project key. Restart `npm run dev` after editing `.env`. |
 | `explicit_public_base_url_required` / `invalid_public_base_url` | Set `ZOOWORK_BASE_URL` to the `https://…/service/v1` URL of the deployment that issued the key. |
 | `run_setup_first` | Run `npm run setup`, then reload the page. |
+| `agent_changed_restart_dev` | `.local/agent.json` now records a different Agent than the running server uses. Restart `npm run dev`. |
 | `invalid_agent_definition: …` | Fix the named problem in `agent/agent.md` and run setup again. |
 | `cannot_remove_model` / `cannot_remove_max_tokens` / `cannot_remove_timezone` | Put the line back in `agent/agent.md`, or run `npm run cleanup` then `npm run setup` to recreate the Agent without it. |
 | `skills_removed_set_empty_list` | Write `skills: []` to remove all Skills, then run setup. |

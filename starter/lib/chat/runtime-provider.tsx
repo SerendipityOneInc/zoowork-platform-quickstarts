@@ -22,10 +22,10 @@ import {
   type AppendMessage,
   type ThreadMessageLike,
 } from "@assistant-ui/react";
-import { useEffect, useMemo, useSyncExternalStore } from "react";
+import { useEffect, useMemo, useRef, useSyncExternalStore } from "react";
 import { setAppNotice } from "./app-notice";
 import { initialProjection, type ThreadMessage } from "./reducer";
-import { sendFromComposer } from "./send-message";
+import { restoreIfSafe, sendFromComposer } from "./send-message";
 import { getSessionController, type ControllerSnapshot, type SessionController } from "./session-controller";
 import { rememberFirstMessage, sessionListAdapter } from "./session-list-adapter";
 
@@ -80,6 +80,9 @@ function useSessionThreadRuntime() {
   // concurrent connections per origin. The controller keeps its state and
   // cursor, so returning resumes after the last event it saw.
   const isActive = useAuiState((s) => s.threads.mainThreadId === s.threadListItem.id);
+  // Read at failure time, after awaiting: the user may have switched away.
+  const isActiveRef = useRef(isActive);
+  isActiveRef.current = isActive;
   useEffect(() => {
     if (!controller || !isActive) return;
     controller.attach();
@@ -116,8 +119,12 @@ function useSessionThreadRuntime() {
         sessionId: sessionId ?? null,
         ensureSession,
         send: (id, t) => getSessionController(id).sendMessage(t),
-        restoreText: (t) => aui.composer().setText(t),
-        setNotice: setAppNotice,
+        restoreText: (t) => {
+          if (!isActiveRef.current) return false;
+          const composer = aui.composer();
+          return restoreIfSafe({ isActive: true, text: composer.getState().text, setText: (x) => composer.setText(x) }, t);
+        },
+        setNotice: (notice) => setAppNotice(threadId, notice),
       });
     },
 

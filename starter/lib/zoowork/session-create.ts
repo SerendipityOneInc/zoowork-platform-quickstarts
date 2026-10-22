@@ -5,6 +5,11 @@ import type { PendingSessionCreate, SessionEntry, SessionStore } from "./session
 
 type CreateClient = Pick<ChatClient, "createSession">;
 
+/** The Platform answered and refused the request, so nothing was created. */
+function refusedOutright(error: unknown): boolean {
+  return error instanceof ZooworkError && error.status >= 400 && error.status < 500 && error.status !== 408;
+}
+
 /**
  * Send one recorded create and index the result. Repeating it is safe: the
  * same body and idempotency key return the Session created the first time.
@@ -28,9 +33,13 @@ async function sendPendingCreate(
 /**
  * Create a Session for a browser thread. The request is saved before it is
  * sent, so a lost response leaves a record that recoverPendingCreates() can
- * resolve after a page reload or a server restart. A request the Platform
- * rejects outright (400/422) on its first attempt created nothing, so its
- * record is dropped.
+ * resolve after a page reload or a server restart.
+ *
+ * A first attempt that gets a 4xx answer (for example 409 agent_not_running)
+ * was refused and created nothing, so its record is dropped. A 5xx, a 408 or
+ * a network failure leaves the result unknown, and the record stays. Only
+ * the first attempt is judged this way: after a lost response, a later 4xx
+ * does not prove the Session was never created (see recoverPendingCreates).
  */
 export async function createRecordedSession(
   client: CreateClient,
@@ -43,7 +52,7 @@ export async function createRecordedSession(
   try {
     return await sendPendingCreate(client, agentId, store, pending);
   } catch (error) {
-    if (fresh && error instanceof ZooworkError && (error.status === 400 || error.status === 422)) {
+    if (fresh && refusedOutright(error)) {
       await store.dropPendingCreate(pending.threadId);
     }
     throw error;

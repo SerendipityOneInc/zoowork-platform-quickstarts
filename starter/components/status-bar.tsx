@@ -3,9 +3,10 @@
 // A thin strip above the conversation: preview mode, setup problems, a
 // changed agent definition, and connection or request notices.
 
+import { useAui, useAuiState } from "@assistant-ui/react";
 import { useEffect, useState } from "react";
 import { ApiError, getStatus } from "@/lib/chat/api";
-import { useAppNotice } from "@/lib/chat/app-notice";
+import { setAppNotice, useAppNotice } from "@/lib/chat/app-notice";
 import { useActiveSessionSnapshot } from "@/lib/chat/runtime-provider";
 import { describe } from "@/lib/chat/notices";
 import type { AppStatus } from "@/lib/chat/wire";
@@ -22,7 +23,17 @@ function Banner({ tone, children }: { tone: "info" | "warn" | "error"; children:
 export function StatusBar() {
   const [status, setStatus] = useState<AppStatus | null>(null);
   const { sessionId, isLoaded, isConnected, notice } = useActiveSessionSnapshot();
-  const appNotice = useAppNotice();
+  const aui = useAui();
+  const threadId = useAuiState((s) => s.threadListItem.id);
+  const appNotice = useAppNotice(threadId);
+  // Put an unsent message back after any draft the user wrote meanwhile.
+  const restoreUnsent = () => {
+    if (!appNotice?.unsentText || !threadId) return;
+    const composer = aui.composer();
+    const draft = composer.getState().text;
+    composer.setText(draft.trim() ? `${draft}\n\n${appNotice.unsentText}` : appNotice.unsentText);
+    setAppNotice(threadId, null);
+  };
 
   useEffect(() => {
     let cancelled = false;
@@ -51,7 +62,16 @@ export function StatusBar() {
         <Banner tone="warn">agent/agent.md changed since the last setup. Run npm run setup to update the Agent.</Banner>
       )}
       {status?.agent === "not_running" && <Banner tone="warn">The Agent is stopped. Run npm run setup to start it.</Banner>}
-      {appNotice && <Banner tone="error">{appNotice}</Banner>}
+      {appNotice && (
+        <Banner tone="error">
+          {appNotice.message}
+          {appNotice.unsentText && (
+            <button type="button" onClick={restoreUnsent} className="ml-2 font-medium underline underline-offset-2">
+              Restore unsent message
+            </button>
+          )}
+        </Banner>
+      )}
       {notice && <Banner tone="error">{notice}</Banner>}
       {sessionId && isLoaded && !isConnected && !notice && (
         <div className="px-1 text-[11px] text-muted-foreground">Reconnecting…</div>
