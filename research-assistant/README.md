@@ -41,7 +41,7 @@ the journal; setup calls from an earlier process are not invented. Completed rou
 reads are evicted first. The debug endpoint is local, read-only and does not call
 Platform. It never stores keys, headers, input text, tool output, raw metadata,
 cursor values or provider error bodies. **Pause display** freezes display only; it does not
-interrupt research. Offline fixtures are explicitly labeled in this panel.
+interrupt research.
 
 ## History and recovery
 
@@ -64,14 +64,13 @@ npm run recover
 
 Archived Sessions are readable/exportable and cannot accept input. Unknown, deleted or mismatched Sessions fail closed. For an unresolved run, use **Refresh** and retain `.local/` for investigation. A crashed process leaves `web.lock`; the next start removes it only if the recorded PID no longer exists. An invalid lock needs manual review.
 
-## Offline checks and demo
+## Offline checks
 
 ```sh
 npm run check
-npm run dev:fixture
 ```
 
-`check` runs TypeScript, Node tests and the browser build without credentials or live API calls. The fixture server opens at **http://localhost:3187**, labels content as simulated, uses temporary data and never calls Platform.
+`check` runs TypeScript, Node tests and the browser build without credentials or live API calls.
 
 ```sh
 npx playwright install chromium --only-shell
@@ -80,7 +79,7 @@ npm run test:browser
 PLAYWRIGHT_CHANNEL=chrome npm run test:browser
 ```
 
-Browser tests start their own fixture server and verify desktop/mobile creation, refresh, follow-up, versions, exact Markdown download, history and isolation. Do not run `dev:fixture` on the same port during these tests. Screenshots and traces stay ignored.
+Browser tests start their own server, `test/fixture-server.ts`, on port 3187. It runs the app with a fake Platform and temporary data, exists only for these tests and never calls Platform. The tests verify desktop/mobile creation, refresh, follow-up, versions, exact Markdown download, history and isolation. Screenshots and traces stay ignored.
 
 ## Clean up
 

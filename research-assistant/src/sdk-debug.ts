@@ -13,7 +13,7 @@ export interface DebugEventView {
   tool?: string; phase?: string; outcome?: string; sources: ('history' | 'stream')[]
 }
 export interface DebugView {
-  startedAt: string; fixture: boolean; agentId: string; sessionId?: string
+  startedAt: string; agentId: string; sessionId?: string
   calls: SdkCallView[]; events: DebugEventView[]; active: number
 }
 const methods = new Set(['getAgent', 'getSession', 'createSession', 'postEvents', 'listEventsPage', 'streamEvents', 'listSessionPage', 'deleteSession', 'stopAgent', 'deleteAgent'])
@@ -93,12 +93,12 @@ export class SdkDebug {
       ...(event.eventType.startsWith('run.') && event.payload.status ? { outcome: state(event.payload.status) } : {}), sources: [source] })
     if (this.events.size > 200) this.events.delete(this.events.keys().next().value!)
   }
-  snapshot(agentId: string, fixture: boolean, sessionId?: string, conversationId?: string): DebugView {
+  snapshot(agentId: string, sessionId?: string, conversationId?: string): DebugView {
     const calls = this.calls.filter(c => !conversationId || c.sessionId === sessionId || c.conversationId === conversationId ||
       (!c.sessionId && !c.conversationId && c.method !== 'createSession')).map(({ clock, ...call }) => ({ ...call,
         params: { ...call.params }, result: call.result ? { ...call.result } : undefined,
         durationMs: call.status === 'running' ? Math.round(performance.now() - clock) : call.durationMs }))
-    return { startedAt: this.startedAt, fixture, agentId, sessionId, calls,
+    return { startedAt: this.startedAt, agentId, sessionId, calls,
       events: [...this.events.values()].filter(e => !conversationId || e.sessionId === sessionId).map(e => ({ ...e, sources: [...e.sources] })),
       active: calls.filter(c => c.status === 'running').length }
   }

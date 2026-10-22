@@ -7,7 +7,7 @@ test('topic → brief → reload → follow-up → version → export and histor
   await expect(page.getByRole('heading', { name: /Start with a question.\s*Build an answer with sources./ })).toBeVisible()
   await page.locator('.sdk-debug > summary').click()
   await expect(page.getByText('Agent ID', { exact: true })).toBeVisible()
-  await expect(page.getByText('Simulated mode:', { exact: false })).toBeVisible()
+  await expect(page.getByText('Actual server-side SDK calls.', { exact: false })).toBeVisible()
   await page.getByLabel('What would you like to research?').fill('Node.js support timelines')
   await page.getByRole('button', { name: 'Start research', exact: true }).click()
   await expect(page.getByRole('heading', { name: 'Node.js support timelines (simulated sources)', exact: true })).toBeVisible()

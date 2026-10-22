@@ -49,7 +49,7 @@ desktop and mobile browser tests cover the complete user flow.
 
 [VALIDATION.md](VALIDATION.md) separates offline evidence from actual staging results and
 uncovered areas. [REFERENCES.md](REFERENCES.md) records adapted source paths and the MIT notice.
-Offline fixtures are labeled as simulated; fixture screenshots are not staging evidence.
+Screenshots from the browser-test fixture are not staging evidence.
 
 ## Product Principles
 

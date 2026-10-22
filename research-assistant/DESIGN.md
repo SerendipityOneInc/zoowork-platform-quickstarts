@@ -189,8 +189,7 @@ a successful SDK return does not mean research completed.
 Events show up to 60 records with seq, type, provenance, tool phase and Run ID.
 History read and Live stream remain text labels; historical tools are not new execution.
 Loading, empty scope and read failures have explicit copy. Fault copy explains automatic
-reconnection and continuing research. Offline mode explicitly states that Platform is
-not connected. Only safe argument/result summaries are shown.
+reconnection and continuing research. Only safe argument/result summaries are shown.
 
 ## Do's and Don'ts
 
