@@ -20,7 +20,7 @@
     "test:feature-staging": "node --env-file-if-exists=.env --import tsx scripts/feature-staging.ts"
   },
   "dependencies": {
-    "@zoowork-ai/sdk": "0.9.0"
+    "@zoowork-ai/sdk": "0.12.0"
   },
   "devDependencies": {
     "@playwright/test": "^1.58.2",

@@ -94,7 +94,7 @@ npm run dev
 
 The key must be a Platform Project key (`zwp_live_`). The gateway determines Org/Project/owner tenancy. Setup creates the app's own Agent and saves its exact resource, creation key, and returned ID in `.local/agent.json`. Repeating setup reuses that state. Do not supply an existing Work Agent ID.
 
-The Agent declares the `catalog` MCP server, direct exposure, and three exact tools. Search is `always_allow`; details and comparison are `always_ask` with `requireConfirmation: true`. SDK 0.9.0 omits this nested field from its type, so this app uses a structurally compatible intersection type and the published client's normal serialization. No SDK patch is used. Separate native approvals, allow-once, and denial passed staging on 2026-10-02. The type gap is tracked in [SDK issue #39](https://github.com/SerendipityOneInc/zoowork-sdk-typescript/issues/39). Other deployments require their own verification.
+The Agent declares the `catalog` MCP server, direct exposure, and three exact tools. Search is `always_allow`; details and comparison are `always_ask` with `requireConfirmation: true`. Separate native approvals, allow-once, and denial passed staging on 2026-10-02. Other deployments require their own verification.
 
 After changing the URL, model, or persona, stop the local app and run:
 

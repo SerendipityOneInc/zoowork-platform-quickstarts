@@ -27,7 +27,7 @@
   },
   "dependencies": {
     "@modelcontextprotocol/sdk": "1.29.0",
-    "@zoowork-ai/sdk": "0.9.0",
+    "@zoowork-ai/sdk": "0.12.0",
     "better-sqlite3": "13.0.3",
     "express": "5.2.1",
     "express-rate-limit": "8.7.0",

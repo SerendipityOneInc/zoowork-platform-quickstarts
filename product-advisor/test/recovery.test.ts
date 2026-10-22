@@ -160,11 +160,7 @@ test("Agent declaration isolates readonly tools and requests mandatory per-call 
     const resource = agentResource();
     const tools = resource.mcp![0]!.tools!;
     assert.equal(tools.search_products!.permission, "always_allow");
-    assert.equal(
-      (tools.get_products as { requireConfirmation?: boolean })
-        .requireConfirmation,
-      true,
-    );
+    assert.equal(tools.get_products!.requireConfirmation, true);
     assert.equal(resource.include_global_skills, false);
   } finally {
     if (before === undefined) delete process.env.MCP_PUBLIC_URL;

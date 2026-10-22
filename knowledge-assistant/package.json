@@ -16,7 +16,7 @@
     "test:staging": "node --env-file-if-exists=.env --import tsx scripts/staging.ts"
   },
   "dependencies": {
-    "@zoowork-ai/sdk": "0.9.0"
+    "@zoowork-ai/sdk": "0.12.0"
   },
   "devDependencies": {
     "@types/node": "22.20.1",
