@@ -1,5 +1,4 @@
-// The shape of app.config.ts. Kept here so app.config.ts (and the examples
-// you copy over it) import the same type from the same place.
+// The shape of app.config.ts, with a description of each field.
 
 export type Suggestion = {
   /** The chip's main text. */

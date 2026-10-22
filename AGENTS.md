@@ -19,8 +19,9 @@ Read `docs/HANDOFF.md`, `docs/OUTLINE.md`, `docs/PLATFORM.md` and the target app
 - Preserve licenses when copying code; record source commits and paths in `docs/REFERENCES.md`.
 - Commit as `finn-srp <finn@srp.one>`; use Finn's active GitHub identity.
 
-`starter/` is the general, business-free starting point and the companion of the public
-Publish your Agent guide. Keep it minimal: no business data, scenario UI or borrowed Agent IDs.
+`starter/` is the standard, business-free starting point and the companion of the public
+Publish your Agent guide. Keep it a generic scaffold: no business data, scenario examples or UI,
+or borrowed Agent IDs. Scenario examples belong to the guide.
 The other four directories are capability demos.
 
 Current status: Customer Support, Product Advisor and Research Assistant are runnable; Customer

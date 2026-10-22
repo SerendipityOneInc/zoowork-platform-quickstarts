@@ -15,12 +15,6 @@ test("the shipped agent/agent.md parses", () => {
   assert.equal(resource.model, undefined);
 });
 
-test("the dog health example parses", () => {
-  const { resource } = parseAgentDefinition(readFileSync("examples/dog-health/agent.md", "utf8"));
-  assert.ok(resource.name.length > 0);
-  assert.match(resource.persona!.docs[0]!.content, /veterinarian/i);
-});
-
 test("maps model, thinking, skills and timezone", () => {
   const { resource } = parseAgentDefinition(
     def(

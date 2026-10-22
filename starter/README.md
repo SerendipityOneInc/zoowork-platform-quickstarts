@@ -140,6 +140,10 @@ If the page says `agent/agent.md` changed since the last setup, run `npm run set
 
 ## 5. Make it yours
 
+Most apps only need two files: `agent/agent.md` for what the Agent does, and `app.config.ts`
+for what the page says and looks like. Changing those two turns the starter into a different
+app; the code stays the same.
+
 | Change | Where |
 | --- | --- |
 | What the Agent does | `agent/agent.md` (then `npm run setup`) |
@@ -148,18 +152,6 @@ If the page says `agent/agent.md` changed since the last setup, run `npm run set
 | Layout and components | `app/assistant.tsx`, `components/` |
 
 `app.config.ts` is sent to the browser. Never put keys or private data in it.
-
-### Example: a dog care assistant
-
-[`examples/dog-health/`](examples/dog-health/) turns the starter into an everyday dog care
-assistant with only these two files changed:
-
-```sh
-cp examples/dog-health/agent.md agent/agent.md
-cp examples/dog-health/app.config.ts app.config.ts
-npm run setup     # updates your Agent's name, tools and instructions
-npm run dev
-```
 
 ## Before you go public
 
