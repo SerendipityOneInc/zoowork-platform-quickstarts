@@ -1,8 +1,7 @@
 import { rmSync, writeFileSync } from "node:fs";
-import type { ZooworkClient } from "@zoowork-ai/sdk";
+import { createZooworkClient, type ZooworkClient } from "@zoowork-ai/sdk";
 import { loadAgentDefinition } from "./agent-definition";
-import { createPlatformClient } from "./client";
-import { readPlatformConfig, type PlatformConfig } from "./config";
+import { readApiKey } from "./config";
 import { StarterError } from "./errors";
 import { agentStatus } from "./lifecycle";
 import { fileSessionStore, sessionsPath, type SessionEntry, type SessionStore } from "./sessions";
@@ -51,8 +50,7 @@ export function getRuntime(): Promise<Runtime> {
 }
 
 async function createRuntime(): Promise<Runtime> {
-  const config = readPlatformConfig();
-  return createPlatformRuntime(config, createPlatformClient(config));
+  return createPlatformRuntime(createZooworkClient({ apiKey: readApiKey() }));
 }
 
 /**
@@ -60,12 +58,11 @@ async function createRuntime(): Promise<Runtime> {
  * client so tests can run the real code paths offline.
  */
 export async function createPlatformRuntime(
-  config: PlatformConfig,
   client: ChatClient & Pick<ZooworkClient, "getAgent">,
   cwd = process.cwd(),
 ): Promise<Runtime> {
   const statePath = agentStatePath(cwd);
-  const state = await loadAgentState(statePath, config.baseUrl);
+  const state = await loadAgentState(statePath);
   if (!state) throw new StarterError("run_setup_first", 503);
   if (!state.agentId) throw new StarterError("agent_creation_uncertain_run_setup_again", 503);
   recordWebPid(cwd);
@@ -78,7 +75,7 @@ export async function createPlatformRuntime(
     // Read agent.json again on every check: a setup run in another terminal
     // may have recorded an update (or a lost one) since this server started.
     checkAgent: async () => {
-      const current = await loadAgentState(statePath, config.baseUrl);
+      const current = await loadAgentState(statePath);
       if (!current || current.agentId !== agentId || current.instance !== state.instance) {
         throw new StarterError("agent_changed_restart_dev", 503);
       }

@@ -1,7 +1,7 @@
 import { mkdir } from "node:fs/promises";
 import { resolve } from "node:path";
 import { createZooworkClient } from "@zoowork-ai/sdk";
-import { loadState, readConfig, ownedAgent } from "../platform.js";
+import { loadState, readApiKey, ownedAgent } from "../platform.js";
 import { demo, publicMcpUrl } from "../agent.js";
 import { Conversations } from "../storage/conversations.js";
 import { Advisor } from "./advisor.js";
@@ -21,31 +21,10 @@ export async function appRuntime() {
   const store = new Conversations(resolve(dir, "conversations.sqlite"));
   let advisor: Advisor | undefined;
   if (process.env.ZOOWORK_API_KEY) {
-    const config = readConfig();
-    const state = await loadState(resolve(dir, "agent.json"), config, demo);
+    const apiKey = readApiKey();
+    const state = await loadState(resolve(dir, "agent.json"), demo);
     if (state?.agentId) {
-      const expected = new URL(config.baseUrl);
-      const client = createZooworkClient({
-        ...config,
-        fetch: async (input, init = {}) => {
-          const u = new URL(input);
-          if (
-            u.origin !== expected.origin ||
-            !u.pathname.startsWith("/service/v1/")
-          )
-            throw new Error("out_of_scope_request");
-          return fetch(input, {
-            ...init,
-            redirect: "error",
-            signal: AbortSignal.any([
-              AbortSignal.timeout(
-                u.pathname.endsWith("/stream") ? 75_000 : 30_000,
-              ),
-              ...(init.signal ? [init.signal] : []),
-            ]),
-          });
-        },
-      });
+      const client = createZooworkClient({ apiKey });
       await ownedAgent(client, state);
       const storedUrl = state.resource.mcp?.find(
         (m) => m.name === "catalog",

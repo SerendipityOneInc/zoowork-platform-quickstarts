@@ -133,13 +133,13 @@ function App() {
   const [sessions, setSessions] = useState<Summary[]>([]), [next, setNext] = useState<number | null>(null), [fault, setFault] = useState('')
   const [id, setId] = useState(() => new URLSearchParams(location.search).get('conversation') ?? localStorage.getItem('research:active') ?? '')
   const [topic, setTopic] = useState(''), [creating, setCreating] = useState(false), [initial, setInitial] = useState<{ text: string; requestId: string }>()
-  const [drawer, setDrawer] = useState(false), [fixture, setFixture] = useState(false)
+  const [drawer, setDrawer] = useState(false)
   const pending = useRef<{ topic: string; requestId: string } | undefined>(undefined)
   const list = useCallback(async (offset = 0) => {
     try { const r = await api<{ sessions: Summary[]; next: number | null }>(`/api/sessions?offset=${offset}`); setSessions(s => offset ? [...s, ...r.sessions] : r.sessions); setNext(r.next); setFault('') }
     catch (e) { setFault((e as Error).message) }
   }, [])
-  useEffect(() => { void list(); void api<{ fixture: boolean }>('/api/info').then(v => setFixture(v.fixture));
+  useEffect(() => { void list();
     try { const previous = JSON.parse(localStorage.getItem('research:create') ?? 'null') as typeof pending.current; if (previous) { pending.current = previous; setTopic(previous.topic) } } catch {}
   }, [list])
   const choose = (value: string) => { setId(value); setInitial(undefined); setDrawer(false); localStorage.setItem('research:active', value); history.replaceState(null, '', value ? `/?conversation=${encodeURIComponent(value)}` : '/'); void list() }
@@ -161,7 +161,7 @@ function App() {
       <button className="new-research" onClick={() => choose('')}><svg className="inline-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14" /></svg>New research</button><h2>Research history</h2>
       <nav aria-label="Research history">{sessions.length === 0 && <p className="muted">Your saved research will appear here.</p>}{sessions.map(s => <button key={s.id} className={`session ${id === s.id ? 'selected' : ''}`} onClick={() => choose(s.id)} title={s.title}><span>{s.title}</span><small>{statusLabels[s.status] ?? s.status} · {new Date(s.updatedAt).toLocaleDateString('en-US')}</small></button>)}</nav>
       {next !== null && <button onClick={() => void list(next)}>Load more</button>}
-      <div className="sidebar-footer"><p>{fixture ? 'Offline demo · Simulated sources' : 'Local single-user research'}</p><span>{fixture ? 'No Platform calls' : 'Sessions saved in Platform'}</span></div>
+      <div className="sidebar-footer"><p>Local single-user research</p><span>Sessions saved in Platform</span></div>
     </aside>
     <div className="content"><SdkDebugPanel conversation={id} />{id ? <Conversation key={id} id={id} initial={initial} onChanged={list} /> : <main className="welcome"><span className="document-mark" aria-hidden="true"><svg viewBox="0 0 48 48"><path d="M12 6h19l6 6v30H12zM30 6v8h7M18 22h13M18 28h13M18 34h8" /></svg></span><h1>Start with a question.<br />Build an answer with sources.</h1><p>Search public sources and create a brief. Inspect the sources,<br className="desktop-break" />save your research and return with follow-up questions.</p>
       <form className="topic-form" onSubmit={e => { e.preventDefault(); void create() }}><label htmlFor="topic">What would you like to research?</label><textarea id="topic" value={topic} onChange={e => setTopic(e.target.value)} placeholder="For example: Which Node.js versions are in LTS, and how should I choose?" rows={4} maxLength={4000} />

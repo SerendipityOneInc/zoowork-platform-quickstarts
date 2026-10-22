@@ -9,7 +9,7 @@ import { processLease, webRuntime } from './web-runtime.js'
 import { safeError, FoundationError } from './platform.js'
 import type { Research } from './turns.js'
 
-export async function host(research: Research, fixture = false, port = Number(process.env.PORT ?? 3000)) {
+export async function host(research: Research, port = Number(process.env.PORT ?? 3000)) {
   const app = new Hono()
   if (!Number.isInteger(port) || port < 1 || port > 65535) throw new FoundationError('invalid_port')
   const file = (name: string) => fileURLToPath(new URL('../web/' + name, import.meta.url))
@@ -18,9 +18,9 @@ export async function host(research: Research, fixture = false, port = Number(pr
   app.get('/app.css', async c => c.body(await readFile(file('app.css'), 'utf8'), 200, { 'content-type': 'text/css' }))
   let cached: string | undefined
   app.get('/app.js', async c => c.body(process.env.NODE_ENV === 'production' ? cached ??= await bundle(false, true) : await bundle(false), 200, { 'content-type': 'text/javascript' }))
-  app.route('/', createApi(research, fixture))
+  app.route('/', createApi(research))
   return serve({ fetch: app.fetch, port, hostname: '127.0.0.1', serverOptions: { requestTimeout: 0 } },
-    () => console.log(`Research Assistant: http://localhost:${port}${fixture ? ' (offline fixture)' : ''}`))
+    () => console.log(`Research Assistant: http://localhost:${port}`))
 }
 if (process.argv[1] && fileURLToPath(import.meta.url) === process.argv[1]) {
   let release: (() => Promise<void>) | undefined

@@ -42,7 +42,7 @@ export function SdkDebugPanel({ conversation }: { conversation: string }) {
     <summary><span><Chevron /><strong>SDK Debug</strong><span className="debug-scope">{conversation ? 'Current research' : 'All sessions'}</span></span>
       <span className="debug-status">{paused ? 'Display paused' : fault ? 'Unavailable' : view?.active ? `${view.active} SDK ${view.active === 1 ? 'call' : 'calls'} running` : 'Inspect SDK calls and Platform events'}</span></summary>
     <div className="debug-body">
-      <p className="debug-description">{view?.fixture ? 'Simulated mode: offline fixtures respond to these calls. Platform is not connected. ' : 'Actual server-side SDK calls. Platform events report tool execution. '}Argument summaries show IDs, types and counts. Keys, message text and tool output are excluded.</p>
+      <p className="debug-description">Actual server-side SDK calls. Platform events report tool execution. Argument summaries show IDs, types and counts. Keys, message text and tool output are excluded.</p>
       <dl className="debug-context"><div><dt>Agent ID</dt><dd><code>{view?.agentId ?? 'Loading…'}</code></dd></div>
         <div><dt>Session ID</dt><dd><code>{view?.sessionId ?? 'No Session created'}</code></dd></div></dl>
       <div className="debug-controls"><div role="tablist" aria-label="Debug record type" onKeyDown={e => {

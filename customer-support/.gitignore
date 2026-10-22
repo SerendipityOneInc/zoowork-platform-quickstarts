@@ -1,5 +1,3 @@
-# Local browser reports and design exploration are not application source.
+# Local browser reports are not application source.
 playwright-report/
 test-results/
-.impeccable/*
-!.impeccable/design.json

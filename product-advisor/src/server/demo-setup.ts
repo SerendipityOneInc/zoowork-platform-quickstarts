@@ -9,24 +9,22 @@ import {
   saveState,
   setupAgent,
   withStateLock,
-  type Config,
 } from "../platform.js";
 import { Conversations } from "../storage/conversations.js";
 
 export async function prepareDemo(
   client: ZooworkClient,
-  config: Config,
   mcpUrl: string,
   dir = resolve(".local"),
 ): Promise<string> {
   const path = resolve(dir, "agent.json");
   return withStateLock(path, async () => {
-    let state = await loadState(path, config, demo);
+    let state = await loadState(path, demo);
     const ledger = new Conversations(resolve(dir, "conversations.sqlite"));
     try {
       if (!state && ledger.agentIds().length)
         throw new FoundationError("recorded_conversations_require_recovery");
-      state ??= newState(config, demo, agentResource(mcpUrl));
+      state ??= newState(demo, agentResource(mcpUrl));
       // Complete any saved creation/update exactly before applying the new tunnel URL.
       const id = await setupAgent(client, state, path);
       if (state.pendingResource) {

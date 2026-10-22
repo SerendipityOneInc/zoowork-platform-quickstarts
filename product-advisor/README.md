@@ -14,7 +14,7 @@ npm run check
 npm run build
 ```
 
-`check` runs TypeScript and offline tests. Tests use the official MCP client against a real local HTTP server. Platform lifecycle, events, and approvals use a test-only adapter and consume no model tokens. Checks need no credentials or staging connection.
+`check` runs TypeScript and offline tests. Tests use the official MCP client against a real local HTTP server. Platform lifecycle, events, and approvals use a test-only adapter and consume no model tokens. Checks need no credentials or Platform connection.
 
 Without a Project key, `npm run dev` opens an unconfigured interface and generates no mock recommendations.
 
@@ -30,7 +30,7 @@ npm run demo
 
 This entry uses the real published SDK and Platform. It starts the bundled synthetic catalog, creates a temporary HTTPS tunnel, verifies tool discovery, creates or reuses the app-owned Agent, and starts the Web app. The Project key stays in the application process and is excluded from the tunnel process. Only the synthetic catalog is exposed publicly; the Web API is not tunneled. A private cookie secret is generated in `.local/cookie-secret` and reused on restart.
 
-The default API address comes from the published SDK's production default. For an authorized staging test, also set `ZOOWORK_BASE_URL=https://claw-interface.ecap.yesy.live/service/v1`. Do not send a staging key to the production address. Local configuration and temporary tunnel addresses are not committed.
+Local configuration and temporary tunnel addresses are not committed.
 
 The temporary hostname changes on restart. The launcher saves an exact pending resource before updating the same owned Agent through the SDK. Ambiguous results retain the original request for recovery instead of creating a replacement Agent. Ctrl+C closes the local Web server, MCP, and tunnel; remote Agent/Session records and local history remain. Use `npm run cleanup` to remove the recorded remote resources.
 
@@ -85,7 +85,7 @@ Probe your public endpoint with `npm run mcp:probe -- https://your-authorized-ho
 
 ```sh
 cp .env.example .env
-# Set server-side ZOOWORK_API_KEY, ZOOWORK_BASE_URL, and MCP_PUBLIC_URL.
+# Set server-side ZOOWORK_API_KEY and MCP_PUBLIC_URL.
 # APP_COOKIE_SECRET is optional; it is generated and saved when omitted.
 # Default APP_ORIGIN is http://localhost:4310.
 npm run setup
@@ -94,7 +94,7 @@ npm run dev
 
 The key must be a Platform Project key (`zwp_live_`). The gateway determines Org/Project/owner tenancy. Setup creates the app's own Agent and saves its exact resource, creation key, and returned ID in `.local/agent.json`. Repeating setup reuses that state. Do not supply an existing Work Agent ID.
 
-The Agent declares the `catalog` MCP server, direct exposure, and three exact tools. Search is `always_allow`; details and comparison are `always_ask` with `requireConfirmation: true`. SDK 0.9.0 omits this nested field from its type, so this app uses a structurally compatible intersection type and the published client's normal serialization. No SDK patch is used. Separate native approvals, allow-once, and denial passed staging on 2026-10-02. The type gap is tracked in [SDK issue #39](https://github.com/SerendipityOneInc/zoowork-sdk-typescript/issues/39). Other deployments require their own verification.
+The Agent declares the `catalog` MCP server, direct exposure, and three exact tools. Search is `always_allow`; details and comparison are `always_ask` with `requireConfirmation: true`.
 
 After changing the URL, model, or persona, stop the local app and run:
 
@@ -158,38 +158,19 @@ npm run test:ui
 
 This test-only harness uses mock Platform lifecycle/events/approvals and an actual HTTP MCP catalog. It needs no key, is excluded from the production bundle, and never serves as a live fallback. It demonstrates shopping, denial, approved comparison, budget follow-ups, reload, and responsive layout. It is not proof of deployed Platform MCP or approval behavior.
 
-## Staging and cleanup
-
-Run live checks only with explicit authorization. The foundation smoke uses one temporary Agent/Session and one model turn without the catalog, so it is not feature evidence:
-
-```sh
-npm run test:staging -- --confirm-staging
-```
-
-Feature verification needs an authorized public endpoint and `MCP_AUDIT_DB` for that same MCP instance, to verify zero execution after denial:
-
-```sh
-npm run test:feature-staging -- --confirm-staging
-```
-
-This creates at most one temporary Agent, two Sessions, and four user turns: search plus separately approved details/comparison, a lower-budget follow-up, search plus denied details, and an unavailable endpoint on the same test Agent. Paid turns are never retried automatically. Missing approval, receipt, comparison, or audit correlation fails the check. Actual staging passed on 2026-10-02; SDK events and server audit agreed on zero denied-tool execution.
+## Cleanup
 
 ```sh
 # Stop the local Web app before cleaning recorded Sessions and Agent.
 npm run cleanup
-# If smoke/feature cleanup failed, use the exact reported filename.
-npm run cleanup -- feature-<recorded-instance>.json
 ```
 
 Cleanup uses only recorded IDs, matching Agent labels, and matching Session metadata. Ambiguous creation or failed deletion retains recovery state. Never scan a Project to choose resources, delete `.local`, or create a replacement Agent automatically. SQLite conversation records are cleared only after Agent stop/delete succeeds.
 
-## Structure and evidence
+## Structure
 
 - `mcp/`, `data/`: standalone read-only MCP and original catalog.
 - `src/server/`: SDK Sessions, native approvals, receipt hydration, same-origin API.
 - `src/storage/`: SQLite conversation ledger and receipt/audit stores.
 - `src/ui/`, `public/products/`: interface and original SVG illustrations.
 - `test/`: domain, HTTP MCP, approval, delivery recovery, ownership, and foundation checks.
-- [PLAN.md](PLAN.md): scope, platform contract, implementation, and acceptance criteria.
-- [VALIDATION.md](VALIDATION.md): actual results and verification boundaries.
-- [REFERENCES.md](REFERENCES.md): protocol and source snapshots.

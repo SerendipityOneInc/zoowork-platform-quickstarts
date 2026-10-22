@@ -13,7 +13,7 @@ export default defineConfig({
     viewport: { width: 1440, height: 1000 },
   },
   webServer: {
-    command: "npm run demo:offline",
+    command: "node --import tsx test/fixture-server.ts",
     url: "http://localhost:4688",
     reuseExistingServer: false,
     env: { PORT: "4688" },

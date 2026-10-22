@@ -37,12 +37,7 @@ Allowed reason codes: budget, ram, weight, battery, refresh, usb, anc. Choose on
 Do not emit an empty recommendation; use message for no matches. No paid self-repair turns. These are demo products, not real market offers.`;
 export function agentResource(mcpUrl = publicMcpUrl()): AgentResource {
   const model = process.env.ZOOWORK_MODEL;
-  // Engine's source-reviewed mandatory confirmation flag is newer than SDK 0.9.0's
-  // nested type. The published client serializes this structurally compatible object.
-  const tools: Record<
-    string,
-    McpToolPermissionOverride & { requireConfirmation?: boolean }
-  > = {
+  const tools: Record<string, McpToolPermissionOverride> = {
     search_products: { permission: "always_allow" },
     get_products: { permission: "always_ask", requireConfirmation: true },
     compare_products: { permission: "always_ask", requireConfirmation: true },

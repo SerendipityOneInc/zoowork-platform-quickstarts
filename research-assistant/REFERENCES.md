@@ -1,6 +1,5 @@
 # Research Assistant References and Reuse
 
-Reviewed 2026-10-01. Complements [shared references](../docs/REFERENCES.md).
 The [full Anthropic MIT notice](third-party/anthropic-MIT.txt) is retained here.
 
 ## Official Claude Sample
@@ -9,7 +8,6 @@ The [full Anthropic MIT notice](third-party/anthropic-MIT.txt) is retained here.
 - Reviewed commit: `3994db7dc2464d9ab255aba1dfda3594fc994c21`, dated 2026-09-30 UTC.
 - Sample: [managed-agents/chat-sdk](https://github.com/anthropics/claude-quickstarts/tree/3994db7dc2464d9ab255aba1dfda3594fc994c21/managed-agents/chat-sdk).
 - License: [MIT, Copyright (c) 2023 Anthropic](https://github.com/anthropics/claude-quickstarts/blob/3994db7dc2464d9ab255aba1dfda3594fc994c21/LICENSE).
-- Foundation references use `09bdac6`; this app reviewed a newer snapshot without changing shared records.
 
 Reviewed package metadata, README, CLAUDE.md, setup prompt, the modules below, React UI and
 representative CSS. Copied or substantially adapted code retains the full MIT notice.
@@ -40,41 +38,3 @@ Source paths below are relative to `managed-agents/chat-sdk/`.
 - [vercel/chat](https://github.com/vercel/chat) main was
   `4b458b4c345ee61056fa4d4d6877593dc2a38107`; library implementation was not copied.
 - Use published packages, without copied adapter internals or unreviewed tool/data parts.
-
-## ZooWork SDK and Contract
-
-- Downloaded/read npm `@zoowork-ai/sdk@0.9.0` client types, relevant implementations,
-  event types/helpers and exports.
-- [SDK v0.9.0](https://github.com/SerendipityOneInc/zoowork-sdk-typescript/releases/tag/v0.9.0).
-- Public docs snapshot `83ab0521fcb45db13f993d327abf001636ef9e7a`:
-  [Agents](https://github.com/SerendipityOneInc/zoowork-agents-docs/blob/83ab0521fcb45db13f993d327abf001636ef9e7a/docs/en/build/agents.md),
-  [Tools](https://github.com/SerendipityOneInc/zoowork-agents-docs/blob/83ab0521fcb45db13f993d327abf001636ef9e7a/docs/en/build/tools.md),
-  [Sessions](https://github.com/SerendipityOneInc/zoowork-agents-docs/blob/83ab0521fcb45db13f993d327abf001636ef9e7a/docs/en/build/sessions.md),
-  [Events](https://github.com/SerendipityOneInc/zoowork-agents-docs/blob/83ab0521fcb45db13f993d327abf001636ef9e7a/docs/en/build/events.md).
-- Focus: canonical persona docs, tool allow/deny, write-once metadata, Agent-nested Sessions,
-  string inputs, idempotency, input/run anchors, tool phases, pagination, opaque cursor and interrupt.
-- Preview, typed citations, complete tool results and reliable cost display are not presented
-  as published first-version capabilities.
-
-## Platform Gateway
-
-- ECAP main snapshot: `4184093a8214cd2244f752616aac64ce23e6923f`.
-- [Project-key router](https://github.com/SerendipityOneInc/ecap-workspace/blob/4184093a8214cd2244f752616aac64ce23e6923f/services/claw-interface/app/routes/service_api/router.py).
-- [Agent access](https://github.com/SerendipityOneInc/ecap-workspace/blob/4184093a8214cd2244f752616aac64ce23e6923f/services/claw-interface/app/routes/service_api/_agents.py).
-- Gateway derives ownership, checks Project/owner and forwards Agent-nested Session calls.
-  No direct Engine path or cross-Project Agent borrowing was introduced.
-
-## Input Association Reviewed During Implementation
-
-Actual staging showed public event IDs differ from internal inboundMessageId.
-Read-only review of Engine snapshot `9e1dd474ee8146571ac6e758803e53e7ea5c125f` covered
-`packages/storage-pg/src/public-session-events.ts`,
-`services/controld/src/peripheral/sessions-api.ts`,
-`services/agent-worker/src/workflows/session-observability.ts` and
-`activities/run-lifecycle-activities.ts`.
-
-Ledger IDs are generated independently; run anchors use the internal inbound ID. This starter
-therefore relies on its single-writer contract and seq/input-echo association, rather than
-claiming the SDK directly joins the IDs. No Engine code was modified or copied.
-
-See [VALIDATION.md](VALIDATION.md) for separate source-reviewed, offline-tested and staging-verified scope.

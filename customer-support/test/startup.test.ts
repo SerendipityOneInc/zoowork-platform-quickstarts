@@ -12,7 +12,6 @@ test("fresh setup and server commands explain missing configuration without crea
   const cwd = await mkdtemp(join(tmpdir(), "support-first-run-"));
   const env = { ...process.env };
   delete env.ZOOWORK_API_KEY;
-  delete env.ZOOWORK_BASE_URL;
   const run = (script: string, args: string[] = [], extra = {}) =>
     spawnSync(
       process.execPath,
@@ -38,14 +37,9 @@ test("fresh setup and server commands explain missing configuration without crea
       assert.match(result.stderr, /npm run setup/);
     }
     const key = "zwp_live_synthetic_first_run_key";
-    const missingUrl = run("platform.ts", ["setup"], { ZOOWORK_API_KEY: key });
-    assert.match(missingUrl.stderr, /Set ZOOWORK_BASE_URL/);
-    assert.ok(!missingUrl.stderr.includes(key));
-    const missingAgent = run("server.ts", [], {
-      ZOOWORK_API_KEY: key,
-      ZOOWORK_BASE_URL: "https://synthetic.example/service/v1",
-    });
+    const missingAgent = run("server.ts", [], { ZOOWORK_API_KEY: key });
     assert.equal(missingAgent.status, 1);
+    assert.ok(!missingAgent.stderr.includes(key));
     assert.match(missingAgent.stderr, /Run npm run setup/);
     assert.match(
       missingAgent.stderr,

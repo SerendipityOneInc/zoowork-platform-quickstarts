@@ -16,8 +16,6 @@ export const LOCAL_DIR = ".local";
 export interface AgentState {
   version: 1;
   app: typeof APP;
-  /** The `/service/v1` URL the Agent was created on. Other deployments are refused. */
-  baseUrl: string;
   /** Random per-setup identity, written into the Agent's labels and each Session's metadata. */
   instance: string;
   /** Saved before the create request, so an uncertain create is repeated with the same key and body. */
@@ -45,12 +43,11 @@ export function desiredResource(state: Pick<AgentState, "instance">, resource: A
   return { ...resource, labels: { ...resource.labels, ...labelsFor(state) } };
 }
 
-export function newAgentState(baseUrl: string, resource: AgentResource): AgentState {
+export function newAgentState(resource: AgentResource): AgentState {
   const instance = randomUUID();
   return {
     version: 1,
     app: APP,
-    baseUrl,
     instance,
     createIdempotencyKey: `zoowork-starter:${instance}`,
     createBody: desiredResource({ instance }, resource),
@@ -73,8 +70,8 @@ export async function saveAgentState(path: string, state: AgentState): Promise<v
   await writePrivateJson(path, state);
 }
 
-/** Load the recorded state. `baseUrl` (when known) must match the deployment the Agent was created on. */
-export async function loadAgentState(path: string, baseUrl?: string): Promise<AgentState | undefined> {
+/** Load the recorded state. */
+export async function loadAgentState(path: string): Promise<AgentState | undefined> {
   let raw: string;
   try {
     raw = await readFile(path, "utf8");
@@ -100,7 +97,6 @@ export async function loadAgentState(path: string, baseUrl?: string): Promise<Ag
   ) {
     throw new StarterError("invalid_local_state", 500);
   }
-  if (baseUrl !== undefined && state.baseUrl !== baseUrl) throw new StarterError("state_scope_mismatch", 500);
   return state;
 }
 

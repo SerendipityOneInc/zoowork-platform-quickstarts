@@ -1,29 +1,19 @@
 # ZooWork Platform Quickstarts
 
-Read `docs/HANDOFF.md`, `docs/OUTLINE.md`, `docs/PLATFORM.md` and the target app's
-`README.md`, `PLAN.md` and any nested `AGENTS.md` first.
+Example applications built on the published `@zoowork-ai/sdk`. Each directory is an independent
+npm project. Work inside one directory and read its `README.md` (and `AGENTS.md`, if present).
 
-- Use only Platform Project keys (`zwp_live_`) and the published SDK. The application's
-  setup creates its Agent; the gateway derives Org/Project/owner tenancy.
-- Each demo installs independently. No workspace links, sibling imports or local SDK overrides.
-  Keep changes in the requested demo. Propose SDK changes in the SDK repository separately.
-- Keep credentials server-side, outside Git and logs. Commit only `.env.example`.
-- Run `npm ci` and `npm run check` in the changed demo before committing. CI is offline.
-- Live tests require user authorization. The staging smoke creates one temporary Agent/Session,
-  performs one model turn and cleans up. Finding a key or passing a flag is not authorization.
-- Preserve recovery state after ambiguous creation or failed cleanup. Operate only on recorded
-  resource IDs with matching labels; never scan a Project to choose resources for deletion.
-- Use `docs/SESSION-PROMPT.md` and `docs/handoffs/` for the four feature sessions.
-  Deliver a complete application with useful results and business state, not only a tool log.
-  Follow the session's startup assignment in `docs/HANDOFF.md`; do not start other apps.
-- Preserve licenses when copying code; record source commits and paths in `docs/REFERENCES.md`.
-- Commit as `finn-srp <finn@srp.one>`; use Finn's active GitHub identity.
+- `starter/`: minimal chat app. The Agent is defined in `agent/agent.md`.
+- `customer-support/`: Custom Tools with confirmation and durable Sessions.
+- `product-advisor/`: remote MCP tools with approvals.
+- `research-assistant/`: Vercel Chat SDK with saved, sourced briefs.
+- `knowledge-assistant/`: Agent setup, status and cleanup only.
 
-`starter/` is the standard, business-free starting point and the companion of the public
-Publish your Agent guide. Keep it a generic scaffold: no business data, scenario examples or UI,
-or borrowed Agent IDs. Scenario examples belong to the guide.
-The other four directories are capability demos.
+Rules:
 
-Current status: Customer Support, Product Advisor and Research Assistant are runnable; Customer
-Support's evidence is in `customer-support/docs/VALIDATION.md`. Knowledge Assistant has the
-lifecycle foundation. See the root README for delivery status.
+- The only setting is `ZOOWORK_API_KEY`, a Platform Project key (`zwp_live_`), in the app's `.env`.
+  Keep it server-side: never in browser code, logs, chat or Git.
+- `npm run setup` creates the app's Agent. Do not create Agents by hand or reuse Agent IDs.
+- `.local/` holds recorded resource IDs and recovery state. Do not delete it to get past an
+  error; run `npm run cleanup` to remove the app's resources.
+- `npm run check` runs offline and must pass after a change. Setup and chat use real credits.

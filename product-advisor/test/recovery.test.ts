@@ -76,7 +76,14 @@ test("expired receipt cannot be read and runtime audit does not enter public evi
       },
     );
     assert.equal(JSON.stringify(e).includes("private-"), false);
-    assert.equal(f.forSession("test-agent", "test-session").search_products, 1);
+    assert.deepEqual(
+      f.db
+        .prepare(
+          "SELECT tool FROM audit WHERE json_extract(context,'$.agentId')=? AND json_extract(context,'$.sessionId')=?",
+        )
+        .all("test-agent", "test-session"),
+      [{ tool: "search_products" }],
+    );
     f.db.prepare("UPDATE receipts SET created=?").run(Date.now() - 10);
     assert.equal(f.get(e.receiptId), undefined);
     assert.equal(
@@ -160,11 +167,7 @@ test("Agent declaration isolates readonly tools and requests mandatory per-call 
     const resource = agentResource();
     const tools = resource.mcp![0]!.tools!;
     assert.equal(tools.search_products!.permission, "always_allow");
-    assert.equal(
-      (tools.get_products as { requireConfirmation?: boolean })
-        .requireConfirmation,
-      true,
-    );
+    assert.equal(tools.get_products!.requireConfirmation, true);
     assert.equal(resource.include_global_skills, false);
   } finally {
     if (before === undefined) delete process.env.MCP_PUBLIC_URL;

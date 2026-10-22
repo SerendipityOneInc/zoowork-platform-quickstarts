@@ -3,7 +3,7 @@ import { mkdtemp, rm } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import type { SessionEvent, SessionRecord, ZooworkClient } from '@zoowork-ai/sdk'
-import { newState, STAGING_URL } from '../src/platform.js'
+import { newState } from '../src/platform.js'
 import { agentResource } from '../src/agent.js'
 import { Conversations } from '../src/conversations.js'
 import { Research } from '../src/turns.js'
@@ -12,7 +12,7 @@ export const urls = ['https://nodejs.org/en/about/previous-releases', 'https://g
 export const report = (title = 'Node.js support timelines (simulated sources)') => `# ${title}\n\n## Summary\nThis offline fixture verifies the research flow. It is not a live research result.\n\n## Key findings\nWhen choosing a version, check support timelines [1](${urls[0]}) and release schedules [2](${urls[1]}).\n\n## Limitations and open questions\nThese sources are simulated. Check current versions with a new search.\n\n## Sources\n1. [Official Node.js versions](${urls[0]})\n2. [Official Node.js release schedule](${urls[1]})`
 type Session = { record: SessionRecord; events: SessionEvent[]; notify: Set<() => void>; run?: string; turns: number }
 export class FakePlatform {
-  readonly state = newState({ apiKey: 'zwp_live_fixture_only', baseUrl: STAGING_URL }, 'research-assistant', agentResource())
+  readonly state = newState('research-assistant', agentResource())
   readonly sessions = new Map<string, Session>()
   readonly calls: { method: string; session?: string; key?: string; text?: string }[] = []
   readonly keys = new Map<string, string>()

@@ -1,7 +1,7 @@
 # Customer Support
 
 A runnable English support workbench built with ZooWork Platform and the published
-`@zoowork-ai/sdk@0.9.0`. Ask about an order, inspect its shipment, continue the conversation,
+`@zoowork-ai/sdk@0.12.0`. Ask about an order, inspect its shipment, continue the conversation,
 and create an after-sales ticket after reviewing its exact contents in the browser.
 
 The application creates its own Agent with a **Platform Project key**. It uses application-executed
@@ -10,8 +10,7 @@ they do not approve a refund, arrange a return or contact a carrier.
 
 ## Get your Project key
 
-You can try the workbench without credentials with `npm ci` and `npm run demo:offline`.
-That preview uses simulated replies. To run the real Agent, use your own **Platform Project key**:
+The workbench runs a real Agent, so you need your own **Platform Project key** first:
 
 1. Open [Platform Console](https://platform.zoowork.ai) and sign in. Complete account and
    Organization setup if prompted.
@@ -47,13 +46,10 @@ Edit `.env` in your editor before continuing:
 
 ```dotenv
 ZOOWORK_API_KEY=zwp_live_replace_with_your_project_key
-ZOOWORK_BASE_URL=https://clawapi.ecap.gsmo.ai/service/v1
 PORT=4600
 ```
 
-The base URL above is the production public API. Use the API deployment that issued your key;
-[authorized staging](../docs/PLATFORM.md#staging) uses a different URL. The Console website URL
-is not an API base URL. `.env` is ignored by Git and loaded by the setup/server commands.
+`.env` is ignored by Git and loaded by the setup/server commands.
 `ZOOWORK_MODEL` is optional; leave it empty to use the Platform default model.
 
 ```sh
@@ -65,9 +61,8 @@ npm run dev
 Successful setup prints `Agent ready: <agent-id>`. The server prints
 `Customer Support: http://localhost:4600 (synthetic data)`. Open **http://localhost:4600**,
 choose **Track ORD-1001**, click **Send**, and look for `lookup_order` / `lookup_shipment` results and an Agent reply.
-Real mode has no **Offline test fixture** label. Model turns consume your Organization credits;
-orders and tickets remain synthetic in both modes. Stop an offline preview before starting real
-mode on the same port. `PORT` can select another local port.
+Model turns consume your Organization credits; orders and tickets remain synthetic.
+`PORT` can select another local port.
 
 The key stays in the server process; the browser receives neither the key nor an Agent ID.
 There is no Work Agent, channels API, sibling app import or local SDK override.
@@ -84,20 +79,14 @@ Startup errors include a safe error code and the next action, without printing t
 | Message | What to do |
 | --- | --- |
 | `platform_project_key_required` | Get a Project key in [Platform Console](https://platform.zoowork.ai), copy `.env.example` to `.env`, and fill `ZOOWORK_API_KEY` with the `zwp_live_` key. |
-| `explicit_public_base_url_required` / `invalid_public_base_url` | Set `ZOOWORK_BASE_URL` to your deployment's HTTPS `/service/v1` URL. Use `.env.example` for the production URL. |
 | `run_setup_first` | Run `npm run setup`, then `npm run dev`. Setup creates the Agent for you. |
-| `http_401` | Check that the key was copied correctly, is active and belongs to the configured API deployment. Restart after editing `.env`. |
+| `http_401` | Check that the key was copied correctly and is active. Restart after editing `.env`. |
 | `http_402` | Check Organization billing and available credits in the Console before retrying. |
-| `http_403` | Check your account access, selected Project and key permissions. Recorded resources must use the same Project and deployment. |
+| `http_403` | Check your account access, selected Project and key permissions. Recorded resources must use the same Project. |
 | `http_400` during setup | Check account setup, Organization billing and the selected model. This code can have several causes; retain `.local` state while investigating. |
-| `state_scope_mismatch` / recorded resource `http_404` | Use the original API deployment and Project key. Do not delete `.local` to force recreation; see recovery and cleanup below. |
+| `state_scope_mismatch` / recorded resource `http_404` | Use the original Project key. Do not delete `.local` to force recreation; see recovery and cleanup below. |
 | `agent_config_outdated_cleanup_then_setup` | Stop the server, run `npm run cleanup`, then `npm run setup` and `npm run dev`. Keep state if cleanup fails. |
 | `EADDRINUSE` / `request_or_runner_failed` when starting | Stop another process using port 4600 or set a free `PORT` in `.env`. The generic code can also mean a connection or runtime failure. |
-
-If the workbench still says **Offline test fixture**, you are running `npm run demo:offline`.
-Open **Connect to ZooWork Platform** in that page for the same key and startup steps. A real reply
-requires `npm run setup` followed by `npm run dev`. The starter never silently switches an offline
-preview into paid model calls.
 
 ## Walkthrough
 
@@ -116,18 +105,7 @@ ORD-1002 is a delivered bottle order. ORD-9999 is unknown. ORD-2001 belongs to a
 synthetic customer and returns the same `order_not_found` result as an unknown order.
 Custom Tool calls appear directly in the conversation timeline, with their function names, business results and confirmation or failure states. **Review ticket request** moves focus to the protected confirmation. The closed **Tool call details** disclosure contains call IDs, input parameters, structured results and decisions.
 
-## Offline preview and checks
-
-The offline fixture runs the actual HTTP routes, SQLite store and business handlers with a
-**fake Platform transport**. It is clearly labeled **Offline test fixture** and never calls a
-model. It is useful for the workbench walkthrough; it is not evidence of SDK integration.
-It uses an in-memory database and resets when the preview process stops. Reloading a page in
-that process retains state. Platform mode uses the durable on-disk database described below.
-
-```sh
-npm run demo:offline
-# Open http://localhost:4600. Stop this process before running the Platform app on the same port.
-```
+## Checks
 
 ```sh
 npm ci
@@ -140,14 +118,16 @@ PLAYWRIGHT_CHANNEL=chrome npm run test:browser
 
 `check` typechecks the backend and tests, checks browser JavaScript syntax, and runs offline
 Node tests. Browser tests cover the complete workflow, reload, hostile tool data, mobile layout,
-empty conversation switching and keyboard focus during polling. CI's `check` needs no key or browser.
-See [verification evidence](docs/VALIDATION.md).
+empty conversation switching and keyboard focus during polling. They start their own server,
+`test/fixture-server.ts`, which runs the real HTTP routes, SQLite store and business handlers
+with a fake Platform transport and an in-memory database. It exists only for these tests and is
+not evidence of SDK integration. CI's `check` needs no key or browser.
 
 ## Persistence and recovery
 
 - `.local/support.sqlite` stores fixture orders/shipments, browser identities, conversation ownership,
   exact Session-create requests, user messages, tool jobs, tickets, results and durable event cursors.
-  The database is bound to the recorded Agent instance and deployment.
+  The database is bound to the recorded app instance and Agent.
 - Each browser has an opaque HttpOnly cookie. Routes check conversation ownership. The handlers
   independently check customer ownership; the model cannot select a customer or pass confirmation.
   Mutation requests require a same-origin request and a CSRF token. The server binds to localhost.
@@ -190,26 +170,6 @@ before removing that lock. Never remove Agent records or databases to bypass unc
 ambiguous Session creation, restart the app and use **Recover conversation** with the same Project
 key to replay the recorded create body/key before attempting cleanup.
 
-## Authorized staging verification
-
-Live tests require explicit authorization in addition to the confirmation flag.
-Only the exact staging endpoint is accepted. There is no paid-input retry or production fallback.
-
-```sh
-# Inject an authorized staging Project key and staging base URL into the server process.
-npm run test:feature-staging -- --confirm-staging
-```
-
-The feature check creates **one temporary Agent and one Session**, uses **four user turns**, checks
-real order/shipment Custom Tools, a follow-up, cancellation, confirmation, pending-call restart and
-idempotency, then deletes the recorded resources. The main request phase is bounded to 180 seconds,
-with a separate cleanup budget. Failure keeps a private recovery record/database and prints its exact
-cleanup command. No credentials enter Git or the database.
-
-`npm run test:staging -- --confirm-staging` remains the smaller lifecycle-only smoke; it does not
-prove the application's Custom Tool workflow. Sources and licenses are recorded in
-[references](docs/REFERENCES.md). Platform boundaries remain in [the shared contract](../docs/PLATFORM.md).
-
 ## Main files
 
 | File | Responsibility |
@@ -221,4 +181,3 @@ prove the application's Custom Tool workflow. Sources and licenses are recorded 
 | `public/` | English responsive workbench |
 | `src/platform.ts`, `src/cleanup.ts` | Agent setup, resource scope and recorded-resource cleanup |
 | `test/`, `e2e/` | Offline behavior and browser regressions |
-| `scripts/feature-staging.ts` | Bounded, authorized real feature verification |

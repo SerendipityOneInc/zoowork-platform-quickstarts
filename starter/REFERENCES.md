@@ -1,7 +1,5 @@
 # Starter references and reuse
 
-Reviewed 2026-10-22. Complements the repository's [shared references](../docs/REFERENCES.md).
-
 ## Claude Managed Agents assistant-ui quickstart
 
 - Repository: [anthropics/claude-quickstarts](https://github.com/anthropics/claude-quickstarts),

@@ -1,9 +1,11 @@
 import { Store } from "../src/store.js";
 import { SupportService } from "../src/service.js";
 import { supportServer } from "../src/http.js";
-import { fixtureClient } from "../test/fixture.js";
+import { fixtureClient } from "./fixture.js";
 
-// The fake remote transport is ephemeral too. Platform mode uses an on-disk journal.
+// Browser tests only (started by playwright.config.ts). Serves the real routes,
+// store and handlers with the fake Platform transport from fixture.js and an
+// in-memory database. Application code and npm scripts never start it.
 const store = new Store(":memory:", "offline-fixture"),
   fixture = fixtureClient();
 store.claimProcess();
@@ -14,11 +16,11 @@ const service = new SupportService(
 );
 const port = Number(process.env.PORT ?? 4600),
   origin = `http://localhost:${port}`;
-const server = supportServer(service, { origin: () => origin, offline: true });
+const server = supportServer(service, { origin: () => origin });
 await new Promise<void>((resolveReady) =>
   server.listen(port, "localhost", resolveReady),
 );
-console.log(`Offline test fixture: ${origin}. No model or Platform requests.`);
+console.log(`Browser test fixture: ${origin}. No model or Platform requests.`);
 const timer = setInterval(() => {
   void service.tick();
 }, 200);

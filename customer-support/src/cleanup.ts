@@ -16,31 +16,21 @@ export async function cleanupApplication(
   path: string,
 ) {
   await ownedAgent(client, state);
-  const filename =
-    state.database ??
-    (path.endsWith("/agent.json") ? "support.sqlite" : undefined);
-  let store: Store | undefined, database: string | undefined;
-  if (filename) {
-    if (!/^[a-zA-Z0-9_-]+\.sqlite$/.test(filename))
-      throw new FoundationError("invalid_database_filename");
-    database = resolve(dirname(path), filename);
+  let store: Store | undefined,
+    database: string | undefined = resolve(dirname(path), "support.sqlite");
+  try {
+    await access(database);
+  } catch (error) {
+    if ((error as NodeJS.ErrnoException).code !== "ENOENT") throw error;
+    database = undefined;
+  }
+  if (database) {
+    store = new Store(database, `${state.instance}:${state.agentId}`);
     try {
-      await access(database);
+      store.claimProcess();
     } catch (error) {
-      if ((error as NodeJS.ErrnoException).code !== "ENOENT") throw error;
-      database = undefined;
-    }
-    if (database) {
-      store = new Store(
-        database,
-        `${state.baseUrl}:${state.instance}:${state.agentId}`,
-      );
-      try {
-        store.claimProcess();
-      } catch (error) {
-        store.close();
-        throw error;
-      }
+      store.close();
+      throw error;
     }
   }
   try {
@@ -48,7 +38,7 @@ export async function cleanupApplication(
       if (!conversation.sessionId)
         throw new FoundationError("session_creation_uncertain_keep_database");
       try {
-        // Session IDs come from an app journal bound to the exact Agent instance/deployment.
+        // Session IDs come from an app journal bound to the exact app instance and Agent.
         const session = await client.getSession(
           state.agentId!,
           conversation.sessionId,

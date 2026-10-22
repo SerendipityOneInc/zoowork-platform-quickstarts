@@ -6,12 +6,12 @@ The brief is the primary result. Conversation and expandable activity provide co
 
 ## Run
 
-Requires **Node 22.20+**, a Platform Project key (`zwp_live_`), and an explicit public API URL. Each demo installs independently, with no sibling application or local SDK override.
+Requires **Node 22.20+** and a Platform Project key (`zwp_live_`). Each demo installs independently, with no sibling application or local SDK override.
 
 ```sh
 npm ci
 cp .env.example .env
-# Fill ZOOWORK_API_KEY and ZOOWORK_BASE_URL. Optionally set ZOOWORK_MODEL.
+# Fill ZOOWORK_API_KEY. Optionally set ZOOWORK_MODEL.
 npm run setup
 npm run dev
 ```
@@ -41,7 +41,7 @@ the journal; setup calls from an earlier process are not invented. Completed rou
 reads are evicted first. The debug endpoint is local, read-only and does not call
 Platform. It never stores keys, headers, input text, tool output, raw metadata,
 cursor values or provider error bodies. **Pause display** freezes display only; it does not
-interrupt research. Offline fixtures are explicitly labeled in this panel.
+interrupt research.
 
 ## History and recovery
 
@@ -64,14 +64,13 @@ npm run recover
 
 Archived Sessions are readable/exportable and cannot accept input. Unknown, deleted or mismatched Sessions fail closed. For an unresolved run, use **Refresh** and retain `.local/` for investigation. A crashed process leaves `web.lock`; the next start removes it only if the recorded PID no longer exists. An invalid lock needs manual review.
 
-## Offline checks and demo
+## Offline checks
 
 ```sh
 npm run check
-npm run dev:fixture
 ```
 
-`check` runs TypeScript, Node tests and the browser build without credentials or live API calls. The fixture server opens at **http://localhost:3187**, labels content as simulated, uses temporary data and never calls Platform.
+`check` runs TypeScript, Node tests and the browser build without credentials or live API calls.
 
 ```sh
 npx playwright install chromium --only-shell
@@ -80,23 +79,7 @@ npm run test:browser
 PLAYWRIGHT_CHANNEL=chrome npm run test:browser
 ```
 
-Browser tests start their own fixture server and verify desktop/mobile creation, refresh, follow-up, versions, exact Markdown download, history and isolation. Do not run `dev:fixture` on the same port during these tests. Screenshots and traces stay ignored.
-
-## Authorized staging verification
-
-With separate human authorization, inject a staging Project key server-side and set `ZOOWORK_BASE_URL=https://claw-interface.ecap.yesy.live/service/v1`:
-
-```sh
-npm run test:research-staging
-# Session regression: tools disabled, two short text turns.
-npm run test:research-staging -- --session-only
-# Original lifecycle-only smoke:
-npm run test:staging -- --confirm-staging
-```
-
-The research check creates at most one temporary Agent, two Sessions and two user turns. Main phase: 180 seconds. Cleanup: 60 seconds. It never retries a billable input. Default mode checks real search/fetch, cited brief, durable replay, Markdown export, continuation and an empty independent Session. Session-only mode checks continuation/context with a tiny output budget; it does not prove search. A flag is not authorization. These commands refuse production.
-
-Cleanup verifies recorded Agent labels and Session metadata. Failed or ambiguous creation/cleanup preserves `.local/research-smoke-*.json` and conversation records, and prints the exact recovery command. It never scans a Project to choose deletion targets. See [actual validation](VALIDATION.md).
+Browser tests start their own server, `test/fixture-server.ts`, on port 3187. It runs the app with a fake Platform and temporary data, exists only for these tests and never calls Platform. The tests verify desktop/mobile creation, refresh, follow-up, versions, exact Markdown download, history and isolation. Screenshots and traces stay ignored.
 
 ## Clean up
 
@@ -105,7 +88,7 @@ Cleanup verifies recorded Agent labels and Session metadata. Failed or ambiguous
 npm run cleanup
 ```
 
-Cleanup deletes matching recorded Sessions, then stops/deletes the Agent. It preserves recovery state when uncertain or unsuccessful. After successful application cleanup, local tombstones move to `.local/conversations.retired-<instance>/`, so a new `setup` starts a fresh registry. Smoke tombstones remain alongside their recorded state directory. Do not mix registries from different instances.
+Cleanup deletes matching recorded Sessions, then stops/deletes the Agent. It preserves recovery state when uncertain or unsuccessful. After successful application cleanup, local tombstones move to `.local/conversations.retired-<instance>/`, so a new `setup` starts a fresh registry. Do not mix registries from different instances.
 
 ## Code and limits
 
@@ -113,11 +96,11 @@ Cleanup deletes matching recorded Sessions, then stops/deletes the Agent. It pre
 - `src/main.ts`, `app.ts`, `bot.ts`: local host, application API, official Web adapter.
 - `src/conversations.ts`, `turns.ts`: ownership, intents, single reader, durable replay.
 - `src/brief.ts`: shared message/tool/brief/source projection and export text.
-- `src/platform.ts`, `web-runtime.ts`, `lifecycle.ts`: lifecycle, bounded clients and locks.
+- `src/platform.ts`, `web-runtime.ts`, `lifecycle.ts`: lifecycle, SDK client and locks.
 - `web/`: React/useChat reading UI and responsive styles.
 
 The published SDK supplies complete assistant messages rather than token previews. No progress percentage, duration estimate, typed citation verification or cost estimate is invented. Final Markdown parsing is best-effort: incomplete or uncited answers stay in the conversation; failed/aborted runs do not publish a complete brief.
 
 No public hosting, multi-user authentication, IM adapter, scheduled research, upload, approval automation or separate RAG is included. History replays full durable pages; large-session optimization and a multi-process registry are outside this starter.
 
-See [PLAN.md](PLAN.md), [PRODUCT.md](PRODUCT.md), [REFERENCES.md](REFERENCES.md) and the retained [Anthropic MIT license](third-party/anthropic-MIT.txt).
+See [REFERENCES.md](REFERENCES.md) for reused code and the retained [Anthropic MIT license](third-party/anthropic-MIT.txt).

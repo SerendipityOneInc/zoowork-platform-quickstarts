@@ -9,7 +9,6 @@ import { createRecordedSession } from "../lib/zoowork/session-create";
 import { fileSessionStore } from "../lib/zoowork/sessions";
 import { loadAgentState, newAgentState, saveAgentState } from "../lib/zoowork/state";
 
-const BASE = "https://api.example.test/service/v1";
 const resource = (instructions = "Be helpful."): AgentResource => ({
   name: "Test",
   persona: { docs: [{ name: "AGENTS.md", content: instructions }] },
@@ -99,16 +98,16 @@ test("setup creates once, records state, labels the Agent and starts it", async 
   const dir = await tempDir();
   const path = join(dir, "agent.json");
   const p = fakePlatform();
-  const first = await applyAgent(p.client, path, undefined, BASE, resource());
+  const first = await applyAgent(p.client, path, undefined, resource());
   assert.equal(first.action, "created");
-  const state = await loadAgentState(path, BASE);
+  const state = await loadAgentState(path);
   assert.equal(state?.agentId, first.agentId);
   const labels = p.agents.get(first.agentId)!.declared.labels as Record<string, string>;
   assert.equal(labels.starter_app, "starter");
   assert.equal(labels.starter_instance, state!.instance);
   assert.equal(p.agents.get(first.agentId)!.desired_state, "running");
   // Running setup again changes nothing.
-  const again = await applyAgent(p.client, path, state, BASE, resource());
+  const again = await applyAgent(p.client, path, state, resource());
   assert.equal(again.action, "unchanged");
   assert.equal(p.calls.filter((c) => c === "createAgent").length, 1);
   assert.equal(p.calls.filter((c) => c === "updateAgent").length, 0);
@@ -119,10 +118,10 @@ test("a lost create response is repeated with the same key, not a second Agent",
   const path = join(dir, "agent.json");
   const p = fakePlatform();
   p.failCreateOnce();
-  await assert.rejects(applyAgent(p.client, path, undefined, BASE, resource()));
-  const pending = await loadAgentState(path, BASE);
+  await assert.rejects(applyAgent(p.client, path, undefined, resource()));
+  const pending = await loadAgentState(path);
   assert.ok(pending && !pending.agentId, "create body and key are saved before the request");
-  const result = await applyAgent(p.client, path, pending, BASE, resource());
+  const result = await applyAgent(p.client, path, pending, resource());
   assert.equal(p.agents.size, 1);
   assert.equal(result.agentId, [...p.agents.keys()][0]);
 });
@@ -131,35 +130,34 @@ test("a changed definition updates the same Agent and is confirmed by reading it
   const dir = await tempDir();
   const path = join(dir, "agent.json");
   const p = fakePlatform();
-  const { agentId } = await applyAgent(p.client, path, undefined, BASE, resource("v1"));
-  const state = await loadAgentState(path, BASE);
+  const { agentId } = await applyAgent(p.client, path, undefined, resource("v1"));
+  const state = await loadAgentState(path);
   assert.equal((await agentStatus(p.client, state!, resource("v2"))).definitionApplied, false);
-  const result = await applyAgent(p.client, path, state, BASE, resource("v2"));
+  const result = await applyAgent(p.client, path, state, resource("v2"));
   assert.equal(result.action, "updated");
   assert.equal(result.agentId, agentId);
   const persona = p.agents.get(agentId)!.declared.persona as AgentResource["persona"];
   assert.equal(persona!.docs[0]!.content, "v2");
-  const after = await loadAgentState(path, BASE);
+  const after = await loadAgentState(path);
   assert.equal(after?.pendingUpdate, undefined);
   assert.equal((await agentStatus(p.client, after!, resource("v2"))).definitionApplied, true);
 });
 
-test("refuses state from another deployment and Agents without this instance's labels", async () => {
+test("refuses Agents without this instance's labels", async () => {
   const dir = await tempDir();
   const path = join(dir, "agent.json");
   const p = fakePlatform();
-  const { agentId } = await applyAgent(p.client, path, undefined, BASE, resource());
-  await assert.rejects(loadAgentState(path, "https://other.example.test/service/v1"), /state_scope_mismatch/);
+  const { agentId } = await applyAgent(p.client, path, undefined, resource());
   (p.agents.get(agentId)!.declared.labels as Record<string, string>).starter_instance = "someone-else";
-  const state = await loadAgentState(path, BASE);
-  await assert.rejects(applyAgent(p.client, path, state, BASE, resource()), /agent_label_mismatch/);
+  const state = await loadAgentState(path);
+  await assert.rejects(applyAgent(p.client, path, state, resource()), /agent_label_mismatch/);
 });
 
 test("cleanup deletes only recorded Sessions, then stops and deletes the Agent, then retires state", async () => {
   const dir = await tempDir();
   const path = join(dir, "agent.json");
   const p = fakePlatform();
-  const { agentId, state } = await applyAgent(p.client, path, undefined, BASE, resource());
+  const { agentId, state } = await applyAgent(p.client, path, undefined, resource());
   const sessions = fileSessionStore(join(dir, "sessions.json"), { instance: state.instance, agentId });
   const now = new Date().toISOString();
   await sessions.add({ id: "ses_a", title: "a", createdAt: now, updatedAt: now });
@@ -180,7 +178,7 @@ test("a failed cleanup keeps local state", async () => {
   const dir = await tempDir();
   const path = join(dir, "agent.json");
   const p = fakePlatform();
-  const { agentId, state } = await applyAgent(p.client, path, undefined, BASE, resource());
+  const { agentId, state } = await applyAgent(p.client, path, undefined, resource());
   p.client.stopAgent = async () => {
     throw new ZooworkError(503, "unavailable");
   };
@@ -200,7 +198,7 @@ test("session store rejects an index from another Agent", async () => {
 test("local state files are private to the user", async () => {
   const dir = await tempDir();
   const path = join(dir, "agent.json");
-  await saveAgentState(path, newAgentState(BASE, resource()));
+  await saveAgentState(path, newAgentState(resource()));
   assert.equal((await stat(path)).mode & 0o077, 0);
 });
 
@@ -209,7 +207,7 @@ test("removing the thinking level sends thinking: null and confirms it is gone",
   const path = join(dir, "agent.json");
   const p = fakePlatform();
   const withThinking = { ...resource(), model: { primary: "m1", thinking: "high" as const } };
-  const { agentId, state } = await applyAgent(p.client, path, undefined, BASE, withThinking);
+  const { agentId, state } = await applyAgent(p.client, path, undefined, withThinking);
   const sent: Record<string, unknown>[] = [];
   const update = p.client.updateAgent;
   p.client.updateAgent = async (id, sections) => {
@@ -223,7 +221,7 @@ test("removing the thinking level sends thinking: null and confirms it is gone",
   };
   const withoutThinking = { ...resource(), model: { primary: "m1" } };
   assert.equal((await agentStatus(p.client, state, withoutThinking)).definitionApplied, false);
-  const result = await applyAgent(p.client, path, state, BASE, withoutThinking);
+  const result = await applyAgent(p.client, path, state, withoutThinking);
   assert.equal(result.action, "updated");
   assert.deepEqual(sent[0]!.model, { primary: "m1", thinking: null });
   assert.equal((p.agents.get(agentId)!.declared.model as Record<string, unknown>).thinking, undefined);
@@ -235,7 +233,7 @@ test("removing a setting the Platform cannot clear is refused before any request
   const path = join(dir, "agent.json");
   const p = fakePlatform();
   const full: AgentResource = { ...resource(), model: { primary: "m1", max_tokens: 1000 }, userTimezone: "Asia/Shanghai", skills: [{ name: "s" }] };
-  const { state } = await applyAgent(p.client, path, undefined, BASE, full);
+  const { state } = await applyAgent(p.client, path, undefined, full);
   const cases: [AgentResource, RegExp][] = [
     [{ ...full, model: undefined }, /cannot_remove_model/],
     [{ ...full, model: { primary: "m1" } }, /cannot_remove_max_tokens/],
@@ -244,12 +242,12 @@ test("removing a setting the Platform cannot clear is refused before any request
   ];
   for (const [definition, code] of cases) {
     const before = p.calls.length;
-    await assert.rejects(applyAgent(p.client, path, state, BASE, definition), code);
+    await assert.rejects(applyAgent(p.client, path, state, definition), code);
     assert.equal(p.calls.length, before, "no Platform request was made");
     assert.equal((await agentStatus(p.client, state, definition)).definitionApplied, false);
   }
   // An explicit empty list is a change setup can make.
-  const result = await applyAgent(p.client, path, state, BASE, { ...full, skills: [] });
+  const result = await applyAgent(p.client, path, state, { ...full, skills: [] });
   assert.equal(result.action, "updated");
 });
 
@@ -257,10 +255,10 @@ test("an update the Platform does not apply fails instead of reporting success",
   const dir = await tempDir();
   const path = join(dir, "agent.json");
   const p = fakePlatform();
-  const { state } = await applyAgent(p.client, path, undefined, BASE, resource("v1"));
+  const { state } = await applyAgent(p.client, path, undefined, resource("v1"));
   p.client.updateAgent = async (id) => p.client.getAgent(id); // accepted, but nothing changes
-  await assert.rejects(applyAgent(p.client, path, state, BASE, resource("v2")), /agent_update_not_confirmed/);
-  const kept = await loadAgentState(path, BASE);
+  await assert.rejects(applyAgent(p.client, path, state, resource("v2")), /agent_update_not_confirmed/);
+  const kept = await loadAgentState(path);
   assert.ok(kept?.pendingUpdate, "the pending update stays recorded");
 });
 
@@ -268,7 +266,7 @@ test("cleanup interrupted after the Agent was deleted can be run again to finish
   const dir = await tempDir();
   const path = join(dir, "agent.json");
   const p = fakePlatform();
-  const { agentId, state } = await applyAgent(p.client, path, undefined, BASE, resource());
+  const { agentId, state } = await applyAgent(p.client, path, undefined, resource());
   const sessions = fileSessionStore(join(dir, "sessions.json"), { instance: state.instance, agentId });
   // The process dies right after the delete request succeeded.
   const del = p.client.deleteAgent;
@@ -278,9 +276,9 @@ test("cleanup interrupted after the Agent was deleted can be run again to finish
   };
   await assert.rejects(cleanupAgent(p.client, path, state, sessions), /killed/);
   p.client.deleteAgent = del;
-  const recorded = await loadAgentState(path, BASE);
+  const recorded = await loadAgentState(path);
   assert.ok(recorded?.agentDeleteRequestedAt);
-  await assert.rejects(applyAgent(p.client, path, recorded, BASE, resource()), /cleanup_incomplete_run_cleanup/);
+  await assert.rejects(applyAgent(p.client, path, recorded, resource()), /cleanup_incomplete_run_cleanup/);
   await cleanupAgent(p.client, path, recorded!, sessions);
   assert.ok((await readdir(dir)).some((f) => f.startsWith("agent.retired-")));
 });
@@ -289,7 +287,7 @@ test("cleanup does not treat a 404 as deleted unless it sent the delete", async 
   const dir = await tempDir();
   const path = join(dir, "agent.json");
   const p = fakePlatform();
-  const { agentId, state } = await applyAgent(p.client, path, undefined, BASE, resource());
+  const { agentId, state } = await applyAgent(p.client, path, undefined, resource());
   p.agents.delete(agentId); // e.g. a key from another Project cannot see it
   const sessions = fileSessionStore(join(dir, "sessions.json"), { instance: state.instance, agentId });
   await assert.rejects(cleanupAgent(p.client, path, state, sessions), (e: unknown) => e instanceof ZooworkError && e.status === 404);
@@ -301,7 +299,7 @@ test("a lost update response is reconciled: a reverted setting is cleared, not r
   const path = join(dir, "agent.json");
   const p = fakePlatform();
   const base = { ...resource(), model: { primary: "m1" } };
-  const { agentId, state } = await applyAgent(p.client, path, undefined, BASE, base);
+  const { agentId, state } = await applyAgent(p.client, path, undefined, base);
   // Clearing a null thinking level removes it, as the Platform does.
   const update = p.client.updateAgent;
   p.client.updateAgent = async (id, sections) => {
@@ -317,18 +315,18 @@ test("a lost update response is reconciled: a reverted setting is cleared, not r
     await applyThenLose(id, sections);
     throw new TypeError("fetch failed");
   };
-  await assert.rejects(applyAgent(p.client, path, state, BASE, { ...base, model: { primary: "m1", thinking: "high" } }));
+  await assert.rejects(applyAgent(p.client, path, state, { ...base, model: { primary: "m1", thinking: "high" } }));
   p.client.updateAgent = applyThenLose;
   assert.equal((p.agents.get(agentId)!.declared.model as Record<string, unknown>).thinking, "high");
 
   // Revert agent.md to no thinking. Status must not claim a match, and setup must clear it.
-  const recorded = (await loadAgentState(path, BASE))!;
+  const recorded = (await loadAgentState(path))!;
   assert.ok(recorded.pendingUpdate);
   assert.equal((await agentStatus(p.client, recorded, base)).definitionApplied, false);
-  const result = await applyAgent(p.client, path, recorded, BASE, base);
+  const result = await applyAgent(p.client, path, recorded, base);
   assert.equal(result.action, "updated");
   assert.equal((p.agents.get(agentId)!.declared.model as Record<string, unknown>).thinking, undefined);
-  const after = (await loadAgentState(path, BASE))!;
+  const after = (await loadAgentState(path))!;
   assert.equal(after.pendingUpdate, undefined);
   assert.equal((await agentStatus(p.client, after, base)).definitionApplied, true);
 });
@@ -337,16 +335,16 @@ test("a lost update that added a setting the Platform cannot clear is refused on
   const dir = await tempDir();
   const path = join(dir, "agent.json");
   const p = fakePlatform();
-  const { state } = await applyAgent(p.client, path, undefined, BASE, resource());
+  const { state } = await applyAgent(p.client, path, undefined, resource());
   const update = p.client.updateAgent;
   p.client.updateAgent = async (id, sections) => {
     await update(id, sections);
     throw new TypeError("fetch failed");
   };
-  await assert.rejects(applyAgent(p.client, path, state, BASE, { ...resource(), userTimezone: "Asia/Shanghai" }));
+  await assert.rejects(applyAgent(p.client, path, state, { ...resource(), userTimezone: "Asia/Shanghai" }));
   p.client.updateAgent = update;
-  const recorded = (await loadAgentState(path, BASE))!;
-  await assert.rejects(applyAgent(p.client, path, recorded, BASE, resource()), /cannot_remove_timezone/);
+  const recorded = (await loadAgentState(path))!;
+  await assert.rejects(applyAgent(p.client, path, recorded, resource()), /cannot_remove_timezone/);
   assert.equal((await agentStatus(p.client, recorded, resource())).definitionApplied, false);
 });
 
@@ -354,7 +352,7 @@ test("cleanup first resolves a Session create whose response was lost, then dele
   const dir = await tempDir();
   const path = join(dir, "agent.json");
   const p = fakePlatform();
-  const { agentId, state } = await applyAgent(p.client, path, undefined, BASE, resource());
+  const { agentId, state } = await applyAgent(p.client, path, undefined, resource());
   const sessions = fileSessionStore(join(dir, "sessions.json"), { instance: state.instance, agentId });
   // The create reached the Platform, but the app never recorded its result.
   p.sessionsByKey.set("k-lost", "ses_lost");
@@ -367,7 +365,7 @@ test("cleanup stops and keeps state when a lost Session create cannot be resolve
   const dir = await tempDir();
   const path = join(dir, "agent.json");
   const p = fakePlatform();
-  const { agentId, state } = await applyAgent(p.client, path, undefined, BASE, resource());
+  const { agentId, state } = await applyAgent(p.client, path, undefined, resource());
   const sessions = fileSessionStore(join(dir, "sessions.json"), { instance: state.instance, agentId });
   await sessions.savePendingCreate({ threadId: "t1", idempotencyKey: "k1", title: "t", metadata: {}, requestedAt: new Date().toISOString() });
   p.client.createSession = async () => {
@@ -382,7 +380,7 @@ test("a Session create refused while the Agent was stopped does not block cleanu
   const dir = await tempDir();
   const path = join(dir, "agent.json");
   const p = fakePlatform();
-  const { agentId, state } = await applyAgent(p.client, path, undefined, BASE, resource());
+  const { agentId, state } = await applyAgent(p.client, path, undefined, resource());
   const sessions = fileSessionStore(join(dir, "sessions.json"), { instance: state.instance, agentId });
   const create = p.client.createSession;
   p.client.createSession = async () => {

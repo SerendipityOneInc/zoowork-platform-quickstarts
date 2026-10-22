@@ -109,10 +109,9 @@ export async function applyAgent(
   client: LifecycleClient,
   path: string,
   existing: AgentState | undefined,
-  baseUrl: string,
   resource: AgentResource,
 ): Promise<ApplyResult> {
-  const state = existing ?? newAgentState(baseUrl, resource);
+  const state = existing ?? newAgentState(resource);
   if (state.agentDeleteRequestedAt || state.agentDeletedAt) throw new StarterError("cleanup_incomplete_run_cleanup");
   const desired = desiredResource(state, resource);
   const removed = removedSinceRecorded(state, desired);

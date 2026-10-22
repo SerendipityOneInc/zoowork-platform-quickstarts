@@ -9,10 +9,18 @@ import { fixture } from './fixtures.js'
 test('debug observes real SDK calls and deduplicates history/stream event provenance', async () => {
   const f = await fixture()
   try {
+    // The fake run finishes on a timer. If that timer fires before the observer's history
+    // replay, the run is already complete and the app correctly never opens a stream. Hold
+    // the rest of the run until the stream is open, so the live path is always exercised.
+    let streamOpened!: () => void
+    const opened = new Promise<void>(resolve => { streamOpened = resolve })
+    const later = f.platform.later.bind(f.platform), stream = f.platform.client.streamEvents
+    f.platform.later = action => { void opened.then(() => later(action)) }
+    f.platform.client.streamEvents = (...args) => { streamOpened(); return stream(...args) }
     const c = await f.store.create('topic', randomUUID())
     await f.research.send(c.id, 'private question', randomUUID(), async () => {})
     await f.research.history(c.id)
-    const view = f.store.debug.snapshot(c.agentId, true, c.sessionId, c.id)
+    const view = f.store.debug.snapshot(c.agentId, c.sessionId, c.id)
     for (const method of ['getAgent', 'createSession', 'getSession', 'postEvents', 'listEventsPage', 'streamEvents']) {
       assert.ok(view.calls.some(c => c.method === method), method)
     }
@@ -40,7 +48,7 @@ test('in-flight calls and streams retain return values, errors and cancellation 
     streamEvents: async function* () { try { yield event; yield { ...event, seq: 2 } } finally { streamClosed = true } },
   } as unknown as ZooworkClient, debug)
   const pending = client.getAgent('agent-debug')
-  let view = debug.snapshot('agent-debug', false)
+  let view = debug.snapshot('agent-debug')
   assert.equal(view.active, 1); assert.equal(view.calls[0].status, 'running')
   const result = { agent_id: 'agent-debug', declared: { secret }, status: { desired_state: 'running' } }
   finish(result); assert.equal(await pending, result)
@@ -48,16 +56,16 @@ test('in-flight calls and streams retain return values, errors and cancellation 
   const stream = client.streamEvents('agent-debug', 'session-debug', { cursor: secret })
   const iterator = stream[Symbol.asyncIterator]()
   assert.equal((await iterator.next()).value, event)
-  view = debug.snapshot('agent-debug', false)
+  view = debug.snapshot('agent-debug')
   assert.equal(view.calls.at(-1)!.status, 'running'); assert.equal(view.calls.at(-1)!.received, 1)
   await iterator.return?.(undefined)
   assert.equal(streamClosed, true)
-  view = debug.snapshot('agent-debug', false)
+  view = debug.snapshot('agent-debug')
   assert.equal(view.active, 0); assert.equal(view.calls.at(-1)!.status, 'closed')
   assert.equal(view.calls[1].error, 'request_or_runner_failed')
   debug.event('session-debug', { ...event, seq: 3, runId: secret }, 'history')
   const badIdCall = debug.begin('getAgent', [secret]); debug.finish(badIdCall, 'succeeded', result)
-  view = debug.snapshot('agent-debug', false)
+  view = debug.snapshot('agent-debug')
   assert.ok(!JSON.stringify(view).includes(secret))
 })
 
@@ -67,25 +75,25 @@ test('debug endpoint is local, scoped to the selected app conversation, bounded 
     const a = await f.store.create('one', randomUUID()), b = await f.store.create('two', randomUUID())
     await f.research.send(a.id, 'first', randomUUID(), async () => {})
     await f.research.send(b.id, 'second', randomUUID(), async () => {})
-    const api = createApi(f.research, true), before = f.store.debug.snapshot(a.agentId, true).calls.length
+    const api = createApi(f.research), before = f.store.debug.snapshot(a.agentId).calls.length
     const response = await api.request(`http://localhost/api/debug?conversation=${a.id}`)
     assert.equal(response.status, 200)
     const view = await response.json()
-    assert.equal(view.fixture, true); assert.equal(view.sessionId, a.sessionId)
+    assert.equal(view.sessionId, a.sessionId)
     assert.ok(view.calls.every((c: { sessionId?: string }) => !c.sessionId || c.sessionId === a.sessionId))
     assert.ok(view.events.every((e: { sessionId: string }) => e.sessionId === a.sessionId))
-    assert.equal(f.store.debug.snapshot(a.agentId, true).calls.length, before)
+    assert.equal(f.store.debug.snapshot(a.agentId).calls.length, before)
     assert.equal((await api.request('http://localhost/api/debug?conversation=invalid-id')).status, 404)
     assert.equal((await api.request('http://localhost/api/debug', { headers: { origin: 'https://attacker.example' } })).status, 403)
     for (let i = 0; i < 220; i++) await f.store.client.getAgent(a.agentId)
-    assert.ok(f.store.debug.snapshot(a.agentId, true).calls.length <= 160)
-    assert.ok(f.store.debug.snapshot(a.agentId, true).calls.some(c => c.method === 'postEvents'))
+    assert.ok(f.store.debug.snapshot(a.agentId).calls.length <= 160)
+    assert.ok(f.store.debug.snapshot(a.agentId).calls.some(c => c.method === 'postEvents'))
     const event: SessionEvent = { id: randomUUID(), seq: 1, eventType: 'user.message', payload: { content: 'not retained' } }
     for (let i = 0; i < 250; i++) f.store.debug.event(a.sessionId!, { ...event, seq: 100 + i }, 'history')
-    assert.equal(f.store.debug.snapshot(a.agentId, true).events.length, 200)
+    assert.equal(f.store.debug.snapshot(a.agentId).events.length, 200)
     assert.equal(f.platform.calls.filter(c => c.method === 'user.message').length, 2)
     const inFlight = new SdkDebug()
     for (let i = 0; i < 180; i++) inFlight.begin('getAgent', [a.agentId])
-    assert.equal(inFlight.snapshot(a.agentId, true).calls.length, 160)
+    assert.equal(inFlight.snapshot(a.agentId).calls.length, 160)
   } finally { await f.close() }
 })

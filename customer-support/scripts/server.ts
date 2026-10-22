@@ -6,7 +6,7 @@ import {
   FoundationError,
   loadState,
   ownedAgent,
-  readConfig,
+  readApiKey,
 } from "../src/platform.js";
 import { startupFailure } from "../src/startup.js";
 import { Store } from "../src/store.js";
@@ -14,33 +14,10 @@ import { SupportService } from "../src/service.js";
 import { supportServer } from "../src/http.js";
 
 try {
-  const config = readConfig();
-  const state = await loadState(resolve(".local/agent.json"), config, demo);
+  const apiKey = readApiKey();
+  const state = await loadState(resolve(".local/agent.json"), demo);
   if (!state?.agentId) throw new FoundationError("run_setup_first");
-  const expected = new URL(config.baseUrl);
-  // No process-wide timeout or request budget: the web app is long-lived. Each request remains bounded.
-  const client = createZooworkClient({
-    ...config,
-    fetch: async (input, init = {}) => {
-      const url = new URL(input);
-      if (
-        url.origin !== expected.origin ||
-        !url.pathname.startsWith(expected.pathname + "/") ||
-        url.username ||
-        url.password ||
-        url.hash
-      )
-        throw new Error("Out of scope");
-      return fetch(input, {
-        ...init,
-        redirect: "error",
-        signal: AbortSignal.any([
-          AbortSignal.timeout(45_000),
-          ...(init.signal ? [init.signal] : []),
-        ]),
-      });
-    },
-  });
+  const client = createZooworkClient({ apiKey });
   await ownedAgent(client, state);
   if (
     !state.resource.custom_tools?.some(
@@ -51,7 +28,7 @@ try {
   await mkdir(".local", { recursive: true, mode: 0o700 });
   const store = new Store(
     resolve(".local/support.sqlite"),
-    `${config.baseUrl}:${state.instance}:${state.agentId}`,
+    `${state.instance}:${state.agentId}`,
   );
   store.claimProcess();
   await chmod(".local/support.sqlite", 0o600);
