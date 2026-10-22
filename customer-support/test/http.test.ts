@@ -12,15 +12,12 @@ test("HTTP routes enforce cookie ownership, CSRF, origin, input bounds and stati
     fixture = fixtureClient(),
     service = new SupportService(store, fixture.client, "agent-synthetic");
   let origin = "";
-  const server = supportServer(service, {
-    origin: () => origin,
-    offline: true,
-  });
+  const server = supportServer(service, { origin: () => origin });
   await new Promise<void>((resolve) => server.listen(0, "localhost", resolve));
   origin = `http://localhost:${(server.address() as AddressInfo).port}`;
   const bootstrap = await fetch(origin + "/api/bootstrap"),
     cookie = bootstrap.headers.get("set-cookie")!.split(";")[0],
-    value = (await bootstrap.json()) as { csrf: string; offline: boolean };
+    value = (await bootstrap.json()) as { csrf: string };
   const headers = {
     cookie,
     "Content-Type": "application/json",
@@ -34,7 +31,6 @@ test("HTTP routes enforce cookie ownership, CSRF, origin, input bounds and stati
       body: JSON.stringify(body),
     });
   try {
-    assert.equal(value.offline, true);
     assert.equal(
       (await fetch(origin)).headers
         .get("content-security-policy")!

@@ -42,7 +42,7 @@ function json(response: ServerResponse, status: number, value: unknown) {
 }
 export function supportServer(
   service: SupportService,
-  options: { origin: () => string; offline?: boolean },
+  options: { origin: () => string },
 ) {
   return createServer(async (request, response) => {
     response.setHeader("Cache-Control", "no-store");
@@ -80,7 +80,6 @@ export function supportServer(
         );
         json(response, 200, {
           csrf: visitor.csrf,
-          offline: options.offline ?? false,
           customer: { name: "Lin Xia", synthetic: true },
           conversations: service.store
             .conversations(visitor.id)

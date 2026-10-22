@@ -283,7 +283,6 @@ function renderContext() {
 }
 function render(value) {
   if (value) snapshot = value;
-  $("#connection-guide").hidden = !bootstrap.offline;
   const conversation = snapshot?.conversation;
   const status = conversation?.status ?? "ready";
   $("#status").textContent = {
@@ -468,9 +467,6 @@ document.addEventListener("click", async (event) => {
 });
 async function start() {
   bootstrap = await api("/api/bootstrap");
-  $("#mode").textContent = bootstrap.offline
-    ? "Offline test fixture"
-    : "Synthetic shop";
   try {
     pendingMessage =
       JSON.parse(localStorage.getItem("support.pending-message") ?? "null") ??

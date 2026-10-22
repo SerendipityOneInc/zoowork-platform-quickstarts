@@ -11,8 +11,8 @@ companion workspace for the [Publish your Agent guide](https://zoowork.ai/guides
 
 **To see a complete scenario, start with Customer Support.** It is a browser workbench: look up
 an order, check its shipment, ask follow-up questions and create an after-sales ticket after
-confirmation. Tool calls, order details and saved ticket status are visible in the UI. You can
-try it offline before connecting your Project key.
+confirmation. Tool calls, order details and saved ticket status are visible in the UI. It runs
+a real Agent with your Project key.
 
 ## Applications
 
@@ -31,42 +31,23 @@ feature inside a business scenario. Knowledge Assistant still has only the lifec
 Application features and dependencies stay inside their directories. See each app's README
 and PLAN for its current scope. Main publication follows the [integration handoff](docs/HANDOFF.md).
 
-## Try Customer Support without a key
+## Run Customer Support
 
-Use **Node 22.20+** and npm. Clone the repository:
-
-```sh
-git clone https://github.com/SerendipityOneInc/zoowork-platform-quickstarts.git
-cd zoowork-platform-quickstarts
-```
-
-Then run:
-
-```sh
-cd customer-support
-npm ci
-npm run demo:offline
-```
-
-Open **http://localhost:4600**. This mode uses simulated Agent replies and the real local
-business handlers. No Platform request or model call is made. Orders and shipments are
-synthetic; tickets record a request and do not issue refunds or contact a carrier.
-The offline database is in memory and resets when the process stops.
-
-## Connect your Project key
+Use **Node 22.20+** and npm.
 
 1. Sign in to [Platform Console](https://platform.zoowork.ai), select a Project and open
    **API Keys** to create a `zwp_live_` key. Copy the secret when it is shown.
 2. Check Organization **Billing** and available credits. Agent creation needs initialized
    billing; real model turns consume credits shared by the Organization's Projects.
-3. Stop the offline preview, copy `.env.example` to `.env`, and set `ZOOWORK_API_KEY`. Keep the
+3. Clone the repository, copy `.env.example` to `.env`, and set `ZOOWORK_API_KEY`. Keep the
    key server-side and out of Git.
 
-From `customer-support/`:
-
 ```sh
+git clone https://github.com/SerendipityOneInc/zoowork-platform-quickstarts.git
+cd zoowork-platform-quickstarts/customer-support
+npm ci
 cp .env.example .env
-# Edit .env with your Project key and matching API URL before continuing.
+# Edit .env with your Project key before continuing.
 npm run check
 npm run setup
 npm run dev
@@ -94,7 +75,7 @@ on recorded resources.
 
 Live tests require explicit authorization. Read [Platform and staging](docs/PLATFORM.md)
 before an optional live check. Offline verification and actual live evidence are documented
-separately; a working offline preview does not prove SDK or deployed API integration.
+separately; passing offline tests do not prove SDK or deployed API integration.
 
 ## Development and references
 
