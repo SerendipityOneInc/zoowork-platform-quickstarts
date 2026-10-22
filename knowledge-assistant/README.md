@@ -13,7 +13,7 @@ Read [the application plan](PLAN.md) and [RAG research](docs/RAG-RESEARCH.md). D
 
 ## Run the foundation
 
-Use Node 22.20+ and a Platform Project key. The SDK uses the production API by default.
+Use Node 22.20+ and a Platform Project key.
 
 ```sh
 npm ci

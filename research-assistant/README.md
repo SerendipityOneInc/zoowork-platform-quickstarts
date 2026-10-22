@@ -6,7 +6,7 @@ The brief is the primary result. Conversation and expandable activity provide co
 
 ## Run
 
-Requires **Node 22.20+** and a Platform Project key (`zwp_live_`). The SDK uses the production API by default. Each demo installs independently, with no sibling application or local SDK override.
+Requires **Node 22.20+** and a Platform Project key (`zwp_live_`). Each demo installs independently, with no sibling application or local SDK override.
 
 ```sh
 npm ci

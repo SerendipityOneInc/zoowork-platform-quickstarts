@@ -51,9 +51,7 @@ ZOOWORK_API_KEY=zwp_live_your_project_key
 ```
 
 The key stays in the server process. Never paste it into a chat, browser code, a screenshot,
-a log or Git; `.env` is ignored by Git. The SDK connects to the production API by default.
-Set `ZOOWORK_BASE_URL` only to use another deployment: it is that deployment's public API,
-ending in `/service/v1`; the Console website URL is not an API URL.
+a log or Git; `.env` is ignored by Git.
 
 ## 3. Define your Agent
 
@@ -183,7 +181,6 @@ Errors print a stable code and never the key or a provider response body.
 | Code | What to do |
 | --- | --- |
 | `platform_project_key_required` | Copy `.env.example` to `.env` and set `ZOOWORK_API_KEY` to a `zwp_live_` Project key. Restart `npm run dev` after editing `.env`. |
-| `invalid_public_base_url` | Remove `ZOOWORK_BASE_URL` to use the production API, or set it to the `https://…/service/v1` URL of the deployment that issued the key. |
 | `run_setup_first` | Run `npm run setup`, then reload the page. |
 | `agent_changed_restart_dev` | `.local/agent.json` now records a different Agent than the running server uses. Restart `npm run dev`. |
 | `invalid_agent_definition: …` | Fix the named problem in `agent/agent.md` and run setup again. |
@@ -192,7 +189,7 @@ Errors print a stable code and never the key or a provider response body.
 | `agent_update_not_confirmed` | The Platform accepted the update but the Agent does not show it. Run `npm run status`, check the changed values (model id, Skill names, tool names), and run setup again. |
 | `cleanup_incomplete_run_cleanup` | A cleanup stopped partway. Run `npm run cleanup` again to finish it, then `npm run setup`. |
 | `session_creation_uncertain_retry_cleanup` | A conversation was being created when its response was lost, and it could not be confirmed now. Keep `.local/`, check the connection and key, and run `npm run cleanup` again. |
-| `http_401` | The key was rejected. Check it was copied completely. If `ZOOWORK_BASE_URL` is set, the key must belong to that deployment. |
+| `http_401` | The key was rejected. Check it was copied completely. |
 | `http_402` | Set up billing or add credits for the Organization in Platform Console. |
 | `http_403` | Check the key's Project and permissions. |
 | `http_400` during setup | Check billing, the `model` value (`npm run models`), skills and tool names. Keep `.local/`. |

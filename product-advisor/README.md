@@ -30,7 +30,7 @@ npm run demo
 
 This entry uses the real published SDK and Platform. It starts the bundled synthetic catalog, creates a temporary HTTPS tunnel, verifies tool discovery, creates or reuses the app-owned Agent, and starts the Web app. The Project key stays in the application process and is excluded from the tunnel process. Only the synthetic catalog is exposed publicly; the Web API is not tunneled. A private cookie secret is generated in `.local/cookie-secret` and reused on restart.
 
-The default API address comes from the published SDK's production default. For an authorized staging test, also set `ZOOWORK_BASE_URL=https://claw-interface.ecap.yesy.live/service/v1`. Do not send a staging key to the production address. Local configuration and temporary tunnel addresses are not committed.
+Local configuration and temporary tunnel addresses are not committed.
 
 The temporary hostname changes on restart. The launcher saves an exact pending resource before updating the same owned Agent through the SDK. Ambiguous results retain the original request for recovery instead of creating a replacement Agent. Ctrl+C closes the local Web server, MCP, and tunnel; remote Agent/Session records and local history remain. Use `npm run cleanup` to remove the recorded remote resources.
 
@@ -160,7 +160,7 @@ This test-only harness uses mock Platform lifecycle/events/approvals and an actu
 
 ## Staging and cleanup
 
-Run live checks only with explicit authorization. The foundation smoke uses one temporary Agent/Session and one model turn without the catalog, so it is not feature evidence:
+Run live checks only with explicit authorization. Staging also needs `ZOOWORK_BASE_URL=https://claw-interface.ecap.yesy.live/service/v1`; see [Platform and staging](../docs/PLATFORM.md#staging). The foundation smoke uses one temporary Agent/Session and one model turn without the catalog, so it is not feature evidence:
 
 ```sh
 npm run test:staging -- --confirm-staging
