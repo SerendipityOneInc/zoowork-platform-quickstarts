@@ -70,7 +70,7 @@ function useSessionThreadRuntime() {
   const aui = useAui();
   const threadId = useAuiState((s) => s.threadListItem.id);
   const sessionId = useAuiState((s) => s.threadListItem.externalId ?? s.threadListItem.remoteId);
-  const archived = useAuiState((s) => s.threadListItem.status === "archived");
+  const archived = useAuiState((s) => s.threadListItem.custom?.archived === true);
   const controller = sessionId ? getSessionController(sessionId) : null;
   const snapshot = useControllerSnapshot(controller);
 
@@ -91,7 +91,6 @@ function useSessionThreadRuntime() {
         const { externalId, remoteId } = await aui.threadListItem().initialize();
         const id = externalId ?? remoteId;
         if (!id) throw new Error("The conversation was not created.");
-        getSessionController(id).attach();
         // The external-store runtime does not title new threads by itself.
         // The server titled the Session from this first message; show it.
         void Promise.resolve(aui.threadListItem().generateTitle()).catch(() => {});

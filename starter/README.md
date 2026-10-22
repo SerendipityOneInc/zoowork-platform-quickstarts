@@ -106,9 +106,14 @@ Setup prints `Agent created: <id>`. You never copy an Agent ID anywhere: setup r
 `.local/agent.json`, and the app reads it from there.
 
 **To change the Agent later**, edit `agent/agent.md` and run `npm run setup` again. It updates
-the same Agent and confirms the change by reading it back. Existing conversations use the new
-configuration from their next message. To remove a setting, set it explicitly (for example
-`tools: []`) rather than deleting the line.
+the same Agent and confirms the change by reading it back; a change the Platform did not apply
+fails as `agent_update_not_confirmed` instead of being reported as done. Existing conversations
+use the new configuration from their next message.
+
+Removing a line works for `thinking` (setup clears it). The Platform has no documented way to
+clear `model`, `max_tokens` or `timezone`, so setup refuses to remove them: keep a value, or run
+`npm run cleanup` and then `npm run setup` to recreate the Agent. To remove all Skills, write
+`skills: []` instead of deleting the line.
 
 ## 4. Chat with it
 
@@ -123,8 +128,9 @@ tools, and reply. Each conversation in the sidebar is one ZooWork Session.
   The Agent keeps working while the page is closed; its reply is there when you come back.
 - **Stop** (the square button) interrupts the run on the Platform. Closing the page does not.
 - **Allow / Deny** appears when a tool call needs approval under the Agent's tool policy.
-- **Archive** keeps a conversation readable but closed to new messages. **Delete** deletes the
-  Session on the Platform and removes it from the list.
+- **Archive** moves a conversation to the sidebar's **Archived** group. It stays readable but
+  accepts no new messages, and cannot be unarchived. **Delete** deletes the Session on the
+  Platform and removes it from the list.
 
 Replies arrive as whole messages, with tool activity shown live. The Platform API does not
 currently stream replies token by token.
@@ -199,6 +205,10 @@ Errors print a stable code and never the key or a provider response body.
 | `explicit_public_base_url_required` / `invalid_public_base_url` | Set `ZOOWORK_BASE_URL` to the `https://…/service/v1` URL of the deployment that issued the key. |
 | `run_setup_first` | Run `npm run setup`, then reload the page. |
 | `invalid_agent_definition: …` | Fix the named problem in `agent/agent.md` and run setup again. |
+| `cannot_remove_model` / `cannot_remove_max_tokens` / `cannot_remove_timezone` | Put the line back in `agent/agent.md`, or run `npm run cleanup` then `npm run setup` to recreate the Agent without it. |
+| `skills_removed_set_empty_list` | Write `skills: []` to remove all Skills, then run setup. |
+| `agent_update_not_confirmed` | The Platform accepted the update but the Agent does not show it. Run `npm run status`, check the changed values (model id, Skill names, tool names), and run setup again. |
+| `cleanup_incomplete_run_cleanup` | A cleanup stopped partway. Run `npm run cleanup` again to finish it, then `npm run setup`. |
 | `http_401` | The key was rejected. Check it was copied completely and matches `ZOOWORK_BASE_URL`. |
 | `http_402` | Set up billing or add credits for the Organization in Platform Console. |
 | `http_403` | Check the key's Project and permissions. |

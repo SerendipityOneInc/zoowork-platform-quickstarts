@@ -40,6 +40,39 @@ export async function ownedAgent(client: Pick<ZooworkClient, "getAgent">, state:
   return agent;
 }
 
+/**
+ * Settings removed from agent/agent.md since the last setup.
+ *
+ * Writing only the remaining fields would leave a removed setting in place,
+ * and the Platform documents a clearing value only for `model.thinking`
+ * (`null`). Removing the thinking level is applied that way; removing the
+ * model, max_tokens, timezone or the skills list is refused with a code that
+ * says what to do instead.
+ */
+export function removedSettings(
+  previous: AgentResource | undefined,
+  desired: AgentResource,
+): { clearThinking: boolean; unsupported?: string } {
+  if (!previous) return { clearThinking: false };
+  if (previous.model && !desired.model) return { clearThinking: false, unsupported: "cannot_remove_model" };
+  if (previous.model?.max_tokens !== undefined && desired.model?.max_tokens === undefined) {
+    return { clearThinking: false, unsupported: "cannot_remove_max_tokens" };
+  }
+  if (previous.userTimezone && !desired.userTimezone) return { clearThinking: false, unsupported: "cannot_remove_timezone" };
+  if (previous.skills?.length && desired.skills === undefined) {
+    return { clearThinking: false, unsupported: "skills_removed_set_empty_list" };
+  }
+  return { clearThinking: previous.model?.thinking != null && desired.model?.thinking == null };
+}
+
+const thinkingOf = (declared: Record<string, unknown> | undefined) =>
+  (declared?.model as { thinking?: unknown } | undefined)?.thinking ?? null;
+
+/** Does the Agent's declaration match the definition, including settings that were removed? */
+function matches(declared: Record<string, unknown> | undefined, desired: AgentResource, clearThinking: boolean): boolean {
+  return declares(declared, desired) && !(clearThinking && thinkingOf(declared) !== null);
+}
+
 export type ApplyResult = { state: AgentState; agentId: string; action: "created" | "updated" | "unchanged" };
 
 /**
@@ -49,7 +82,8 @@ export type ApplyResult = { state: AgentState; agentId: string; action: "created
  *   then create. If the response is lost, running setup again repeats the same
  *   request, which the Platform deduplicates.
  * - Recorded Agent with a different declaration: write the definition's
- *   sections with `updateAgent` and read the Agent back to confirm.
+ *   sections with `updateAgent` and read the Agent back to confirm. A write
+ *   the Platform did not apply fails as `agent_update_not_confirmed`.
  *
  * Caller holds the state lock.
  */
@@ -61,6 +95,11 @@ export async function applyAgent(
   resource: AgentResource,
 ): Promise<ApplyResult> {
   const state = existing ?? newAgentState(baseUrl, resource);
+  if (state.agentDeleteRequestedAt || state.agentDeletedAt) throw new StarterError("cleanup_incomplete_run_cleanup");
+  const desired = desiredResource(state, resource);
+  const removed = removedSettings(state.applied ?? state.createBody, desired);
+  if (removed.unsupported) throw new StarterError(removed.unsupported);
+
   let action: ApplyResult["action"] = "unchanged";
   if (!state.agentId) {
     await saveAgentState(path, state);
@@ -71,20 +110,21 @@ export async function applyAgent(
     action = "created";
   }
 
-  const desired = desiredResource(state, resource);
   const current = await ownedAgent(client, state);
-  if (!declares(current.declared, desired)) {
-    state.pendingUpdate = desired;
+  if (!matches(current.declared, desired, removed.clearThinking)) {
+    const sections: Record<string, unknown> = removed.clearThinking
+      ? { ...desired, model: { ...desired.model, thinking: null } }
+      : { ...desired };
+    state.pendingUpdate = sections;
     await saveAgentState(path, state);
-    await client.updateAgent(state.agentId, desired as unknown as Record<string, unknown>);
+    await client.updateAgent(state.agentId, sections);
     const updated = await ownedAgent(client, state);
-    if (!declares(updated.declared, desired)) throw new StarterError("agent_update_not_confirmed");
+    if (!matches(updated.declared, desired, removed.clearThinking)) throw new StarterError("agent_update_not_confirmed");
     if (action === "unchanged") action = "updated";
   }
-  if (state.pendingUpdate) {
-    delete state.pendingUpdate;
-    await saveAgentState(path, state);
-  }
+  state.applied = desired;
+  delete state.pendingUpdate;
+  await saveAgentState(path, state);
   await client.startAgent(state.agentId);
   return { state, agentId: state.agentId, action };
 }
@@ -93,6 +133,8 @@ export type AgentStatusReport = {
   agentId: string;
   desiredState: string;
   definitionApplied: boolean;
+  /** A removal setup will refuse, as an error code. */
+  unsupportedRemoval?: string;
 };
 
 export async function agentStatus(
@@ -101,19 +143,25 @@ export async function agentStatus(
   resource: AgentResource,
 ): Promise<AgentStatusReport> {
   const agent = await ownedAgent(client, state);
+  const desired = desiredResource(state, resource);
+  const removed = removedSettings(state.applied ?? state.createBody, desired);
   return {
     agentId: agent.agent_id,
     desiredState: agent.status?.desired_state ?? "unknown",
-    definitionApplied: declares(agent.declared, desiredResource(state, resource)),
+    definitionApplied: !removed.unsupported && matches(agent.declared, desired, removed.clearThinking),
+    ...(removed.unsupported ? { unsupportedRemoval: removed.unsupported } : {}),
   };
 }
 
 /**
  * Delete this starter's recorded Sessions, then stop and delete its Agent.
  * Only IDs in local state are touched; the Project is never listed to choose
- * deletion targets. On any failure the state is kept for the next attempt.
- * After success the state files are renamed to `*.retired-<instance>.json`,
- * so the next setup creates a fresh Agent.
+ * deletion targets. Progress is saved as it goes: each deleted Session leaves
+ * the index, and a deleted Agent is recorded before the local files are
+ * renamed, so an interrupted cleanup can be run again to finish. A 404 for
+ * the Agent counts as "already deleted" only after this app sent the delete,
+ * because a key from another Project also gets 404. After success the state files are renamed
+ * to `*.retired-<instance>.json`, so the next setup creates a fresh Agent.
  */
 export async function cleanupAgent(
   client: LifecycleClient,
@@ -122,26 +170,33 @@ export async function cleanupAgent(
   sessions: SessionStore,
 ): Promise<{ sessionsDeleted: number }> {
   if (!state.agentId) throw new StarterError("agent_creation_uncertain_run_setup_again");
-  await ownedAgent(client, state);
   let sessionsDeleted = 0;
-  for (const session of await sessions.list({ includeArchived: true })) {
+  if (!state.agentDeletedAt) {
+    let gone = false;
     try {
-      await client.deleteSession(state.agentId, session.id);
+      await ownedAgent(client, state);
     } catch (error) {
-      if (!isNotFound(error)) throw error;
+      // Only after this app sent the delete does a 404 mean "already deleted".
+      if (!(state.agentDeleteRequestedAt && isNotFound(error))) throw error;
+      gone = true;
     }
-    await sessions.remove(session.id);
-    sessionsDeleted += 1;
-  }
-  try {
-    await client.stopAgent(state.agentId);
-  } catch (error) {
-    if (!isNotFound(error)) throw error;
-  }
-  try {
-    await client.deleteAgent(state.agentId);
-  } catch (error) {
-    if (!isNotFound(error)) throw error;
+    if (!gone) {
+      for (const session of await sessions.list({ includeArchived: true })) {
+        try {
+          await client.deleteSession(state.agentId, session.id);
+        } catch (error) {
+          if (!isNotFound(error)) throw error;
+        }
+        await sessions.remove(session.id);
+        sessionsDeleted += 1;
+      }
+      await client.stopAgent(state.agentId);
+      state.agentDeleteRequestedAt = new Date().toISOString();
+      await saveAgentState(path, state);
+      await client.deleteAgent(state.agentId);
+    }
+    state.agentDeletedAt = new Date().toISOString();
+    await saveAgentState(path, state);
   }
   const suffix = state.instance.replace(/[^A-Za-z0-9_-]/g, "_");
   await sessions.retire(suffix);

@@ -24,8 +24,14 @@ export interface AgentState {
   createIdempotencyKey: string;
   createBody: AgentResource;
   agentId?: string;
+  /** The definition last confirmed on the Agent (labels included). Used to notice removed settings. */
+  applied?: AgentResource;
+  /** Cleanup sent the Agent delete request. A later 404 for this Agent then means it is gone. */
+  agentDeleteRequestedAt?: string;
+  /** Cleanup deleted the Agent; only the local renames remain. A rerun of cleanup finishes them. */
+  agentDeletedAt?: string;
   /** Sections being written by an update whose result is not yet confirmed. */
-  pendingUpdate?: AgentResource;
+  pendingUpdate?: Record<string, unknown>;
 }
 
 export const agentStatePath = (cwd = process.cwd()) => join(cwd, LOCAL_DIR, "agent.json");

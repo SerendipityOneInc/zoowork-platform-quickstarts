@@ -241,6 +241,7 @@ export function createPreviewPlatform(options: PreviewOptions = {}): ChatClient 
 
     async archiveSession(agentId, sessionId) {
       const s = session(agentId, sessionId);
+      if (s.archived) throw new ZooworkError(409, "session archived", "session_archived");
       s.archived = true;
       return { session_id: s.id, archived: true };
     },

@@ -6,8 +6,14 @@
 //
 //   initialize → POST /api/sessions, on the first message of a new chat
 //   rename     → a local title change (Session metadata is write-once)
-//   archive    → the Session stays readable and stops accepting input
+//   updateCustom({archived: true}) → archive: the Session stays readable and
+//                stops accepting input
 //   delete     → the Session is deleted on the Platform
+//
+// Archived Sessions are not given assistant-ui's own "archived" status:
+// opening such a thread makes assistant-ui unarchive it, and a Platform
+// Session cannot be unarchived. They stay "regular" threads with
+// `custom.archived`, which the sidebar groups and the composer respects.
 //
 // Adapted from the Claude Managed Agents assistant-ui quickstart
 // (MIT, see third-party/anthropic-MIT.txt).
@@ -19,7 +25,8 @@ import { dropSessionController } from "./session-controller";
 import type { SessionSummary } from "./wire";
 
 const toThreadMetadata = (s: SessionSummary) => ({
-  status: (s.archived ? "archived" : "regular") as "archived" | "regular",
+  status: "regular" as const,
+  custom: { archived: s.archived },
   remoteId: s.id,
   externalId: s.id,
   title: s.title,
@@ -49,13 +56,19 @@ export const sessionListAdapter: RemoteThreadListAdapter = {
     await renameSession(remoteId, newTitle);
   },
 
+  async updateCustom(remoteId, custom) {
+    if (custom?.archived !== true) throw new Error("An archived conversation cannot be reopened. Start a new one.");
+    await archiveSession(remoteId);
+  },
+
+  // The UI archives through updateCustom; these keep assistant-ui's own
+  // archive path consistent if something calls it.
   async archive(remoteId) {
     await archiveSession(remoteId);
-    dropSessionController(remoteId);
   },
 
   async unarchive() {
-    throw new Error("An archived conversation cannot be reopened. Start a new one.");
+    // Nothing to do: the Session stays archived on the Platform and keeps custom.archived.
   },
 
   async delete(remoteId) {

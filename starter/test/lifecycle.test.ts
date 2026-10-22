@@ -192,3 +192,95 @@ test("local state files are private to the user", async () => {
   await saveAgentState(path, newAgentState(BASE, resource()));
   assert.equal((await stat(path)).mode & 0o077, 0);
 });
+
+test("removing the thinking level sends thinking: null and confirms it is gone", async () => {
+  const dir = await tempDir();
+  const path = join(dir, "agent.json");
+  const p = fakePlatform();
+  const withThinking = { ...resource(), model: { primary: "m1", thinking: "high" as const } };
+  const { agentId, state } = await applyAgent(p.client, path, undefined, BASE, withThinking);
+  const sent: Record<string, unknown>[] = [];
+  const update = p.client.updateAgent;
+  p.client.updateAgent = async (id, sections) => {
+    sent.push(structuredClone(sections));
+    // The Platform clears a null thinking level instead of storing it.
+    const model = { ...(sections.model as Record<string, unknown>) };
+    if (model.thinking === null) delete model.thinking;
+    const result = await update(id, { ...sections, model });
+    (p.agents.get(id)!.declared as Record<string, unknown>).model = model;
+    return result;
+  };
+  const withoutThinking = { ...resource(), model: { primary: "m1" } };
+  assert.equal((await agentStatus(p.client, state, withoutThinking)).definitionApplied, false);
+  const result = await applyAgent(p.client, path, state, BASE, withoutThinking);
+  assert.equal(result.action, "updated");
+  assert.deepEqual(sent[0]!.model, { primary: "m1", thinking: null });
+  assert.equal((p.agents.get(agentId)!.declared.model as Record<string, unknown>).thinking, undefined);
+  assert.equal((await agentStatus(p.client, result.state, withoutThinking)).definitionApplied, true);
+});
+
+test("removing a setting the Platform cannot clear is refused before any request", async () => {
+  const dir = await tempDir();
+  const path = join(dir, "agent.json");
+  const p = fakePlatform();
+  const full: AgentResource = { ...resource(), model: { primary: "m1", max_tokens: 1000 }, userTimezone: "Asia/Shanghai", skills: [{ name: "s" }] };
+  const { state } = await applyAgent(p.client, path, undefined, BASE, full);
+  const cases: [AgentResource, RegExp][] = [
+    [{ ...full, model: undefined }, /cannot_remove_model/],
+    [{ ...full, model: { primary: "m1" } }, /cannot_remove_max_tokens/],
+    [{ ...full, userTimezone: undefined }, /cannot_remove_timezone/],
+    [{ ...full, skills: undefined }, /skills_removed_set_empty_list/],
+  ];
+  for (const [definition, code] of cases) {
+    const before = p.calls.length;
+    await assert.rejects(applyAgent(p.client, path, state, BASE, definition), code);
+    assert.equal(p.calls.length, before, "no Platform request was made");
+    assert.equal((await agentStatus(p.client, state, definition)).definitionApplied, false);
+  }
+  // An explicit empty list is a change setup can make.
+  const result = await applyAgent(p.client, path, state, BASE, { ...full, skills: [] });
+  assert.equal(result.action, "updated");
+});
+
+test("an update the Platform does not apply fails instead of reporting success", async () => {
+  const dir = await tempDir();
+  const path = join(dir, "agent.json");
+  const p = fakePlatform();
+  const { state } = await applyAgent(p.client, path, undefined, BASE, resource("v1"));
+  p.client.updateAgent = async (id) => p.client.getAgent(id); // accepted, but nothing changes
+  await assert.rejects(applyAgent(p.client, path, state, BASE, resource("v2")), /agent_update_not_confirmed/);
+  const kept = await loadAgentState(path, BASE);
+  assert.ok(kept?.pendingUpdate, "the pending update stays recorded");
+});
+
+test("cleanup interrupted after the Agent was deleted can be run again to finish", async () => {
+  const dir = await tempDir();
+  const path = join(dir, "agent.json");
+  const p = fakePlatform();
+  const { agentId, state } = await applyAgent(p.client, path, undefined, BASE, resource());
+  const sessions = fileSessionStore(join(dir, "sessions.json"), { instance: state.instance, agentId });
+  // The process dies right after the delete request succeeded.
+  const del = p.client.deleteAgent;
+  p.client.deleteAgent = async (id) => {
+    await del(id);
+    throw new Error("killed");
+  };
+  await assert.rejects(cleanupAgent(p.client, path, state, sessions), /killed/);
+  p.client.deleteAgent = del;
+  const recorded = await loadAgentState(path, BASE);
+  assert.ok(recorded?.agentDeleteRequestedAt);
+  await assert.rejects(applyAgent(p.client, path, recorded, BASE, resource()), /cleanup_incomplete_run_cleanup/);
+  await cleanupAgent(p.client, path, recorded!, sessions);
+  assert.ok((await readdir(dir)).some((f) => f.startsWith("agent.retired-")));
+});
+
+test("cleanup does not treat a 404 as deleted unless it sent the delete", async () => {
+  const dir = await tempDir();
+  const path = join(dir, "agent.json");
+  const p = fakePlatform();
+  const { agentId, state } = await applyAgent(p.client, path, undefined, BASE, resource());
+  p.agents.delete(agentId); // e.g. a key from another Project cannot see it
+  const sessions = fileSessionStore(join(dir, "sessions.json"), { instance: state.instance, agentId });
+  await assert.rejects(cleanupAgent(p.client, path, state, sessions), (e: unknown) => e instanceof ZooworkError && e.status === 404);
+  assert.ok((await readdir(dir)).includes("agent.json"));
+});

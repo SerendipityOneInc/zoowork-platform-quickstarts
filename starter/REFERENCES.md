@@ -34,6 +34,9 @@ copy-in components as shipped in the sample above, generated for `@assistant-ui/
 MIT, Copyright (c) 2025 AgentbaseAI Inc. See [`components/NOTICE.md`](components/NOTICE.md).
 `components/assistant-ui/thread.tsx` removes attachments, message editing, reload and
 follow-up suggestions, and reads the composer placeholder from `app.config.ts`.
+`components/assistant-ui/thread-list.tsx` lists archived conversations in their own group and
+archives through `custom.archived` instead of assistant-ui's archived status, because opening
+an archived assistant-ui thread unarchives it and a Platform Session cannot be unarchived.
 
 ## OpenAI ChatKit starter
 

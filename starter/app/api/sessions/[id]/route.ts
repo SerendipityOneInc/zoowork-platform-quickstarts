@@ -30,9 +30,7 @@ export const PATCH = route(
   { write: true },
 );
 
-export const DELETE = route(async (request, { params }: Ctx) => {
-  const origin = request.headers.get("origin");
-  if (origin && new URL(origin).host !== request.headers.get("host")) throw new StarterError("cross_origin_request", 403);
+export const DELETE = route(async (_request, { params }: Ctx) => {
   const rt = await getRuntime();
   const entry = await ownedSession(rt, (await params).id);
   try {
@@ -42,4 +40,4 @@ export const DELETE = route(async (request, { params }: Ctx) => {
   }
   await rt.sessions.remove(entry.id);
   return new Response(null, { status: 204 });
-});
+}, { sameOrigin: true });

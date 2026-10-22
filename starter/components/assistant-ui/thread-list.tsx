@@ -6,6 +6,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { cn } from "@/lib/utils";
 import {
   AuiIf,
+  useAui,
   ThreadListItemMorePrimitive,
   ThreadListItemPrimitive,
   ThreadListPrimitive,
@@ -97,6 +98,7 @@ export const ThreadListItems: FC<
       </AuiIf>
       <AuiIf condition={(s) => !s.threads.isLoading}>
         <ThreadListItemGroups searchQuery={searchQuery} />
+        <ArchivedThreadListItems searchQuery={searchQuery} />
       </AuiIf>
     </div>
   );
@@ -128,6 +130,8 @@ const ThreadListItemGroups: FC<{ searchQuery?: string }> = ({
     const dates = threadIds.map((id) => itemsById.get(id)?.lastMessageAt);
     const filteredIndices = threadIds
       .map((id, index) => ({ id, index }))
+      // STARTER DIVERGENCE: archived conversations are listed separately.
+      .filter(({ id }) => itemsById.get(id)?.custom?.archived !== true)
       .filter(
         ({ id }) =>
           !query ||
@@ -201,6 +205,69 @@ const ThreadListItemGroups: FC<{ searchQuery?: string }> = ({
       ))}
     </Fragment>
   ));
+};
+
+// STARTER DIVERGENCE from the stock copy-in ThreadList — keep when
+// regenerating: archived conversations stay listed in their own group, so
+// they remain readable. They are regular assistant-ui threads marked with
+// `custom.archived` (see lib/chat/session-list-adapter.ts); the composer is
+// disabled for them (lib/chat/runtime-provider.tsx).
+const ArchivedThreadListItems: FC<{ searchQuery?: string }> = ({
+  searchQuery = "",
+}) => {
+  const threadIds = useAuiState((s) => s.threads.threadIds);
+  const threadItems = useAuiState((s) => s.threads.threadItems);
+  const query = searchQuery.trim().toLowerCase();
+  const indices = useMemo(() => {
+    const itemsById = new Map(threadItems.map((item) => [item.id, item]));
+    return threadIds
+      .map((id, index) => ({ id, index }))
+      .filter(({ id }) => itemsById.get(id)?.custom?.archived === true)
+      .filter(
+        ({ id }) =>
+          !query ||
+          (itemsById.get(id)?.title || "New Chat")
+            .toLowerCase()
+            .includes(query),
+      )
+      .map(({ index }) => index);
+  }, [threadIds, threadItems, query]);
+
+  if (indices.length === 0) return null;
+  return (
+    <>
+      <div
+        data-slot="aui_thread-list-group-label"
+        className="text-muted-foreground px-2.5 pt-3 pb-1 text-xs font-medium"
+      >
+        Archived
+      </div>
+      {indices.map((index) => (
+        <ThreadListPrimitive.ItemByIndex
+          key={threadIds[index]}
+          index={index}
+          components={{ ThreadListItem }}
+        />
+      ))}
+    </>
+  );
+};
+
+/** STARTER DIVERGENCE: archive through custom.archived instead of assistant-ui's archived status. */
+const ThreadListItemArchive: FC = () => {
+  const aui = useAui();
+  const custom = useAuiState((s) => s.threadListItem.custom);
+  if (custom?.archived === true) return null;
+  return (
+    <ThreadListItemMorePrimitive.Item
+      data-slot="aui_thread-list-item-more-item"
+      className="hover:bg-accent hover:text-accent-foreground focus:bg-accent focus:text-accent-foreground flex cursor-pointer items-center gap-2 rounded-lg px-2.5 py-1.5 text-sm outline-none select-none"
+      onSelect={() => void aui.threadListItem().updateCustom({ ...custom, archived: true })}
+    >
+      <ArchiveIcon className="size-4" />
+      Archive
+    </ThreadListItemMorePrimitive.Item>
+  );
 };
 
 export const ThreadListNew = forwardRef<
@@ -304,15 +371,7 @@ const ThreadListItemMore: FC = () => {
         data-slot="aui_thread-list-item-more-content"
         className="bg-popover/95 text-popover-foreground data-[state=open]:fade-in-0 data-[state=open]:zoom-in-95 data-[state=open]:animate-in data-[state=closed]:fade-out-0 data-[state=closed]:zoom-out-95 data-[state=closed]:animate-out data-[side=bottom]:slide-in-from-top-2 data-[side=left]:slide-in-from-right-2 data-[side=right]:slide-in-from-left-2 data-[side=top]:slide-in-from-bottom-2 z-50 min-w-32 overflow-hidden rounded-xl border p-1.5 shadow-lg backdrop-blur-sm"
       >
-        <ThreadListItemPrimitive.Archive asChild>
-          <ThreadListItemMorePrimitive.Item
-            data-slot="aui_thread-list-item-more-item"
-            className="hover:bg-accent hover:text-accent-foreground focus:bg-accent focus:text-accent-foreground flex cursor-pointer items-center gap-2 rounded-lg px-2.5 py-1.5 text-sm outline-none select-none"
-          >
-            <ArchiveIcon className="size-4" />
-            Archive
-          </ThreadListItemMorePrimitive.Item>
-        </ThreadListItemPrimitive.Archive>
+        <ThreadListItemArchive />
         <ThreadListItemPrimitive.Delete asChild>
           <ThreadListItemMorePrimitive.Item
             data-slot="aui_thread-list-item-more-item"

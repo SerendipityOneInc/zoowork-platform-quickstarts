@@ -1,3 +1,4 @@
+import { ZooworkError } from "@zoowork-ai/sdk";
 import { MESSAGE_MAX } from "@/lib/chat/wire";
 import { StarterError } from "@/lib/zoowork/errors";
 import { readJson, route } from "@/lib/zoowork/http";
@@ -28,9 +29,19 @@ export const POST = route(
     const clientMessageId = typeof body.clientMessageId === "string" ? body.clientMessageId : "";
     if (!CLIENT_ID.test(clientMessageId)) throw new StarterError("client_message_id_required");
 
-    const { events } = await rt.client.postEvents(rt.agentId, entry.id, [
-      { type: "user.message", content: text, idempotency_key: `starter:${entry.id}:${clientMessageId}` },
-    ]);
+    let events;
+    try {
+      ({ events } = await rt.client.postEvents(rt.agentId, entry.id, [
+        { type: "user.message", content: text, idempotency_key: `starter:${entry.id}:${clientMessageId}` },
+      ]));
+    } catch (error) {
+      if (error instanceof ZooworkError && error.status === 409 && error.type === "session_archived") {
+        // Archived elsewhere or by an archive whose local update failed: catch the index up.
+        await rt.sessions.update(entry.id, { archived: true });
+        throw new StarterError("session_archived", 409);
+      }
+      throw error;
+    }
     const receipt = events[0];
     if (receipt?.accepted !== true) throw new StarterError("message_not_accepted", 409);
     await rt.sessions.update(entry.id, { updatedAt: new Date().toISOString() });

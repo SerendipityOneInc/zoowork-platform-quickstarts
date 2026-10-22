@@ -31,6 +31,12 @@ const NEXT_STEP: Record<string, string> = {
   http_403: "Check the key's Project and permissions.",
   http_404: "The recorded resource was not found. Check the key's Project and ZOOWORK_BASE_URL before deleting .local/.",
   web_server_running: "Stop npm run dev, then run cleanup again.",
+  cannot_remove_model: "Put model back in agent/agent.md, or run npm run cleanup then npm run setup to recreate the Agent.",
+  cannot_remove_max_tokens: "Put max_tokens back in agent/agent.md, or run npm run cleanup then npm run setup to recreate the Agent.",
+  cannot_remove_timezone: "Put timezone back in agent/agent.md, or run npm run cleanup then npm run setup to recreate the Agent.",
+  skills_removed_set_empty_list: "Write skills: [] in agent/agent.md to remove all Skills, then run setup.",
+  agent_update_not_confirmed: "The Agent does not show the update. Run npm run status, check model, Skill and tool names, and run setup again.",
+  cleanup_incomplete_run_cleanup: "A cleanup stopped partway. Run npm run cleanup to finish it, then npm run setup.",
 };
 
 async function main(command: string | undefined) {
@@ -58,6 +64,7 @@ async function main(command: string | undefined) {
     console.log(`Agent:      ${report.agentId}`);
     console.log(`State:      ${report.desiredState}`);
     console.log(`Definition: ${report.definitionApplied ? "matches agent/agent.md" : "agent/agent.md changed; run npm run setup"}`);
+    if (report.unsupportedRemoval) console.log(`Note:       ${NEXT_STEP[report.unsupportedRemoval]}`);
     return;
   }
 

@@ -18,6 +18,8 @@
 // server-side cursor replaces that controller's history/tail buffering.
 
 import { aliasUserMessage, applyEvent, initialProjection, isBusy, type Projection, type ThreadMessage } from "./reducer";
+import { ensureOk, errorCodeOf, postJson, sessionUrl } from "./api";
+import { describe } from "./notices";
 import type { RelayEnvelope, WireEvent } from "./wire";
 
 type PendingMessage = {
@@ -52,35 +54,6 @@ type Listener = () => void;
 const LOADED_AFTER_QUIET_MS = 300;
 /** If an accepted message has not started a run by then, say so. */
 const RUN_START_WARNING_MS = 90_000;
-
-export const NOTICES: Record<string, string> = {
-  run_setup_first: "The Agent is not set up yet. Run npm run setup, then reload.",
-  platform_project_key_required: "ZOOWORK_API_KEY is missing or is not a Platform Project key (zwp_live_). Check .env and restart.",
-  explicit_public_base_url_required: "ZOOWORK_BASE_URL is missing. Check .env and restart.",
-  invalid_public_base_url: "ZOOWORK_BASE_URL must be an https URL ending in /service/v1. Check .env and restart.",
-  session_archived: "This conversation is archived. Start a new one to continue.",
-  session_not_found: "This conversation no longer exists.",
-  message_not_accepted: "The Agent did not accept the message. Wait for the current reply to finish, then try again.",
-  local_only_add_authentication_first: "This starter only answers on localhost. Add authentication before exposing it.",
-  http_401: "The Project key was rejected. Check ZOOWORK_API_KEY and restart.",
-  http_402: "The Organization has no available credits. Check Billing in Platform Console.",
-  http_403: "The Project key cannot access this Agent. Check the key and its Project.",
-  http_409: "The Agent is busy or the conversation changed. Try again in a moment.",
-  http_429: "Rate limited. Wait a moment, then try again.",
-  timeout_or_cancelled: "The request timed out. Try again.",
-};
-
-export function describe(code: string | undefined, fallback: string): string {
-  return (code && NOTICES[code]) || (code ? `${fallback} (${code})` : fallback);
-}
-
-async function errorCodeOf(res: Response): Promise<string | undefined> {
-  try {
-    return ((await res.json()) as { error?: string }).error;
-  } catch {
-    return undefined;
-  }
-}
 
 const newId = () =>
   typeof crypto.randomUUID === "function"
@@ -218,9 +191,7 @@ export class SessionController {
   }
 
   private open() {
-    const url = `/api/sessions/${encodeURIComponent(this.sessionId)}/stream${
-      this.cursor ? `?cursor=${encodeURIComponent(this.cursor)}` : ""
-    }`;
+    const url = sessionUrl(this.sessionId, `/stream${this.cursor ? `?cursor=${encodeURIComponent(this.cursor)}` : ""}`);
     const source = new EventSource(url);
     this.source = source;
     source.onopen = () => {
@@ -274,7 +245,7 @@ export class SessionController {
     if (this.failedOpens >= 3) {
       // Find out why the stream keeps failing instead of retrying blindly.
       try {
-        const res = await fetch(`/api/sessions/${encodeURIComponent(this.sessionId)}`, { cache: "no-store" });
+        const res = await fetch(sessionUrl(this.sessionId), { cache: "no-store" });
         if (!res.ok) {
           const code = await errorCodeOf(res);
           if (res.status === 404) {
@@ -325,6 +296,20 @@ export class SessionController {
     }, LOADED_AFTER_QUIET_MS);
   }
 
+  /** Wait for the accepted message's run to start, unless it already has. */
+  private startAwaitingRun(seq: number) {
+    this.clearAwaitingRun();
+    // A fast run can start, and even finish, before the messages route answers.
+    if (this.projection.lastRunStartSeq > seq) return;
+    this.awaitingRunAfter = seq;
+    this.runWarningTimer = setTimeout(() => {
+      this.runWarningTimer = null;
+      if (this.awaitingRunAfter === undefined) return;
+      this.awaitingRunAfter = undefined;
+      this.set({ notice: "The message was accepted, but the Agent has not started. Check npm run status." });
+    }, RUN_START_WARNING_MS);
+  }
+
   private clearAwaitingRun() {
     this.awaitingRunAfter = undefined;
     if (this.runWarningTimer) clearTimeout(this.runWarningTimer);
@@ -332,8 +317,10 @@ export class SessionController {
   }
 
   // --------------------------------------------------------------- actions
+  // The stream is opened by the thread's effect (runtime-provider.tsx) while
+  // the conversation is on screen; sending does not open it, so a message sent
+  // from a conversation the user has already left cannot leak a connection.
   async sendMessage(text: string): Promise<void> {
-    this.attach();
     if (this.snapshot.isBusy) throw new Error("The Agent is still working on the previous message.");
     const clientMessageId = this.retry?.text === text ? this.retry.clientMessageId : newId();
     const message: PendingMessage = {
@@ -348,11 +335,7 @@ export class SessionController {
 
     let res: Response;
     try {
-      res = await fetch(`/api/sessions/${encodeURIComponent(this.sessionId)}/messages`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ text, clientMessageId }),
-      });
+      res = await postJson(sessionUrl(this.sessionId, "/messages"), { text, clientMessageId });
     } catch {
       // The request may or may not have reached the Platform. Sending the same
       // text again reuses the key, so it cannot be delivered twice.
@@ -374,14 +357,7 @@ export class SessionController {
       this.projection = aliasUserMessage(this.projection, body.seq, message.id);
     }
     // Without a seq, the text match in compute() hides the echo's duplicate until the bubble is replaced.
-    this.awaitingRunAfter = body.seq ?? this.projection.lastSeq;
-    if (this.runWarningTimer) clearTimeout(this.runWarningTimer);
-    this.runWarningTimer = setTimeout(() => {
-      this.runWarningTimer = null;
-      if (this.awaitingRunAfter === undefined) return;
-      this.awaitingRunAfter = undefined;
-      this.set({ notice: "The message was accepted, but the Agent has not started. Check npm run status." });
-    }, RUN_START_WARNING_MS);
+    this.startAwaitingRun(body.seq ?? message.afterSeq);
     this.emit();
   }
 
@@ -392,11 +368,7 @@ export class SessionController {
 
   async interrupt(): Promise<void> {
     this.clearAwaitingRun();
-    const res = await fetch(`/api/sessions/${encodeURIComponent(this.sessionId)}/interrupt`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: "{}",
-    });
+    const res = await postJson(sessionUrl(this.sessionId, "/interrupt"), {});
     if (!res.ok) this.set({ notice: describe(await errorCodeOf(res), "Could not stop the Agent") });
     else this.emit();
   }
@@ -406,15 +378,12 @@ export class SessionController {
     this.answered.set(approvalId, approved);
     this.emit();
     try {
-      const res = await fetch(
-        `/api/sessions/${encodeURIComponent(this.sessionId)}/approvals/${encodeURIComponent(approvalId)}`,
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ decision: approved ? "allow-once" : "deny" }),
-        },
+      await ensureOk(
+        await postJson(sessionUrl(this.sessionId, `/approvals/${encodeURIComponent(approvalId)}`), {
+          decision: approved ? "allow-once" : "deny",
+        }),
+        "record the decision",
       );
-      if (!res.ok) throw new Error(describe(await errorCodeOf(res), "The decision was not recorded"));
     } catch (error) {
       this.answered.delete(approvalId);
       this.set({ notice: error instanceof Error ? error.message : "The decision was not recorded" });

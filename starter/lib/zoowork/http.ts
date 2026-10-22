@@ -2,6 +2,13 @@ import { errorCode, errorStatus, StarterError } from "./errors";
 
 const LOOPBACK = new Set(["localhost", "127.0.0.1", "[::1]"]);
 
+export type GuardOptions = {
+  /** Reject cross-origin requests (any state-changing route). */
+  sameOrigin?: boolean;
+  /** Also require a JSON body (routes that read one). Implies sameOrigin. */
+  write?: boolean;
+};
+
 /**
  * Local-only guard for every API route. The starter has no end-user
  * authentication, so it answers only on loopback hosts: a request that
@@ -9,18 +16,26 @@ const LOOPBACK = new Set(["localhost", "127.0.0.1", "[::1]"]);
  * deployment) is refused. Remove this only after adding authentication and
  * per-user Session ownership (README: "Before you go public").
  *
- * Writes must also be same-origin JSON requests, which a cross-site form or
- * image tag cannot produce.
+ * State-changing routes also refuse other origins, including the opaque
+ * `Origin: null`. Routes with a body require JSON, which a cross-site form
+ * cannot send.
  */
-export function guard(request: Request, { write = false }: { write?: boolean } = {}): void {
-  const url = new URL(request.url);
-  const host = request.headers.get("host") ?? url.host;
+export function guard(request: Request, { sameOrigin = false, write = false }: GuardOptions = {}): void {
+  const host = request.headers.get("host") ?? new URL(request.url).host;
   const hostname = host.startsWith("[") ? host.slice(0, host.indexOf("]") + 1) : host.split(":")[0]!;
   if (!LOOPBACK.has(hostname)) throw new StarterError("local_only_add_authentication_first", 403);
-  if (!write) return;
+  if (!sameOrigin && !write) return;
   const origin = request.headers.get("origin");
-  if (origin && new URL(origin).host !== host) throw new StarterError("cross_origin_request", 403);
-  if (!request.headers.get("content-type")?.includes("application/json")) {
+  if (origin !== null) {
+    let originHost: string | undefined;
+    try {
+      originHost = new URL(origin).host;
+    } catch {
+      originHost = undefined;
+    }
+    if (originHost !== host) throw new StarterError("cross_origin_request", 403);
+  }
+  if (write && !request.headers.get("content-type")?.includes("application/json")) {
     throw new StarterError("expected_application_json", 415);
   }
 }
@@ -41,7 +56,7 @@ export function errorResponse(error: unknown): Response {
 /** Wrap a route handler with the guard and error mapping. */
 export function route<C>(
   handler: (request: Request, context: C) => Promise<Response>,
-  options: { write?: boolean } = {},
+  options: GuardOptions = {},
 ): (request: Request, context: C) => Promise<Response> {
   return async (request, context) => {
     try {

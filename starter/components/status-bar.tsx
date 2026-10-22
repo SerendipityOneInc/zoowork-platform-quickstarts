@@ -4,9 +4,9 @@
 // changed agent definition, and connection or request notices.
 
 import { useEffect, useState } from "react";
-import { getStatus } from "@/lib/chat/api";
+import { ApiError, getStatus } from "@/lib/chat/api";
 import { useActiveSessionSnapshot } from "@/lib/chat/runtime-provider";
-import { describe } from "@/lib/chat/session-controller";
+import { describe } from "@/lib/chat/notices";
 import type { AppStatus } from "@/lib/chat/wire";
 
 function Banner({ tone, children }: { tone: "info" | "warn" | "error"; children: React.ReactNode }) {
@@ -27,7 +27,10 @@ export function StatusBar() {
     getStatus()
       .then((s) => !cancelled && setStatus(s))
       .catch((error: unknown) => {
-        if (!cancelled) setStatus({ mode: "platform", agent: "unavailable", code: error instanceof Error ? error.message : undefined });
+        if (cancelled) return;
+        // Keep the code, not the already-translated message, so describe() runs once.
+        const code = error instanceof ApiError ? error.code : "request_failed";
+        setStatus({ mode: "platform", agent: "unavailable", ...(code ? { code } : {}) });
       });
     return () => {
       cancelled = true;
