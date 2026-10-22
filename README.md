@@ -5,22 +5,28 @@ and the published [TypeScript SDK](https://www.npmjs.com/package/@zoowork-ai/sdk
 Each application uses a server-side **Project key** (`zwp_live_`) and creates its own Agent
 through the SDK. Each directory has its own dependencies, configuration and local state.
 
-**Start with Customer Support.** It is a complete browser workbench: look up an order,
-check its shipment, ask follow-up questions and create an after-sales ticket after confirmation.
-Tool calls, order details and saved ticket status are visible in the UI. You can try it offline
-before connecting your Project key.
+**To build your own Agent, start with [Starter](starter/).** It is a minimal chat app with no
+business logic: define the Agent in one file, run setup, and chat with it locally. It is the
+companion workspace for the [Publish your Agent guide](https://zoowork.ai/guides/publish-agent).
+
+**To see a complete scenario, start with Customer Support.** It is a browser workbench: look up
+an order, check its shipment, ask follow-up questions and create an after-sales ticket after
+confirmation. Tool calls, order details and saved ticket status are visible in the UI. You can
+try it offline before connecting your Project key.
 
 ## Applications
 
-The status below describes the application code in this branch. A lifecycle foundation
-provides Agent setup/status/cleanup; it does not yet provide the planned browser application.
+[Starter](starter/) is the general starting point. The four capability demos each show one SDK
+feature inside a business scenario. Knowledge Assistant still has only the lifecycle foundation
+(Agent setup/status/cleanup), without the planned browser application.
 
 | Application | User outcome | SDK focus | Status |
 | --- | --- | --- | --- |
+| [Starter](starter/) | Chat with an Agent you define in one file; take it into your product | Agent definition, setup/update, durable Session streaming, approvals | Runnable application; offline checks and preview |
 | [Customer Support](customer-support/) | Track orders and shipments; confirm and save support tickets | Custom Tools, durable Sessions and recovery | Runnable application; offline browser and actual staging verification |
-| [Product Advisor](product-advisor/) | Search, compare and shortlist products | Remote MCP | Lifecycle foundation; application development in [PR #22](https://github.com/SerendipityOneInc/zoowork-platform-quickstarts/pull/22) |
+| [Product Advisor](product-advisor/) | Search, compare and shortlist products | Remote MCP | Runnable application, merged in [PR #22](https://github.com/SerendipityOneInc/zoowork-platform-quickstarts/pull/22) |
 | [Knowledge Assistant](knowledge-assistant/) | Ask an existing knowledge base and inspect citations | External RAG | Lifecycle foundation; retrieval design in progress |
-| [Research Assistant](research-assistant/) | Research a topic and continue a saved sourced brief | Vercel Chat SDK | Lifecycle foundation; application development in [PR #21](https://github.com/SerendipityOneInc/zoowork-platform-quickstarts/pull/21) |
+| [Research Assistant](research-assistant/) | Research a topic and continue a saved sourced brief | Vercel Chat SDK | Runnable application, merged in [PR #21](https://github.com/SerendipityOneInc/zoowork-platform-quickstarts/pull/21) |
 
 Application features and dependencies stay inside their directories. See each app's README
 and PLAN for its current scope. Main publication follows the [integration handoff](docs/HANDOFF.md).
@@ -34,15 +40,6 @@ git clone https://github.com/SerendipityOneInc/zoowork-platform-quickstarts.git
 cd zoowork-platform-quickstarts
 ```
 
-If your checkout still contains `custom-tool/`, `mcp/`, `rag/` and `chat-sdk/`, the application
-integration has not reached its default branch. In this fresh, clean checkout, select it first:
-
-```sh
-git switch --track origin/feature/platform-demo-handoffs
-```
-
-If `customer-support/` is already present, skip that switch. The
-[integration handoff](docs/HANDOFF.md#foundation-and-isolation) explains the branch relationship.
 Then run:
 
 ```sh
@@ -86,7 +83,8 @@ See [Customer Support setup, walkthrough and troubleshooting](customer-support/R
 Every app supports `npm ci` and `npm run check` from its own directory. CI runs offline
 and needs no credentials. Customer Support also has a complete browser workflow check;
 see [its verification evidence](customer-support/docs/VALIDATION.md). The other applications
-currently share [the lifecycle verification](docs/VALIDATION.md).
+describe their checks in their own READMEs; the shared [lifecycle verification](docs/VALIDATION.md)
+covers the foundation.
 
 Setup records exact creation requests and resource IDs under ignored `.local/` state.
 Repeat setup to reuse recorded resources. Keep this state after an uncertain operation or

@@ -19,6 +19,11 @@ Read `docs/HANDOFF.md`, `docs/OUTLINE.md`, `docs/PLATFORM.md` and the target app
 - Preserve licenses when copying code; record source commits and paths in `docs/REFERENCES.md`.
 - Commit as `finn-srp <finn@srp.one>`; use Finn's active GitHub identity.
 
-Current status: Customer Support is implemented and verified; its evidence is in
-`customer-support/docs/VALIDATION.md`. Other applications on this branch still have lifecycle
-foundations. See the root README for their feature PRs and current delivery status.
+`starter/` is the standard, business-free starting point and the companion of the public
+Publish your Agent guide. Keep it a generic scaffold: no business data, scenario examples or UI,
+or borrowed Agent IDs. Scenario examples belong to the guide.
+The other four directories are capability demos.
+
+Current status: Customer Support, Product Advisor and Research Assistant are runnable; Customer
+Support's evidence is in `customer-support/docs/VALIDATION.md`. Knowledge Assistant has the
+lifecycle foundation. See the root README for delivery status.

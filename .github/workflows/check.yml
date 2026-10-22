@@ -11,7 +11,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        demo: [customer-support, product-advisor, knowledge-assistant, research-assistant]
+        demo: [starter, customer-support, product-advisor, knowledge-assistant, research-assistant]
     defaults:
       run:
         working-directory: ${{ matrix.demo }}
