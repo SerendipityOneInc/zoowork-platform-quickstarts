@@ -8,26 +8,24 @@ import {
   type SessionEvent,
   type SessionRecord,
 } from "@zoowork-ai/sdk";
-import type { ChatClient } from "./runtime";
+import type { ChatClient } from "../lib/zoowork/runtime";
 
 /**
- * An in-memory stand-in for the Platform Session API, used by `npm run
- * preview` and the tests. It emits the same event shapes the real stream
- * does (`user.message` echo, `run.started`, `agent.tool`, `agent.assistant`,
- * `run.finished`, ...) on the same cursor contract, so the routes, relay and
- * browser code run unchanged. Replies are scripted; no model is called.
+ * An in-memory fake of the Platform Session API, for the offline tests only.
+ * Application code must never import it. It emits the same event shapes the
+ * real stream does (`user.message` echo, `run.started`, `agent.tool`,
+ * `agent.assistant`, `run.finished`, ...) on the same cursor contract, so the
+ * relay, archive and Session-creation code run unchanged. Replies are
+ * scripted; no model is called.
  *
- * Send a message containing "approval" to see a tool call wait for an
- * Allow/Deny decision.
+ * A message containing "approval" makes the tool call wait for a decision.
  */
-export interface PreviewOptions {
+export interface FakePlatformOptions {
   /** Delay between scripted events, in milliseconds. */
   stepMs?: number;
-  /** Product name used in the scripted reply. */
-  productName?: string;
 }
 
-interface PreviewSession {
+interface FakeSession {
   id: string;
   metadata: Record<string, unknown>;
   events: SessionEvent[];
@@ -44,10 +42,9 @@ interface PendingApproval {
 
 const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
-export function createPreviewPlatform(options: PreviewOptions = {}): ChatClient & { sessionCount(): number } {
+export function createFakePlatform(options: FakePlatformOptions = {}): ChatClient & { sessionCount(): number } {
   const stepMs = options.stepMs ?? 450;
-  const productName = options.productName ?? "this assistant";
-  const sessions = new Map<string, PreviewSession>();
+  const sessions = new Map<string, FakeSession>();
   const waiters = new Map<string, Set<() => void>>();
   const idempotentCreates = new Map<string, string>();
   let seq = 0;
@@ -56,13 +53,13 @@ export function createPreviewPlatform(options: PreviewOptions = {}): ChatClient 
     for (const fn of waiters.get(id) ?? []) fn();
   };
 
-  function session(agentId: string, sessionId: string): PreviewSession {
+  function session(agentId: string, sessionId: string): FakeSession {
     const s = sessions.get(sessionId);
     if (!s || s.deleted || !agentId) throw new ZooworkError(404, "session not found", "session_not_found");
     return s;
   }
 
-  function emit(s: PreviewSession, eventType: string, payload: Record<string, unknown>, extra: Partial<SessionEvent> = {}) {
+  function emit(s: FakeSession, eventType: string, payload: Record<string, unknown>, extra: Partial<SessionEvent> = {}) {
     seq += 1;
     const event: SessionEvent = {
       seq,
@@ -79,15 +76,15 @@ export function createPreviewPlatform(options: PreviewOptions = {}): ChatClient 
     return event;
   }
 
-  async function step(s: PreviewSession, run: NonNullable<PreviewSession["run"]>) {
+  async function step(s: FakeSession, run: NonNullable<FakeSession["run"]>) {
     await sleep(stepMs);
     return !run.aborted && !s.deleted;
   }
 
-  async function runTurn(s: PreviewSession, text: string) {
-    const run = { id: `run_${randomUUID().slice(0, 8)}`, aborted: false } as NonNullable<PreviewSession["run"]>;
+  async function runTurn(s: FakeSession, text: string) {
+    const run = { id: `run_${randomUUID().slice(0, 8)}`, aborted: false } as NonNullable<FakeSession["run"]>;
     s.run = run;
-    emit(s, "run.started", { trigger: "user", agentId: "agt_preview" });
+    emit(s, "run.started", { trigger: "user", agentId: "agt_test" });
     let outcome: "succeeded" | "aborted" = "succeeded";
     try {
       if (!(await step(s, run))) return (outcome = "aborted");
@@ -135,18 +132,12 @@ export function createPreviewPlatform(options: PreviewOptions = {}): ChatClient 
           toolName,
           toolCallId,
           isError: false,
-          resultPreview: "Offline preview: simulated tool output. No request was made.",
+          resultPreview: "Scripted tool output.",
         });
       }
 
       if (!(await step(s, run))) return (outcome = "aborted");
-      const reply = [
-        `**Offline preview.** This reply is simulated. No model or Platform request was made.`,
-        "",
-        `You wrote: "${text.length > 200 ? `${text.slice(0, 199)}…` : text}"`,
-        "",
-        `When you connect a Project key and run \`npm run setup\`, ${productName} answers with the Agent defined in \`agent/agent.md\`.`,
-      ].join("\n");
+      const reply = `Scripted reply to: "${text.length > 200 ? `${text.slice(0, 199)}…` : text}"`;
       emit(s, "agent.assistant", { segment: 1, message: { role: "assistant", content: [{ type: "text", text: reply }] } });
       return outcome;
     } finally {
@@ -161,7 +152,7 @@ export function createPreviewPlatform(options: PreviewOptions = {}): ChatClient 
     async createSession(_agentId, input, idempotencyKey) {
       const existing = idempotencyKey ? idempotentCreates.get(idempotencyKey) : undefined;
       if (existing) return { session_id: existing, status: "running", metadata: sessions.get(existing)!.metadata };
-      const id = `ses_preview_${randomUUID().replace(/-/g, "").slice(0, 16)}`;
+      const id = `ses_test_${randomUUID().replace(/-/g, "").slice(0, 16)}`;
       sessions.set(id, { id, metadata: { ...input.metadata }, events: [], archived: false, deleted: false, keys: new Map() });
       if (idempotencyKey) idempotentCreates.set(idempotencyKey, id);
       return { session_id: id, status: "running", metadata: { ...input.metadata } };
@@ -205,7 +196,7 @@ export function createPreviewPlatform(options: PreviewOptions = {}): ChatClient 
           const echo = emit(s, "user.interrupt", {});
           receipts.push({ id: echo.id, type: "user.interrupt", accepted: true, seq: echo.seq });
         } else {
-          throw new ZooworkError(400, "unsupported event type in preview", "invalid_request");
+          throw new ZooworkError(400, "unsupported event type in the fake", "invalid_request");
         }
       }
       return { events: receipts };

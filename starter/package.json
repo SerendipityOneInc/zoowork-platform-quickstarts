@@ -8,7 +8,6 @@
   },
   "scripts": {
     "dev": "next dev --hostname localhost",
-    "preview": "node --import tsx scripts/preview.ts",
     "build": "next build",
     "start": "next start --hostname localhost",
     "setup": "node --env-file-if-exists=.env --import tsx scripts/agent.ts setup",

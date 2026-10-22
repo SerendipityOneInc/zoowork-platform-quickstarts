@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { test } from "node:test";
 import { archiveOnPlatform } from "../lib/zoowork/archive";
 import { guard } from "../lib/zoowork/http";
-import { createPreviewPlatform } from "../lib/zoowork/preview";
+import { createFakePlatform } from "./fake-platform";
 
 const req = (headers: Record<string, string>) => new Request("http://localhost:3000/api/x", { method: "POST", headers });
 
@@ -29,18 +29,18 @@ test("state-changing routes refuse other origins, including Origin: null, with 4
 });
 
 test("archive interrupts a running turn, waits for it to end, and is safe to repeat", async () => {
-  const platform = createPreviewPlatform({ stepMs: 30 });
-  const { session_id } = await platform.createSession("agt_preview", { metadata: {} });
-  await platform.postEvents("agt_preview", session_id, [{ type: "user.message", content: "hello" }]);
-  assert.equal((await platform.getSession("agt_preview", session_id)).run_status, "running");
-  await archiveOnPlatform(platform, "agt_preview", session_id, { pollMs: 10 });
-  const after = await platform.getSession("agt_preview", session_id);
+  const platform = createFakePlatform({ stepMs: 30 });
+  const { session_id } = await platform.createSession("agt_test", { metadata: {} });
+  await platform.postEvents("agt_test", session_id, [{ type: "user.message", content: "hello" }]);
+  assert.equal((await platform.getSession("agt_test", session_id)).run_status, "running");
+  await archiveOnPlatform(platform, "agt_test", session_id, { pollMs: 10 });
+  const after = await platform.getSession("agt_test", session_id);
   assert.equal(after.archived, true);
   assert.notEqual(after.run_status, "running");
   // A retry after a lost response or a failed local update succeeds.
-  await archiveOnPlatform(platform, "agt_preview", session_id, { pollMs: 10 });
+  await archiveOnPlatform(platform, "agt_test", session_id, { pollMs: 10 });
   await assert.rejects(
-    platform.postEvents("agt_preview", session_id, [{ type: "user.message", content: "more" }]),
+    platform.postEvents("agt_test", session_id, [{ type: "user.message", content: "more" }]),
     (e: unknown) => (e as { status?: number }).status === 409,
   );
 });

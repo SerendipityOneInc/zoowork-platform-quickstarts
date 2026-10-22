@@ -1,7 +1,7 @@
 "use client";
 
-// A thin strip above the conversation: preview mode, setup problems, a
-// changed agent definition, and connection or request notices.
+// A thin strip above the conversation: setup problems, a changed agent
+// definition, and connection or request notices.
 
 import { useAui, useAuiState } from "@assistant-ui/react";
 import { useEffect, useState } from "react";
@@ -43,7 +43,7 @@ export function StatusBar() {
         if (cancelled) return;
         // Keep the code, not the already-translated message, so describe() runs once.
         const code = error instanceof ApiError ? error.code : "request_failed";
-        setStatus({ mode: "platform", agent: "unavailable", ...(code ? { code } : {}) });
+        setStatus({ agent: "unavailable", ...(code ? { code } : {}) });
       });
     return () => {
       cancelled = true;
@@ -52,11 +52,6 @@ export function StatusBar() {
 
   return (
     <div className="mx-auto flex w-full max-w-(--thread-max-width) flex-col gap-1 px-4 pt-2 empty:hidden">
-      {status?.mode === "preview" && (
-        <Banner tone="info">
-          Offline preview: replies are simulated and nothing is sent to ZooWork. Conversations reset when the server stops.
-        </Banner>
-      )}
       {status?.agent === "unavailable" && <Banner tone="error">{describe(status.code, "The Agent is not available")}</Banner>}
       {status?.agent === "definition_changed" && (
         <Banner tone="warn">agent/agent.md changed since the last setup. Run npm run setup to update the Agent.</Banner>

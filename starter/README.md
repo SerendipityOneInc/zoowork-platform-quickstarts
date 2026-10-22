@@ -22,22 +22,8 @@ deployment setup**, and it only answers on `localhost`. See [Before you go publi
 ## Requirements
 
 - Node.js **22.20 or newer** and npm.
-- For the real Agent: a ZooWork Platform **Project key** (`zwp_live_…`) and Organization credits.
-  The offline preview needs neither.
-
-## Try it without a key
-
-```sh
-git clone https://github.com/SerendipityOneInc/zoowork-platform-quickstarts.git
-cd zoowork-platform-quickstarts/starter
-npm ci
-npm run preview
-```
-
-Open **http://localhost:3000**. The page says **Offline preview**: replies are scripted,
-nothing is sent to ZooWork, and no credits are used. Send any message to see a tool card and a
-reply. Send a message containing the word **approval** to see a tool call wait for
-**Allow / Deny**. Conversations live in memory and reset when you stop the preview.
+- A ZooWork Platform **Project key** (`zwp_live_…`) and Organization credits. Step 1 shows
+  how to get them.
 
 ## 1. Get a Project key and credits
 
@@ -52,6 +38,9 @@ reply. Send a message containing the word **approval** to see a tool call wait f
 ## 2. Configure the server
 
 ```sh
+git clone https://github.com/SerendipityOneInc/zoowork-platform-quickstarts.git
+cd zoowork-platform-quickstarts/starter
+npm ci
 cp .env.example .env
 ```
 
@@ -249,11 +238,11 @@ allow    ── POST …/[id]/approvals/… ──▶ resolveApproval
 | `agent/agent.md` | The Agent definition |
 | `app.config.ts` | Page text and brand |
 | `app/api/` | Routes: sessions, stream, messages, interrupt, approvals, status |
-| `lib/zoowork/` | Server: configuration, client, setup/cleanup, Session index, relay, offline preview |
+| `lib/zoowork/` | Server: configuration, client, setup/cleanup, Session index, relay |
 | `lib/chat/` | Browser: event reducer, session controller, assistant-ui runtime |
 | `components/` | assistant-ui components, tool cards, sidebar, status bar |
-| `scripts/` | `setup` / `status` / `cleanup` / `models`, and the preview launcher |
-| `test/` | Offline tests |
+| `scripts/` | `setup` / `status` / `cleanup` / `models` |
+| `test/` | Offline tests and the in-memory fake Platform they use |
 
 ## Checks
 
@@ -265,7 +254,7 @@ npm run check
 `check` runs the TypeScript check, the offline tests and a production build. It needs no key
 and makes no network request to ZooWork. The tests cover the agent definition parser, the
 event reducer (tools, approvals, stop, failures, replay overlap), setup and cleanup recovery,
-and stream relay and resume against the offline preview.
+and stream relay and resume against an in-memory fake of the Session API in `test/`.
 
 `npm run build` and `npm start` build and serve the app locally. They are not a deployment
 setup; see [Before you go public](#before-you-go-public).
