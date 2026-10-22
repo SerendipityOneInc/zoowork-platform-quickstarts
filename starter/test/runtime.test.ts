@@ -6,7 +6,7 @@ import { test } from "node:test";
 import { type AgentRecord, type AgentResource } from "@zoowork-ai/sdk";
 import { loadAgentDefinition } from "../lib/zoowork/agent-definition";
 import { applyAgent, type LifecycleClient } from "../lib/zoowork/lifecycle";
-import { createPreviewPlatform } from "../lib/zoowork/preview";
+import { createFakePlatform } from "./fake-platform";
 import { createPlatformRuntime } from "../lib/zoowork/runtime";
 import { agentStatePath, loadAgentState, newAgentState, saveAgentState } from "../lib/zoowork/state";
 
@@ -58,7 +58,7 @@ test("the web status check reads the latest agent.json, including an update whos
   await applyAgent(platform.client, path, undefined, config.baseUrl, definition());
 
   // The dev server starts and caches its runtime.
-  const runtime = await createPlatformRuntime(config, { ...createPreviewPlatform(), getAgent: platform.client.getAgent }, cwd);
+  const runtime = await createPlatformRuntime(config, { ...createFakePlatform(), getAgent: platform.client.getAgent }, cwd);
   assert.equal((await runtime.checkAgent!()).definitionApplied, true);
 
   // In another terminal: add thinking, run setup; the update applies but its response is lost.
@@ -83,7 +83,7 @@ test("the web status check notices that agent.json now records a different Agent
   const path = agentStatePath(cwd);
   await writeAgent();
   await applyAgent(platform.client, path, undefined, config.baseUrl, definition());
-  const runtime = await createPlatformRuntime(config, { ...createPreviewPlatform(), getAgent: platform.client.getAgent }, cwd);
+  const runtime = await createPlatformRuntime(config, { ...createFakePlatform(), getAgent: platform.client.getAgent }, cwd);
   await saveAgentState(path, { ...newAgentState(config.baseUrl, definition()), agentId: "agt_other" });
   await assert.rejects(runtime.checkAgent!(), /agent_changed_restart_dev/);
 });

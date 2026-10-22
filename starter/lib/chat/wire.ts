@@ -34,7 +34,6 @@ export type SessionSummary = {
 export type AgentHealth = "ready" | "definition_changed" | "not_running" | "unavailable";
 
 export type AppStatus = {
-  mode: "platform" | "preview";
   agent: AgentHealth;
   /** Safe error code when the Agent is unavailable (see the README troubleshooting table). */
   code?: string;

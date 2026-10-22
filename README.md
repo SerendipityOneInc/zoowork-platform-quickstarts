@@ -22,7 +22,7 @@ feature inside a business scenario. Knowledge Assistant still has only the lifec
 
 | Application | User outcome | SDK focus | Status |
 | --- | --- | --- | --- |
-| [Starter](starter/) | Chat with an Agent you define in one file; take it into your product | Agent definition, setup/update, durable Session streaming, approvals | Runnable application; offline checks and preview |
+| [Starter](starter/) | Chat with an Agent you define in one file; take it into your product | Agent definition, setup/update, durable Session streaming, approvals | Runnable application; offline checks |
 | [Customer Support](customer-support/) | Track orders and shipments; confirm and save support tickets | Custom Tools, durable Sessions and recovery | Runnable application; offline browser and actual staging verification |
 | [Product Advisor](product-advisor/) | Search, compare and shortlist products | Remote MCP | Runnable application, merged in [PR #22](https://github.com/SerendipityOneInc/zoowork-platform-quickstarts/pull/22) |
 | [Knowledge Assistant](knowledge-assistant/) | Ask an existing knowledge base and inspect citations | External RAG | Lifecycle foundation; retrieval design in progress |

@@ -34,8 +34,3 @@ export function readPlatformConfig(env: NodeJS.ProcessEnv = process.env): Platfo
   }
   return { apiKey, baseUrl: `${url.origin}/service/v1` };
 }
-
-/** `npm run preview` sets this. Preview never reads a key or calls Platform. */
-export function isPreview(env: NodeJS.ProcessEnv = process.env): boolean {
-  return env.ZOOWORK_PREVIEW === "1";
-}

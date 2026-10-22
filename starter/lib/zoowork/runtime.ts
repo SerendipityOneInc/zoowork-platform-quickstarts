@@ -1,16 +1,14 @@
 import { rmSync, writeFileSync } from "node:fs";
 import type { ZooworkClient } from "@zoowork-ai/sdk";
-import { appConfig } from "@/app.config";
 import { loadAgentDefinition } from "./agent-definition";
 import { createPlatformClient } from "./client";
-import { isPreview, readPlatformConfig, type PlatformConfig } from "./config";
+import { readPlatformConfig, type PlatformConfig } from "./config";
 import { StarterError } from "./errors";
 import { agentStatus } from "./lifecycle";
-import { createPreviewPlatform } from "./preview";
-import { fileSessionStore, memorySessionStore, sessionsPath, type SessionEntry, type SessionStore } from "./sessions";
+import { fileSessionStore, sessionsPath, type SessionEntry, type SessionStore } from "./sessions";
 import { agentStatePath, loadAgentState, webPidPath } from "./state";
 
-/** The Session API surface the chat routes use. The preview implements the same surface. */
+/** The Session API surface the chat routes use. Tests pass a fake with the same surface. */
 export type ChatClient = Pick<
   ZooworkClient,
   | "createSession"
@@ -24,13 +22,12 @@ export type ChatClient = Pick<
 >;
 
 export interface Runtime {
-  mode: "platform" | "preview";
   client: ChatClient;
   agentId: string;
   instance: string;
   sessions: SessionStore;
-  /** Platform mode only: compares the deployed Agent with `agent/agent.md`. */
-  checkAgent?: () => Promise<{ definitionApplied: boolean; desiredState: string }>;
+  /** Compares the deployed Agent with `agent/agent.md`. */
+  checkAgent: () => Promise<{ definitionApplied: boolean; desiredState: string }>;
 }
 
 const KEY = Symbol.for("zoowork.starter.runtime");
@@ -54,15 +51,6 @@ export function getRuntime(): Promise<Runtime> {
 }
 
 async function createRuntime(): Promise<Runtime> {
-  if (isPreview()) {
-    return {
-      mode: "preview",
-      client: createPreviewPlatform({ productName: appConfig.name }),
-      agentId: "agt_preview",
-      instance: "preview",
-      sessions: memorySessionStore(),
-    };
-  }
   const config = readPlatformConfig();
   return createPlatformRuntime(config, createPlatformClient(config));
 }
@@ -83,7 +71,6 @@ export async function createPlatformRuntime(
   recordWebPid(cwd);
   const agentId = state.agentId;
   return {
-    mode: "platform",
     client,
     agentId,
     instance: state.instance,

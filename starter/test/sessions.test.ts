@@ -4,11 +4,11 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { test } from "node:test";
 import { ZooworkError } from "@zoowork-ai/sdk";
-import { createPreviewPlatform } from "../lib/zoowork/preview";
+import { createFakePlatform } from "./fake-platform";
 import { createRecordedSession, recoverPendingCreates } from "../lib/zoowork/session-create";
 import { fileSessionStore, type PendingSessionCreate } from "../lib/zoowork/sessions";
 
-const AGENT = "agt_preview";
+const AGENT = "agt_test";
 const scope = { instance: "inst", agentId: AGENT };
 
 const request = (threadId: string): PendingSessionCreate => ({
@@ -22,12 +22,12 @@ const request = (threadId: string): PendingSessionCreate => ({
 async function setup() {
   const dir = await mkdtemp(join(tmpdir(), "starter-sessions-"));
   const file = join(dir, "sessions.json");
-  const platform = createPreviewPlatform({ stepMs: 1 });
+  const platform = createFakePlatform({ stepMs: 1 });
   return { file, platform };
 }
 
 /** The create reaches the Platform, but the response is lost on the way back. */
-function loseResponses(platform: ReturnType<typeof createPreviewPlatform>) {
+function loseResponses(platform: ReturnType<typeof createFakePlatform>) {
   const create = platform.createSession.bind(platform);
   return {
     ...platform,

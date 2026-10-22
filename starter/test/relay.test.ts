@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 import type { RelayEnvelope } from "../lib/chat/wire";
-import { createPreviewPlatform } from "../lib/zoowork/preview";
+import { createFakePlatform } from "./fake-platform";
 import { relayStream, resumeCursor } from "../lib/zoowork/relay";
 
 type Frame = { id?: string; envelope?: RelayEnvelope };
@@ -39,16 +39,16 @@ const finished = (frames: Frame[]) =>
   frames.some((f) => f.envelope?.kind === "event" && f.envelope.event.eventType === "run.finished");
 
 async function sessionWithOneTurn() {
-  const platform = createPreviewPlatform({ stepMs: 1 });
-  const { session_id } = await platform.createSession("agt_preview", { metadata: {} });
-  await platform.postEvents("agt_preview", session_id, [{ type: "user.message", content: "hello", idempotency_key: "k1" }]);
+  const platform = createFakePlatform({ stepMs: 1 });
+  const { session_id } = await platform.createSession("agt_test", { metadata: {} });
+  await platform.postEvents("agt_test", session_id, [{ type: "user.message", content: "hello", idempotency_key: "k1" }]);
   return { platform, sessionId: session_id };
 }
 
 test("without a cursor the relay replays the Session from the start, each frame carrying its cursor", async () => {
   const { platform, sessionId } = await sessionWithOneTurn();
   const abort = new AbortController();
-  const frames = await readFrames(relayStream(platform, "agt_preview", sessionId, undefined, abort.signal), finished);
+  const frames = await readFrames(relayStream(platform, "agt_test", sessionId, undefined, abort.signal), finished);
   abort.abort();
   const types = frames.map((f) => (f.envelope?.kind === "event" ? f.envelope.event.eventType : f.envelope?.kind));
   assert.equal(types[0], "user.message");
@@ -60,9 +60,9 @@ test("without a cursor the relay replays the Session from the start, each frame 
 test("with a cursor the relay resumes after it, without repeating earlier events", async () => {
   const { platform, sessionId } = await sessionWithOneTurn();
   const abort = new AbortController();
-  const all = await readFrames(relayStream(platform, "agt_preview", sessionId, undefined, abort.signal), finished);
+  const all = await readFrames(relayStream(platform, "agt_test", sessionId, undefined, abort.signal), finished);
   const middle = all[2]!.id!;
-  const resumed = await readFrames(relayStream(platform, "agt_preview", sessionId, middle, abort.signal), finished);
+  const resumed = await readFrames(relayStream(platform, "agt_test", sessionId, middle, abort.signal), finished);
   abort.abort();
   const seqs = resumed.map((f) => (f.envelope?.kind === "event" ? f.envelope.event.seq : -1));
   const middleSeq = Number(middle.slice(5));
@@ -72,19 +72,19 @@ test("with a cursor the relay resumes after it, without repeating earlier events
 test("an idempotent retry of the same message does not start a second run", async () => {
   const { platform, sessionId } = await sessionWithOneTurn();
   const abort = new AbortController();
-  await readFrames(relayStream(platform, "agt_preview", sessionId, undefined, abort.signal), finished);
-  const again = await platform.postEvents("agt_preview", sessionId, [{ type: "user.message", content: "hello", idempotency_key: "k1" }]);
+  await readFrames(relayStream(platform, "agt_test", sessionId, undefined, abort.signal), finished);
+  const again = await platform.postEvents("agt_test", sessionId, [{ type: "user.message", content: "hello", idempotency_key: "k1" }]);
   assert.equal(again.events[0]?.accepted, true);
-  const frames = await readFrames(relayStream(platform, "agt_preview", sessionId, undefined, abort.signal), finished);
+  const frames = await readFrames(relayStream(platform, "agt_test", sessionId, undefined, abort.signal), finished);
   abort.abort();
   const starts = frames.filter((f) => f.envelope?.kind === "event" && f.envelope.event.eventType === "run.started");
   assert.equal(starts.length, 1);
 });
 
 test("a missing Session ends the relay with a fatal error frame", async () => {
-  const platform = createPreviewPlatform({ stepMs: 1 });
+  const platform = createFakePlatform({ stepMs: 1 });
   const abort = new AbortController();
-  const frames = await readFrames(relayStream(platform, "agt_preview", "ses_missing", undefined, abort.signal), (f) => f.length > 0);
+  const frames = await readFrames(relayStream(platform, "agt_test", "ses_missing", undefined, abort.signal), (f) => f.length > 0);
   assert.deepEqual(frames[0]?.envelope, { kind: "relay_error", code: "http_404", fatal: true });
 });
 
@@ -96,20 +96,20 @@ test("resumeCursor prefers Last-Event-ID and rejects malformed values", () => {
   assert.equal(resumeCursor(req({})), undefined);
 });
 
-test("preview approval: a decision resolves the waiting call", async () => {
-  const platform = createPreviewPlatform({ stepMs: 1 });
-  const { session_id } = await platform.createSession("agt_preview", { metadata: {} });
-  await platform.postEvents("agt_preview", session_id, [{ type: "user.message", content: "needs approval" }]);
+test("approval: a decision resolves the waiting call", async () => {
+  const platform = createFakePlatform({ stepMs: 1 });
+  const { session_id } = await platform.createSession("agt_test", { metadata: {} });
+  await platform.postEvents("agt_test", session_id, [{ type: "user.message", content: "needs approval" }]);
   const abort = new AbortController();
-  const stream = relayStream(platform, "agt_preview", session_id, undefined, abort.signal);
+  const stream = relayStream(platform, "agt_test", session_id, undefined, abort.signal);
   const reader = readFrames(stream, finished);
-  let approvals = await platform.listApprovals("agt_preview", { sessionId: session_id });
+  let approvals = await platform.listApprovals("agt_test", { sessionId: session_id });
   for (let i = 0; i < 50 && approvals.length === 0; i++) {
     await new Promise((r) => setTimeout(r, 5));
-    approvals = await platform.listApprovals("agt_preview", { sessionId: session_id });
+    approvals = await platform.listApprovals("agt_test", { sessionId: session_id });
   }
   assert.equal(approvals.length, 1);
-  await platform.resolveApproval("agt_preview", approvals[0]!.approval_id!, { decision: "deny" });
+  await platform.resolveApproval("agt_test", approvals[0]!.approval_id!, { decision: "deny" });
   const frames = await reader;
   abort.abort();
   const blocked = frames.find(
