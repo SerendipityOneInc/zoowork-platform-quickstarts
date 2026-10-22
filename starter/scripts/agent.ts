@@ -11,8 +11,8 @@
 // the README troubleshooting table and keeps .local/ for the next attempt.
 
 import { loadAgentDefinition } from "../lib/zoowork/agent-definition";
-import { createPlatformClient } from "../lib/zoowork/client";
-import { readPlatformConfig } from "../lib/zoowork/config";
+import { createZooworkClient } from "@zoowork-ai/sdk";
+import { readApiKey } from "../lib/zoowork/config";
 import { errorCode, StarterError } from "../lib/zoowork/errors";
 import { agentStatus, applyAgent, cleanupAgent } from "../lib/zoowork/lifecycle";
 import { fileSessionStore, sessionsPath } from "../lib/zoowork/sessions";
@@ -20,15 +20,14 @@ import { agentStatePath, loadAgentState, runningWebPid, withStateLock } from "..
 
 const NEXT_STEP: Record<string, string> = {
   platform_project_key_required: "Copy .env.example to .env and set ZOOWORK_API_KEY to your Platform Project key (zwp_live_).",
-  invalid_public_base_url: "ZOOWORK_BASE_URL must be an https URL ending in /service/v1, or unset to use the production API.",
   run_setup_first: "Run npm run setup first.",
-  state_scope_mismatch: "This .local/ state belongs to another ZOOWORK_BASE_URL. Restore the original .env; do not delete .local/.",
+  state_scope_mismatch: "The conversations in .local/ belong to another Agent. Keep .local/ and check it was not copied from another checkout.",
   state_locked_review_before_retry: "Another setup or cleanup is running. If none is, delete .local/agent.json.lock and retry.",
   agent_label_mismatch: "The recorded Agent is not this app's. Check that .local/ and the key belong together.",
-  http_401: "Check that ZOOWORK_API_KEY was copied correctly. If ZOOWORK_BASE_URL is set, the key must belong to that deployment.",
+  http_401: "Check that ZOOWORK_API_KEY was copied correctly.",
   http_402: "The Organization needs billing set up and credits. Check Billing in Platform Console.",
   http_403: "Check the key's Project and permissions.",
-  http_404: "The recorded resource was not found. Check the key's Project and ZOOWORK_BASE_URL before deleting .local/.",
+  http_404: "The recorded resource was not found. Check the key's Project before deleting .local/.",
   web_server_running: "Stop npm run dev, then run cleanup again.",
   cannot_remove_model: "Put model back in agent/agent.md, or run npm run cleanup then npm run setup to recreate the Agent.",
   cannot_remove_max_tokens: "Put max_tokens back in agent/agent.md, or run npm run cleanup then npm run setup to recreate the Agent.",
@@ -43,8 +42,7 @@ async function main(command: string | undefined) {
   if (!["setup", "status", "cleanup", "models"].includes(command ?? "")) {
     throw new StarterError("expected_setup_status_cleanup_or_models");
   }
-  const config = readPlatformConfig();
-  const client = createPlatformClient(config);
+  const client = createZooworkClient({ apiKey: readApiKey() });
 
   if (command === "models") {
     const models = await client.listModels();
@@ -58,7 +56,7 @@ async function main(command: string | undefined) {
 
   const path = agentStatePath();
   if (command === "status") {
-    const state = await loadAgentState(path, config.baseUrl);
+    const state = await loadAgentState(path);
     if (!state) throw new StarterError("run_setup_first");
     const report = await agentStatus(client, state, loadAgentDefinition().resource);
     console.log(`Agent:      ${report.agentId}`);
@@ -69,10 +67,10 @@ async function main(command: string | undefined) {
   }
 
   await withStateLock(path, async () => {
-    const state = await loadAgentState(path, config.baseUrl);
+    const state = await loadAgentState(path);
     if (command === "setup") {
       const definition = loadAgentDefinition();
-      const result = await applyAgent(client, path, state, config.baseUrl, definition.resource);
+      const result = await applyAgent(client, path, state, definition.resource);
       const verb = { created: "created", updated: "updated from agent/agent.md", unchanged: "already matches agent/agent.md" }[result.action];
       console.log(`Agent ${verb}: ${result.agentId}`);
       console.log("Agent ready. Run npm run dev and open http://localhost:3000");

@@ -193,7 +193,7 @@ Errors print a stable code and never the key or a provider response body.
 | `http_402` | Set up billing or add credits for the Organization in Platform Console. |
 | `http_403` | Check the key's Project and permissions. |
 | `http_400` during setup | Check billing, the `model` value (`npm run models`), skills and tool names. Keep `.local/`. |
-| `state_scope_mismatch` / recorded `http_404` | `.local/` belongs to another deployment or key. Restore the original `.env`. Do not delete `.local/` to force a new Agent; run cleanup with the original settings instead. |
+| `state_scope_mismatch` / recorded `http_404` | `.local/` belongs to another key or Project. Restore the original `.env`. Do not delete `.local/` to force a new Agent; run cleanup with the original settings instead. |
 | `agent_label_mismatch` | The recorded Agent is not this app's. Check that `.local/` and the key belong together. |
 | `state_locked_review_before_retry` | Another setup or cleanup is running. If none is, delete `.local/agent.json.lock`. |
 | `web_server_running` | Stop `npm run dev` before `npm run cleanup`. |

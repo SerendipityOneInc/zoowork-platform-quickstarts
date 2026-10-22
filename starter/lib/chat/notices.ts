@@ -5,7 +5,6 @@ export const NOTICES: Record<string, string> = {
   agent_changed_restart_dev: "The recorded Agent changed since this server started (cleanup or a new setup). Restart npm run dev.",
   run_setup_first: "The Agent is not set up yet. Run npm run setup, then reload.",
   platform_project_key_required: "ZOOWORK_API_KEY is missing or is not a Platform Project key (zwp_live_). Check .env and restart.",
-  invalid_public_base_url: "ZOOWORK_BASE_URL must be an https URL ending in /service/v1, or unset to use the production API. Check .env and restart.",
   session_archived: "This conversation is archived. Start a new one to continue.",
   session_not_found: "This conversation no longer exists.",
   message_not_accepted: "The Agent did not accept the message. Wait for the current reply to finish, then try again.",

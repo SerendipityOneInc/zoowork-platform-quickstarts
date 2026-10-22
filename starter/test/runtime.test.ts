@@ -10,8 +10,6 @@ import { createFakePlatform } from "./fake-platform";
 import { createPlatformRuntime } from "../lib/zoowork/runtime";
 import { agentStatePath, loadAgentState, newAgentState, saveAgentState } from "../lib/zoowork/state";
 
-const config = { apiKey: "zwp_live_test", baseUrl: "https://api.example.test/service/v1" };
-
 const agentMd = (thinking?: string) =>
   ["---", "name: Test", "model: m1", ...(thinking ? [`thinking: ${thinking}`] : []), "tools: [web_search]", "---", "", "Be helpful.", ""].join("\n");
 
@@ -55,16 +53,16 @@ test("the web status check reads the latest agent.json, including an update whos
   const platform = fakeAgents();
   const path = agentStatePath(cwd);
   await writeAgent();
-  await applyAgent(platform.client, path, undefined, config.baseUrl, definition());
+  await applyAgent(platform.client, path, undefined, definition());
 
   // The dev server starts and caches its runtime.
-  const runtime = await createPlatformRuntime(config, { ...createFakePlatform(), getAgent: platform.client.getAgent }, cwd);
+  const runtime = await createPlatformRuntime({ ...createFakePlatform(), getAgent: platform.client.getAgent }, cwd);
   assert.equal((await runtime.checkAgent!()).definitionApplied, true);
 
   // In another terminal: add thinking, run setup; the update applies but its response is lost.
   await writeAgent("high");
   platform.loseResponses(true);
-  await assert.rejects(applyAgent(platform.client, path, await loadAgentState(path, config.baseUrl), config.baseUrl, definition()));
+  await assert.rejects(applyAgent(platform.client, path, await loadAgentState(path), definition()));
   platform.loseResponses(false);
   assert.equal((platform.declared.get("agt_1")!.model as Record<string, unknown>).thinking, "high");
 
@@ -73,7 +71,7 @@ test("the web status check reads the latest agent.json, including an update whos
   assert.equal((await runtime.checkAgent!()).definitionApplied, false);
 
   // After setup clears it, the same running server sees the match again.
-  await applyAgent(platform.client, path, await loadAgentState(path, config.baseUrl), config.baseUrl, definition());
+  await applyAgent(platform.client, path, await loadAgentState(path), definition());
   assert.equal((await runtime.checkAgent!()).definitionApplied, true);
 });
 
@@ -82,8 +80,8 @@ test("the web status check notices that agent.json now records a different Agent
   const platform = fakeAgents();
   const path = agentStatePath(cwd);
   await writeAgent();
-  await applyAgent(platform.client, path, undefined, config.baseUrl, definition());
-  const runtime = await createPlatformRuntime(config, { ...createFakePlatform(), getAgent: platform.client.getAgent }, cwd);
-  await saveAgentState(path, { ...newAgentState(config.baseUrl, definition()), agentId: "agt_other" });
+  await applyAgent(platform.client, path, undefined, definition());
+  const runtime = await createPlatformRuntime({ ...createFakePlatform(), getAgent: platform.client.getAgent }, cwd);
+  await saveAgentState(path, { ...newAgentState(definition()), agentId: "agt_other" });
   await assert.rejects(runtime.checkAgent!(), /agent_changed_restart_dev/);
 });
