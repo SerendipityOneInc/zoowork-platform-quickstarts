@@ -1,6 +1,7 @@
-import { StarterError } from "@/lib/zoowork/errors";
+import { errorCode, StarterError } from "@/lib/zoowork/errors";
 import { readJson, route } from "@/lib/zoowork/http";
 import { getRuntime } from "@/lib/zoowork/runtime";
+import { createRecordedSession, recoverPendingCreates } from "@/lib/zoowork/session-create";
 import { titleFrom } from "@/lib/zoowork/sessions";
 import { APP } from "@/lib/zoowork/state";
 import { summarize } from "./summary";
@@ -18,6 +19,13 @@ const THREAD_ID = /^[A-Za-z0-9_-]{1,100}$/;
 
 export const GET = route(async () => {
   const rt = await getRuntime();
+  // Finish any create whose response was lost (a reload, a crash), so its
+  // Session appears in the list. Best effort: failures stay recorded.
+  try {
+    await recoverPendingCreates(rt.client, rt.agentId, rt.sessions);
+  } catch (error) {
+    console.error(`[starter] session recovery: ${errorCode(error)}`);
+  }
   const sessions = await rt.sessions.list({ includeArchived: true });
   return Response.json({ sessions: sessions.map(summarize) });
 });
@@ -29,19 +37,16 @@ export const POST = route(
     const threadId = typeof body.threadId === "string" ? body.threadId : "";
     if (!THREAD_ID.test(threadId)) throw new StarterError("thread_id_required");
     const title = titleFrom(body.title);
-    // The browser's thread id makes the create idempotent: a retried request
-    // returns the same Session instead of creating a second one.
-    const created = await rt.client.createSession(
-      rt.agentId,
-      { metadata: { starter_app: APP, starter_instance: rt.instance, title } },
-      `starter:${rt.instance}:session:${threadId}`,
-    );
-    if (!created.session_id) throw new StarterError("invalid_session_receipt", 502);
-    const existing = await rt.sessions.get(created.session_id);
-    if (existing) return Response.json(summarize(existing), { status: 200 });
+    // Saved before sending, with the exact body and idempotency key, so a lost
+    // response is recovered by repeating the same request (see GET above).
     const now = new Date().toISOString();
-    const entry = { id: created.session_id, title, createdAt: now, updatedAt: now };
-    await rt.sessions.add(entry);
+    const entry = await createRecordedSession(rt.client, rt.agentId, rt.sessions, {
+      threadId,
+      idempotencyKey: `starter:${rt.instance}:session:${threadId}`,
+      title,
+      metadata: { starter_app: APP, starter_instance: rt.instance, title },
+      requestedAt: now,
+    });
     return Response.json(summarize(entry), { status: 201 });
   },
   { write: true },

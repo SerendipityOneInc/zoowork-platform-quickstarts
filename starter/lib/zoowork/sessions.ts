@@ -20,11 +20,26 @@ export interface SessionEntry {
   archived?: boolean;
 }
 
+/**
+ * A Session create that was sent but not yet recorded. It is saved before the
+ * request, with the exact body and idempotency key, so a lost response can be
+ * resolved later by repeating the same request: the Platform returns the
+ * Session it already created instead of a second one.
+ */
+export interface PendingSessionCreate {
+  threadId: string;
+  idempotencyKey: string;
+  title: string;
+  metadata: Record<string, string>;
+  requestedAt: string;
+}
+
 interface SessionFile {
   version: 1;
   instance: string;
   agentId: string;
   sessions: SessionEntry[];
+  pendingCreates?: PendingSessionCreate[];
 }
 
 export interface SessionStore {
@@ -33,6 +48,13 @@ export interface SessionStore {
   add(entry: SessionEntry): Promise<void>;
   update(id: string, patch: Partial<Omit<SessionEntry, "id">>): Promise<SessionEntry | undefined>;
   remove(id: string): Promise<void>;
+  /** Record a create before sending it. Returns the existing record for the same thread, if any. */
+  savePendingCreate(pending: PendingSessionCreate): Promise<PendingSessionCreate>;
+  listPendingCreates(): Promise<PendingSessionCreate[]>;
+  /** Index the created Session and drop its pending record, in one write. */
+  completePendingCreate(threadId: string, entry: SessionEntry): Promise<SessionEntry>;
+  /** Drop a pending record whose create the Platform rejected. */
+  dropPendingCreate(threadId: string): Promise<void>;
   /** Move the index aside after cleanup, so a new setup starts empty. */
   retire(suffix: string): Promise<void>;
 }
@@ -113,6 +135,37 @@ export function fileSessionStore(path: string, scope: { instance: string; agentI
         await write(file);
       });
     },
+    savePendingCreate(pending) {
+      return serial(async () => {
+        const file = await read();
+        const pendingCreates = file.pendingCreates ?? [];
+        const existing = pendingCreates.find((p) => p.threadId === pending.threadId);
+        if (existing) return existing;
+        file.pendingCreates = [...pendingCreates, pending];
+        await write(file);
+        return pending;
+      });
+    },
+    async listPendingCreates() {
+      return [...((await read()).pendingCreates ?? [])];
+    },
+    completePendingCreate(threadId, entry) {
+      return serial(async () => {
+        const file = await read();
+        const existing = file.sessions.find((s) => s.id === entry.id);
+        if (!existing) file.sessions.push(entry);
+        file.pendingCreates = (file.pendingCreates ?? []).filter((p) => p.threadId !== threadId);
+        await write(file);
+        return existing ?? entry;
+      });
+    },
+    dropPendingCreate(threadId) {
+      return serial(async () => {
+        const file = await read();
+        file.pendingCreates = (file.pendingCreates ?? []).filter((p) => p.threadId !== threadId);
+        await write(file);
+      });
+    },
     retire(suffix) {
       return serial(async () => {
         try {
@@ -128,6 +181,7 @@ export function fileSessionStore(path: string, scope: { instance: string; agentI
 /** In-memory store for the offline preview and tests. */
 export function memorySessionStore(): SessionStore {
   const sessions = new Map<string, SessionEntry>();
+  const pendingCreates = new Map<string, PendingSessionCreate>();
   return {
     async list(opts = {}) {
       return [...sessions.values()]
@@ -151,8 +205,27 @@ export function memorySessionStore(): SessionStore {
     async remove(id) {
       sessions.delete(id);
     },
+    async savePendingCreate(pending) {
+      const existing = pendingCreates.get(pending.threadId);
+      if (existing) return { ...existing };
+      pendingCreates.set(pending.threadId, { ...pending });
+      return pending;
+    },
+    async listPendingCreates() {
+      return [...pendingCreates.values()].map((p) => ({ ...p }));
+    },
+    async completePendingCreate(threadId, entry) {
+      pendingCreates.delete(threadId);
+      const existing = sessions.get(entry.id);
+      if (!existing) sessions.set(entry.id, { ...entry });
+      return { ...(existing ?? entry) };
+    },
+    async dropPendingCreate(threadId) {
+      pendingCreates.delete(threadId);
+    },
     async retire() {
       sessions.clear();
+      pendingCreates.clear();
     },
   };
 }

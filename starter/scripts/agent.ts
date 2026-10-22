@@ -37,6 +37,7 @@ const NEXT_STEP: Record<string, string> = {
   skills_removed_set_empty_list: "Write skills: [] in agent/agent.md to remove all Skills, then run setup.",
   agent_update_not_confirmed: "The Agent does not show the update. Run npm run status, check model, Skill and tool names, and run setup again.",
   cleanup_incomplete_run_cleanup: "A cleanup stopped partway. Run npm run cleanup to finish it, then npm run setup.",
+  session_creation_uncertain_retry_cleanup: "A conversation create could not be confirmed. Keep .local/, check the connection and key, and run cleanup again.",
 };
 
 async function main(command: string | undefined) {

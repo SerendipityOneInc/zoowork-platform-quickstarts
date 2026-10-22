@@ -5,6 +5,7 @@
 
 import { useEffect, useState } from "react";
 import { ApiError, getStatus } from "@/lib/chat/api";
+import { useAppNotice } from "@/lib/chat/app-notice";
 import { useActiveSessionSnapshot } from "@/lib/chat/runtime-provider";
 import { describe } from "@/lib/chat/notices";
 import type { AppStatus } from "@/lib/chat/wire";
@@ -21,6 +22,7 @@ function Banner({ tone, children }: { tone: "info" | "warn" | "error"; children:
 export function StatusBar() {
   const [status, setStatus] = useState<AppStatus | null>(null);
   const { sessionId, isLoaded, isConnected, notice } = useActiveSessionSnapshot();
+  const appNotice = useAppNotice();
 
   useEffect(() => {
     let cancelled = false;
@@ -49,6 +51,7 @@ export function StatusBar() {
         <Banner tone="warn">agent/agent.md changed since the last setup. Run npm run setup to update the Agent.</Banner>
       )}
       {status?.agent === "not_running" && <Banner tone="warn">The Agent is stopped. Run npm run setup to start it.</Banner>}
+      {appNotice && <Banner tone="error">{appNotice}</Banner>}
       {notice && <Banner tone="error">{notice}</Banner>}
       {sessionId && isLoaded && !isConnected && !notice && (
         <div className="px-1 text-[11px] text-muted-foreground">Reconnecting…</div>

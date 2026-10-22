@@ -201,6 +201,7 @@ Errors print a stable code and never the key or a provider response body.
 | `skills_removed_set_empty_list` | Write `skills: []` to remove all Skills, then run setup. |
 | `agent_update_not_confirmed` | The Platform accepted the update but the Agent does not show it. Run `npm run status`, check the changed values (model id, Skill names, tool names), and run setup again. |
 | `cleanup_incomplete_run_cleanup` | A cleanup stopped partway. Run `npm run cleanup` again to finish it, then `npm run setup`. |
+| `session_creation_uncertain_retry_cleanup` | A conversation was being created when its response was lost, and it could not be confirmed now. Keep `.local/`, check the connection and key, and run `npm run cleanup` again. |
 | `http_401` | The key was rejected. Check it was copied completely and matches `ZOOWORK_BASE_URL`. |
 | `http_402` | Set up billing or add credits for the Organization in Platform Console. |
 | `http_403` | Check the key's Project and permissions. |
@@ -236,7 +237,9 @@ allow    ── POST …/[id]/approvals/… ──▶ resolveApproval
   the stop/approval actions. `lib/chat/runtime-provider.tsx` connects both to assistant-ui.
 - **Safe retries.** Each sent message carries an idempotency key, so a retried request is
   delivered once and never starts a second paid run. Setup saves the exact create request and
-  key before creating the Agent, so an interrupted setup can be repeated safely.
+  key before creating the Agent, and the app does the same before creating each conversation's
+  Session, so a lost response is resolved by repeating the same request instead of creating a
+  duplicate. Listing conversations and cleanup both finish such pending creates.
 - **Ownership.** Each route checks that the Session is one this app created
   (`ownedSession()`), and approvals are checked against the Session before they are resolved.
 

@@ -23,7 +23,9 @@ import {
   type ThreadMessageLike,
 } from "@assistant-ui/react";
 import { useEffect, useMemo, useSyncExternalStore } from "react";
+import { setAppNotice } from "./app-notice";
 import { initialProjection, type ThreadMessage } from "./reducer";
+import { sendFromComposer } from "./send-message";
 import { getSessionController, type ControllerSnapshot, type SessionController } from "./session-controller";
 import { rememberFirstMessage, sessionListAdapter } from "./session-list-adapter";
 
@@ -109,8 +111,14 @@ function useSessionThreadRuntime() {
     onNew: async (message: AppendMessage) => {
       const text = textOf(message);
       if (!text) return;
-      const id = sessionId ?? (await ensureSession(text));
-      await getSessionController(id).sendMessage(text);
+      await sendFromComposer({
+        text,
+        sessionId: sessionId ?? null,
+        ensureSession,
+        send: (id, t) => getSessionController(id).sendMessage(t),
+        restoreText: (t) => aui.composer().setText(t),
+        setNotice: setAppNotice,
+      });
     },
 
     // The stop button sends a real interrupt to the run.

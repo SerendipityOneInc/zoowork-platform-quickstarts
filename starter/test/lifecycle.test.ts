@@ -21,6 +21,7 @@ function fakePlatform() {
   const byKey = new Map<string, string>();
   const calls: string[] = [];
   const deletedSessions: string[] = [];
+  const sessionsByKey = new Map<string, string>();
   let n = 0;
   let failNextCreateAfterCommit = false;
   const record = (id: string): AgentRecord => {
@@ -67,13 +68,22 @@ function fakePlatform() {
       calls.push("deleteAgent");
       agents.delete(id);
     },
+    async createSession(_agentId, _input, key) {
+      calls.push("createSession");
+      let id = key ? sessionsByKey.get(key) : undefined;
+      if (!id) {
+        id = `ses_${sessionsByKey.size + 1}`;
+        if (key) sessionsByKey.set(key, id);
+      }
+      return { session_id: id };
+    },
     async deleteSession(_agentId, sessionId) {
       calls.push(`deleteSession:${sessionId}`);
       deletedSessions.push(sessionId);
       if (sessionId === "ses_gone") throw new ZooworkError(404, "gone");
     },
   };
-  return { client, agents, calls, deletedSessions, failCreateOnce: () => (failNextCreateAfterCommit = true) };
+  return { client, agents, calls, deletedSessions, sessionsByKey, failCreateOnce: () => (failNextCreateAfterCommit = true) };
 }
 
 const tempDir = async () => mkdtemp(join(tmpdir(), "starter-test-"));
@@ -283,4 +293,86 @@ test("cleanup does not treat a 404 as deleted unless it sent the delete", async 
   const sessions = fileSessionStore(join(dir, "sessions.json"), { instance: state.instance, agentId });
   await assert.rejects(cleanupAgent(p.client, path, state, sessions), (e: unknown) => e instanceof ZooworkError && e.status === 404);
   assert.ok((await readdir(dir)).includes("agent.json"));
+});
+
+test("a lost update response is reconciled: a reverted setting is cleared, not reported as matching", async () => {
+  const dir = await tempDir();
+  const path = join(dir, "agent.json");
+  const p = fakePlatform();
+  const base = { ...resource(), model: { primary: "m1" } };
+  const { agentId, state } = await applyAgent(p.client, path, undefined, BASE, base);
+  // Clearing a null thinking level removes it, as the Platform does.
+  const update = p.client.updateAgent;
+  p.client.updateAgent = async (id, sections) => {
+    const model = { ...(sections.model as Record<string, unknown>) };
+    if (model.thinking === null) delete model.thinking;
+    await update(id, sections);
+    (p.agents.get(id)!.declared as Record<string, unknown>).model = model;
+    return p.client.getAgent(id);
+  };
+  // Add thinking: the update applies on the Platform, but its response is lost.
+  const applyThenLose = p.client.updateAgent;
+  p.client.updateAgent = async (id, sections) => {
+    await applyThenLose(id, sections);
+    throw new TypeError("fetch failed");
+  };
+  await assert.rejects(applyAgent(p.client, path, state, BASE, { ...base, model: { primary: "m1", thinking: "high" } }));
+  p.client.updateAgent = applyThenLose;
+  assert.equal((p.agents.get(agentId)!.declared.model as Record<string, unknown>).thinking, "high");
+
+  // Revert agent.md to no thinking. Status must not claim a match, and setup must clear it.
+  const recorded = (await loadAgentState(path, BASE))!;
+  assert.ok(recorded.pendingUpdate);
+  assert.equal((await agentStatus(p.client, recorded, base)).definitionApplied, false);
+  const result = await applyAgent(p.client, path, recorded, BASE, base);
+  assert.equal(result.action, "updated");
+  assert.equal((p.agents.get(agentId)!.declared.model as Record<string, unknown>).thinking, undefined);
+  const after = (await loadAgentState(path, BASE))!;
+  assert.equal(after.pendingUpdate, undefined);
+  assert.equal((await agentStatus(p.client, after, base)).definitionApplied, true);
+});
+
+test("a lost update that added a setting the Platform cannot clear is refused on revert", async () => {
+  const dir = await tempDir();
+  const path = join(dir, "agent.json");
+  const p = fakePlatform();
+  const { state } = await applyAgent(p.client, path, undefined, BASE, resource());
+  const update = p.client.updateAgent;
+  p.client.updateAgent = async (id, sections) => {
+    await update(id, sections);
+    throw new TypeError("fetch failed");
+  };
+  await assert.rejects(applyAgent(p.client, path, state, BASE, { ...resource(), userTimezone: "Asia/Shanghai" }));
+  p.client.updateAgent = update;
+  const recorded = (await loadAgentState(path, BASE))!;
+  await assert.rejects(applyAgent(p.client, path, recorded, BASE, resource()), /cannot_remove_timezone/);
+  assert.equal((await agentStatus(p.client, recorded, resource())).definitionApplied, false);
+});
+
+test("cleanup first resolves a Session create whose response was lost, then deletes it", async () => {
+  const dir = await tempDir();
+  const path = join(dir, "agent.json");
+  const p = fakePlatform();
+  const { agentId, state } = await applyAgent(p.client, path, undefined, BASE, resource());
+  const sessions = fileSessionStore(join(dir, "sessions.json"), { instance: state.instance, agentId });
+  // The create reached the Platform, but the app never recorded its result.
+  p.sessionsByKey.set("k-lost", "ses_lost");
+  await sessions.savePendingCreate({ threadId: "t1", idempotencyKey: "k-lost", title: "t", metadata: {}, requestedAt: new Date().toISOString() });
+  await cleanupAgent(p.client, path, state, sessions);
+  assert.ok(p.deletedSessions.includes("ses_lost"));
+});
+
+test("cleanup stops and keeps state when a lost Session create cannot be resolved", async () => {
+  const dir = await tempDir();
+  const path = join(dir, "agent.json");
+  const p = fakePlatform();
+  const { agentId, state } = await applyAgent(p.client, path, undefined, BASE, resource());
+  const sessions = fileSessionStore(join(dir, "sessions.json"), { instance: state.instance, agentId });
+  await sessions.savePendingCreate({ threadId: "t1", idempotencyKey: "k1", title: "t", metadata: {}, requestedAt: new Date().toISOString() });
+  p.client.createSession = async () => {
+    throw new ZooworkError(503, "unavailable");
+  };
+  await assert.rejects(cleanupAgent(p.client, path, state, sessions), /session_creation_uncertain_retry_cleanup/);
+  assert.ok(p.agents.has(agentId), "the Agent is not deleted");
+  assert.equal((await sessions.listPendingCreates()).length, 1);
 });

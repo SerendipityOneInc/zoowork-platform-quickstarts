@@ -2,11 +2,12 @@ import { rename } from "node:fs/promises";
 import type { AgentRecord, AgentResource, ZooworkClient } from "@zoowork-ai/sdk";
 import { isNotFound, StarterError } from "./errors";
 import { desiredResource, labelsFor, newAgentState, saveAgentState, type AgentState } from "./state";
+import { recoverPendingCreates } from "./session-create";
 import type { SessionStore } from "./sessions";
 
 export type LifecycleClient = Pick<
   ZooworkClient,
-  "createAgent" | "getAgent" | "updateAgent" | "startAgent" | "stopAgent" | "deleteAgent" | "deleteSession"
+  "createAgent" | "getAgent" | "updateAgent" | "startAgent" | "stopAgent" | "deleteAgent" | "createSession" | "deleteSession"
 >;
 
 /**
@@ -62,7 +63,24 @@ export function removedSettings(
   if (previous.skills?.length && desired.skills === undefined) {
     return { clearThinking: false, unsupported: "skills_removed_set_empty_list" };
   }
+  // A pending update's thinking: null is itself a clear, so it does not count as set.
   return { clearThinking: previous.model?.thinking != null && desired.model?.thinking == null };
+}
+
+/**
+ * Settings removed relative to anything that may now be on the Agent: the
+ * last confirmed definition, and an update whose response was lost (it may
+ * have been applied even though setup never confirmed it).
+ */
+export function removedSinceRecorded(state: AgentState, desired: AgentResource): { clearThinking: boolean; unsupported?: string } {
+  const recorded = [state.applied ?? state.createBody, state.pendingUpdate as AgentResource | undefined];
+  let clearThinking = false;
+  for (const previous of recorded) {
+    const removed = removedSettings(previous, desired);
+    if (removed.unsupported) return removed;
+    clearThinking ||= removed.clearThinking;
+  }
+  return { clearThinking };
 }
 
 const thinkingOf = (declared: Record<string, unknown> | undefined) =>
@@ -97,7 +115,7 @@ export async function applyAgent(
   const state = existing ?? newAgentState(baseUrl, resource);
   if (state.agentDeleteRequestedAt || state.agentDeletedAt) throw new StarterError("cleanup_incomplete_run_cleanup");
   const desired = desiredResource(state, resource);
-  const removed = removedSettings(state.applied ?? state.createBody, desired);
+  const removed = removedSinceRecorded(state, desired);
   if (removed.unsupported) throw new StarterError(removed.unsupported);
 
   let action: ApplyResult["action"] = "unchanged";
@@ -144,7 +162,7 @@ export async function agentStatus(
 ): Promise<AgentStatusReport> {
   const agent = await ownedAgent(client, state);
   const desired = desiredResource(state, resource);
-  const removed = removedSettings(state.applied ?? state.createBody, desired);
+  const removed = removedSinceRecorded(state, desired);
   return {
     agentId: agent.agent_id,
     desiredState: agent.status?.desired_state ?? "unknown",
@@ -181,6 +199,9 @@ export async function cleanupAgent(
       gone = true;
     }
     if (!gone) {
+      // A create whose response was lost may have made a Session; resolve it
+      // first so it is deleted too. Any doubt stops cleanup with state kept.
+      await recoverPendingCreates(client, state.agentId, sessions, { strict: true });
       for (const session of await sessions.list({ includeArchived: true })) {
         try {
           await client.deleteSession(state.agentId, session.id);
