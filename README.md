@@ -59,8 +59,8 @@ The offline database is in memory and resets when the process stops.
    **API Keys** to create a `zwp_live_` key. Copy the secret when it is shown.
 2. Check Organization **Billing** and available credits. Agent creation needs initialized
    billing; real model turns consume credits shared by the Organization's Projects.
-3. Stop the offline preview, copy `.env.example` to `.env`, and set `ZOOWORK_API_KEY` and
-   the matching public `/service/v1` `ZOOWORK_BASE_URL`. Keep the key server-side and out of Git.
+3. Stop the offline preview, copy `.env.example` to `.env`, and set `ZOOWORK_API_KEY`. The SDK
+   uses the production API by default. Keep the key server-side and out of Git.
 
 From `customer-support/`:
 

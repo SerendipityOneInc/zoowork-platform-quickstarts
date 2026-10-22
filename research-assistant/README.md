@@ -6,12 +6,12 @@ The brief is the primary result. Conversation and expandable activity provide co
 
 ## Run
 
-Requires **Node 22.20+**, a Platform Project key (`zwp_live_`), and an explicit public API URL. Each demo installs independently, with no sibling application or local SDK override.
+Requires **Node 22.20+** and a Platform Project key (`zwp_live_`). The SDK uses the production API by default. Each demo installs independently, with no sibling application or local SDK override.
 
 ```sh
 npm ci
 cp .env.example .env
-# Fill ZOOWORK_API_KEY and ZOOWORK_BASE_URL. Optionally set ZOOWORK_MODEL.
+# Fill ZOOWORK_API_KEY. Optionally set ZOOWORK_MODEL.
 npm run setup
 npm run dev
 ```

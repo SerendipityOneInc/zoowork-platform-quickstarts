@@ -20,13 +20,12 @@ import { agentStatePath, loadAgentState, runningWebPid, withStateLock } from "..
 
 const NEXT_STEP: Record<string, string> = {
   platform_project_key_required: "Copy .env.example to .env and set ZOOWORK_API_KEY to your Platform Project key (zwp_live_).",
-  explicit_public_base_url_required: "Set ZOOWORK_BASE_URL in .env to your deployment's https://…/service/v1 URL.",
-  invalid_public_base_url: "ZOOWORK_BASE_URL must be an https URL ending in /service/v1.",
+  invalid_public_base_url: "ZOOWORK_BASE_URL must be an https URL ending in /service/v1, or unset to use the production API.",
   run_setup_first: "Run npm run setup first.",
   state_scope_mismatch: "This .local/ state belongs to another ZOOWORK_BASE_URL. Restore the original .env; do not delete .local/.",
   state_locked_review_before_retry: "Another setup or cleanup is running. If none is, delete .local/agent.json.lock and retry.",
   agent_label_mismatch: "The recorded Agent is not this app's. Check that .local/ and the key belong together.",
-  http_401: "Check that ZOOWORK_API_KEY was copied correctly and belongs to ZOOWORK_BASE_URL.",
+  http_401: "Check that ZOOWORK_API_KEY was copied correctly. If ZOOWORK_BASE_URL is set, the key must belong to that deployment.",
   http_402: "The Organization needs billing set up and credits. Check Billing in Platform Console.",
   http_403: "Check the key's Project and permissions.",
   http_404: "The recorded resource was not found. Check the key's Project and ZOOWORK_BASE_URL before deleting .local/.",

@@ -85,7 +85,7 @@ Probe your public endpoint with `npm run mcp:probe -- https://your-authorized-ho
 
 ```sh
 cp .env.example .env
-# Set server-side ZOOWORK_API_KEY, ZOOWORK_BASE_URL, and MCP_PUBLIC_URL.
+# Set server-side ZOOWORK_API_KEY and MCP_PUBLIC_URL.
 # APP_COOKIE_SECRET is optional; it is generated and saved when omitted.
 # Default APP_ORIGIN is http://localhost:4310.
 npm run setup

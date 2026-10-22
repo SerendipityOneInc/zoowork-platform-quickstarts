@@ -6,14 +6,12 @@ export function startupFailure(prefix: string, error: unknown): string {
   const guidance: Record<string, string> = {
     platform_project_key_required:
       "Get a Platform Project key at https://platform.zoowork.ai: sign in, select a Project, then open API Keys and create a key.\nCopy .env.example to .env and set ZOOWORK_API_KEY to the zwp_live_ key. Keep it server-side.\nThen run npm run setup followed by npm run dev. See README.md: Get your Project key.",
-    explicit_public_base_url_required:
-      "Set ZOOWORK_BASE_URL in .env to the public /service/v1 API URL. The production URL is in .env.example; a staging key needs the staging URL. Then retry the command.",
     invalid_public_base_url:
-      "Use an HTTPS API URL ending in /service/v1 with no query, credentials or fragment. See .env.example. The Platform Console URL is not the API URL.",
+      "ZOOWORK_BASE_URL is optional. Remove it to use the production API, or use an HTTPS API URL ending in /service/v1 with no query, credentials or fragment. The Platform Console URL is not the API URL.",
     run_setup_first:
       "Run npm run setup to create and start this application's Agent, then npm run dev. You do not need to create an Agent manually in the Console.",
     http_401:
-      "The Project key was rejected. Check ZOOWORK_API_KEY and its matching API deployment in .env, then restart. Get a Project key at https://platform.zoowork.ai.",
+      "The Project key was rejected. Check ZOOWORK_API_KEY in .env, and ZOOWORK_BASE_URL if you set it, then restart. Get a Project key at https://platform.zoowork.ai.",
     http_402:
       "Check Organization billing and available credits at https://platform.zoowork.ai. Model turns use the Organization wallet shared by its Projects. Retry after billing is ready.",
     http_403:

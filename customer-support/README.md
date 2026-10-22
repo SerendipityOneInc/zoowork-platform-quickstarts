@@ -47,13 +47,12 @@ Edit `.env` in your editor before continuing:
 
 ```dotenv
 ZOOWORK_API_KEY=zwp_live_replace_with_your_project_key
-ZOOWORK_BASE_URL=https://clawapi.ecap.gsmo.ai/service/v1
 PORT=4600
 ```
 
-The base URL above is the production public API. Use the API deployment that issued your key;
-[authorized staging](../docs/PLATFORM.md#staging) uses a different URL. The Console website URL
-is not an API base URL. `.env` is ignored by Git and loaded by the setup/server commands.
+The SDK connects to the production public API by default. Set `ZOOWORK_BASE_URL` only for
+another deployment, such as [authorized staging](../docs/PLATFORM.md#staging); the Console website
+URL is not an API base URL. `.env` is ignored by Git and loaded by the setup/server commands.
 `ZOOWORK_MODEL` is optional; leave it empty to use the Platform default model.
 
 ```sh
@@ -84,9 +83,9 @@ Startup errors include a safe error code and the next action, without printing t
 | Message | What to do |
 | --- | --- |
 | `platform_project_key_required` | Get a Project key in [Platform Console](https://platform.zoowork.ai), copy `.env.example` to `.env`, and fill `ZOOWORK_API_KEY` with the `zwp_live_` key. |
-| `explicit_public_base_url_required` / `invalid_public_base_url` | Set `ZOOWORK_BASE_URL` to your deployment's HTTPS `/service/v1` URL. Use `.env.example` for the production URL. |
+| `invalid_public_base_url` | Remove `ZOOWORK_BASE_URL` to use the production API, or set it to your deployment's HTTPS `/service/v1` URL. |
 | `run_setup_first` | Run `npm run setup`, then `npm run dev`. Setup creates the Agent for you. |
-| `http_401` | Check that the key was copied correctly, is active and belongs to the configured API deployment. Restart after editing `.env`. |
+| `http_401` | Check that the key was copied correctly and is active. If `ZOOWORK_BASE_URL` is set, the key must belong to that deployment. Restart after editing `.env`. |
 | `http_402` | Check Organization billing and available credits in the Console before retrying. |
 | `http_403` | Check your account access, selected Project and key permissions. Recorded resources must use the same Project and deployment. |
 | `http_400` during setup | Check account setup, Organization billing and the selected model. This code can have several causes; retain `.local` state while investigating. |

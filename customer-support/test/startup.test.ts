@@ -38,9 +38,14 @@ test("fresh setup and server commands explain missing configuration without crea
       assert.match(result.stderr, /npm run setup/);
     }
     const key = "zwp_live_synthetic_first_run_key";
-    const missingUrl = run("platform.ts", ["setup"], { ZOOWORK_API_KEY: key });
-    assert.match(missingUrl.stderr, /Set ZOOWORK_BASE_URL/);
-    assert.ok(!missingUrl.stderr.includes(key));
+    const invalidUrl = run("platform.ts", ["setup"], {
+      ZOOWORK_API_KEY: key,
+      ZOOWORK_BASE_URL: "http://synthetic.example/service/v1",
+    });
+    assert.equal(invalidUrl.status, 1);
+    assert.match(invalidUrl.stderr, /invalid_public_base_url/);
+    assert.match(invalidUrl.stderr, /Remove it to use the production API/);
+    assert.ok(!invalidUrl.stderr.includes(key));
     const missingAgent = run("server.ts", [], {
       ZOOWORK_API_KEY: key,
       ZOOWORK_BASE_URL: "https://synthetic.example/service/v1",

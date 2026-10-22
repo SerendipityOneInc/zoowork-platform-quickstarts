@@ -3,7 +3,7 @@ import assert from 'node:assert/strict'
 import { mkdtemp, readFile, rm } from 'node:fs/promises'
 import { join } from 'node:path'
 import { tmpdir } from 'node:os'
-import { type AgentRecord, type ZooworkClient, ZooworkError } from '@zoowork-ai/sdk'
+import { type AgentRecord, DEFAULT_BASE_URL, type ZooworkClient, ZooworkError } from '@zoowork-ai/sdk'
 import { cleanupAgent, loadState, newState, readConfig, requireStaging, safeError, setupAgent, STAGING_URL, withStateLock } from '../src/platform.js'
 const config = { apiKey: 'zwp_live_synthetic_not_a_real_key', baseUrl: STAGING_URL }
 async function temp(action: (path: string) => Promise<void>) {
@@ -26,12 +26,15 @@ function fake(state: ReturnType<typeof newState>, failStop = false) {
 }
 test('staging smoke refuses production and missing confirmation', () => {
   assert.throws(() => requireStaging(config, false), /staging_confirmation_required/)
-  assert.throws(() => requireStaging({ ...config, baseUrl: 'https://clawapi.ecap.gsmo.ai/service/v1' }, true), /staging_endpoint_required/)
+  assert.throws(() => requireStaging(readConfig({ ZOOWORK_API_KEY: config.apiKey }), true), /staging_endpoint_required/)
   requireStaging(config, true)
 })
 test('only Project keys and plain public API URLs are accepted', () => {
   assert.throws(() => readConfig({ ZOOWORK_API_KEY: 'synthetic-invalid', ZOOWORK_BASE_URL: STAGING_URL }), /platform_project_key_required/)
   assert.throws(() => readConfig({ ZOOWORK_API_KEY: config.apiKey, ZOOWORK_BASE_URL: STAGING_URL + '?key=secret' }), /invalid_public_base_url/)
+  assert.throws(() => readConfig({ ZOOWORK_API_KEY: config.apiKey, ZOOWORK_BASE_URL: 'not a url' }), /invalid_public_base_url/)
+  assert.deepEqual(readConfig({ ZOOWORK_API_KEY: config.apiKey }), { apiKey: config.apiKey, baseUrl: DEFAULT_BASE_URL })
+  assert.deepEqual(readConfig({ ZOOWORK_API_KEY: config.apiKey, ZOOWORK_BASE_URL: ' ' }), { apiKey: config.apiKey, baseUrl: DEFAULT_BASE_URL })
   assert.deepEqual(readConfig({ ZOOWORK_API_KEY: config.apiKey, ZOOWORK_BASE_URL: STAGING_URL + '/' }), config)
 })
 test('setup persists exact create state and reuses the Agent on restart', async () => temp(async path => {
