@@ -82,22 +82,6 @@ PLAYWRIGHT_CHANNEL=chrome npm run test:browser
 
 Browser tests start their own fixture server and verify desktop/mobile creation, refresh, follow-up, versions, exact Markdown download, history and isolation. Do not run `dev:fixture` on the same port during these tests. Screenshots and traces stay ignored.
 
-## Authorized staging verification
-
-With separate human authorization, inject a staging Project key server-side and set `ZOOWORK_BASE_URL=https://claw-interface.ecap.yesy.live/service/v1`:
-
-```sh
-npm run test:research-staging
-# Session regression: tools disabled, two short text turns.
-npm run test:research-staging -- --session-only
-# Original lifecycle-only smoke:
-npm run test:staging -- --confirm-staging
-```
-
-The research check creates at most one temporary Agent, two Sessions and two user turns. Main phase: 180 seconds. Cleanup: 60 seconds. It never retries a billable input. Default mode checks real search/fetch, cited brief, durable replay, Markdown export, continuation and an empty independent Session. Session-only mode checks continuation/context with a tiny output budget; it does not prove search. A flag is not authorization. These commands refuse production.
-
-Cleanup verifies recorded Agent labels and Session metadata. Failed or ambiguous creation/cleanup preserves `.local/research-smoke-*.json` and conversation records, and prints the exact recovery command. It never scans a Project to choose deletion targets. See [actual validation](VALIDATION.md).
-
 ## Clean up
 
 ```sh

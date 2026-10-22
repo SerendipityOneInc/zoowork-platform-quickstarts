@@ -186,25 +186,8 @@ before removing that lock. Never remove Agent records or databases to bypass unc
 ambiguous Session creation, restart the app and use **Recover conversation** with the same Project
 key to replay the recorded create body/key before attempting cleanup.
 
-## Authorized staging verification
-
-Live tests require explicit authorization in addition to the confirmation flag.
-Only the exact staging endpoint is accepted. There is no paid-input retry or production fallback.
-
-```sh
-# Inject an authorized staging Project key and staging base URL into the server process.
-npm run test:feature-staging -- --confirm-staging
-```
-
-The feature check creates **one temporary Agent and one Session**, uses **four user turns**, checks
-real order/shipment Custom Tools, a follow-up, cancellation, confirmation, pending-call restart and
-idempotency, then deletes the recorded resources. The main request phase is bounded to 180 seconds,
-with a separate cleanup budget. Failure keeps a private recovery record/database and prints its exact
-cleanup command. No credentials enter Git or the database.
-
-`npm run test:staging -- --confirm-staging` remains the smaller lifecycle-only smoke; it does not
-prove the application's Custom Tool workflow. Sources and licenses are recorded in
-[references](docs/REFERENCES.md). Platform boundaries remain in [the shared contract](../docs/PLATFORM.md).
+Sources and licenses are recorded in [references](docs/REFERENCES.md). Platform boundaries and
+the maintainers' staging checks are in [the shared contract](../docs/PLATFORM.md).
 
 ## Main files
 
@@ -217,4 +200,4 @@ prove the application's Custom Tool workflow. Sources and licenses are recorded 
 | `public/` | English responsive workbench |
 | `src/platform.ts`, `src/cleanup.ts` | Agent setup, resource scope and recorded-resource cleanup |
 | `test/`, `e2e/` | Offline behavior and browser regressions |
-| `scripts/feature-staging.ts` | Bounded, authorized real feature verification |
+| `scripts/feature-staging.ts` | Maintainers' staging check; see [the shared contract](../docs/PLATFORM.md#customer-support) |

@@ -158,21 +158,7 @@ npm run test:ui
 
 This test-only harness uses mock Platform lifecycle/events/approvals and an actual HTTP MCP catalog. It needs no key, is excluded from the production bundle, and never serves as a live fallback. It demonstrates shopping, denial, approved comparison, budget follow-ups, reload, and responsive layout. It is not proof of deployed Platform MCP or approval behavior.
 
-## Staging and cleanup
-
-Run live checks only with explicit authorization. Staging also needs `ZOOWORK_BASE_URL=https://claw-interface.ecap.yesy.live/service/v1`; see [Platform and staging](../docs/PLATFORM.md#staging). The foundation smoke uses one temporary Agent/Session and one model turn without the catalog, so it is not feature evidence:
-
-```sh
-npm run test:staging -- --confirm-staging
-```
-
-Feature verification needs an authorized public endpoint and `MCP_AUDIT_DB` for that same MCP instance, to verify zero execution after denial:
-
-```sh
-npm run test:feature-staging -- --confirm-staging
-```
-
-This creates at most one temporary Agent, two Sessions, and four user turns: search plus separately approved details/comparison, a lower-budget follow-up, search plus denied details, and an unavailable endpoint on the same test Agent. Paid turns are never retried automatically. Missing approval, receipt, comparison, or audit correlation fails the check. Actual staging passed on 2026-10-02; SDK events and server audit agreed on zero denied-tool execution.
+## Cleanup
 
 ```sh
 # Stop the local Web app before cleaning recorded Sessions and Agent.
