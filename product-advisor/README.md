@@ -6,7 +6,7 @@ The interface, Agent responses, examples, catalog, and documentation are in Engl
 
 ## Install and check offline
 
-Requires Node **22.20+** and npm. This directory installs independently, without sibling repositories or a local SDK override. The full local demo also requires `cloudflared` to make the bundled MCP accessible to the cloud Platform. It needs no additional account or key. On macOS run `brew install cloudflared`; see the [official installation instructions](https://developers.cloudflare.com/tunnel/get-started/) for other systems.
+Requires Node.js **22 or later**, on the latest security release of your line, and npm. This directory installs independently, without sibling repositories or a local SDK override. The full local demo also requires `cloudflared` to make the bundled MCP accessible to the cloud Platform. It needs no additional account or key. On macOS run `brew install cloudflared`; see the [official installation instructions](https://developers.cloudflare.com/tunnel/get-started/) for other systems.
 
 ```sh
 npm ci

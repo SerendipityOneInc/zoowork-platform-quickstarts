@@ -21,7 +21,7 @@ companion workspace for the [Publish your Agent guide](https://zoowork.ai/guides
 
 ## Run an application
 
-Use **Node 22.20+** and npm.
+Use **Node.js 22 or later**, on the latest security release of your line, and npm. CI and each app's `.node-version` use Node.js 24.22.1.
 
 1. Sign in to [Platform Console](https://platform.zoowork.ai), select a Project and open
    **API Keys** to create a `zwp_live_` key. Copy it when it is shown.

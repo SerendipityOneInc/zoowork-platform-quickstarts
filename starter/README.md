@@ -21,7 +21,7 @@ deployment setup**, and it only answers on `localhost`. See [Before you go publi
 
 ## Requirements
 
-- Node.js **22.20 or newer** and npm.
+- Node.js **22 or later**, on the latest security release of your line, and npm.
 - A ZooWork Platform **Project key** (`zwp_live_…`) and Organization credits. Step 1 shows
   how to get them.
 
