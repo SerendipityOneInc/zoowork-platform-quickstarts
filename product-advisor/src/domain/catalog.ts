@@ -20,7 +20,7 @@ export const productSchema = z
     name: z.string().min(1).max(80),
     priceMinor: z.number().int().nonnegative().max(100_000_000),
     currency: z.literal("CNY"),
-    specs: z.record(scalarSchema),
+    specs: z.record(z.string(), scalarSchema),
     availability: z.enum(["available", "unavailable"]),
     description: z.string().max(600),
     imagePath: z.string().regex(/^\/products\/[a-z]+\.svg$/),
@@ -134,7 +134,7 @@ export const matrixRowSchema = z
     key: z.string(),
     label: z.string(),
     unit: z.string(),
-    values: z.record(scalarSchema),
+    values: z.record(z.string(), scalarSchema),
   })
   .strict();
 export const evidenceSchema = z

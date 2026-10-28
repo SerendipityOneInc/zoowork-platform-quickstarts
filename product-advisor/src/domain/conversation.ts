@@ -285,7 +285,7 @@ export const userMessageSchema = z
       .object({
         category: z.enum(["laptop", "monitor", "headphones"]).optional(),
         maxPriceMinor: z.number().int().positive().max(100_000_000).optional(),
-        filters: z.record(z.union([z.number(), z.boolean()])).optional(),
+        filters: z.record(z.string(), z.union([z.number(), z.boolean()])).optional(),
       })
       .optional(),
   })
