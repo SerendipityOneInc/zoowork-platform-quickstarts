@@ -1,4 +1,3 @@
-// esbuild recipe adapted from Anthropic's MIT src/main.ts; retained license in third-party/.
 import { build } from 'esbuild'
 import { cp, mkdir } from 'node:fs/promises'
 import { fileURLToPath } from 'node:url'

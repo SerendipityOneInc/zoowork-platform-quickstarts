@@ -1,5 +1,3 @@
-// Adapted from anthropics/claude-quickstarts (MIT), managed-agents/chat-sdk/src/bot.ts.
-// Snapshot and retained license: ../REFERENCES.md and ../third-party/anthropic-MIT.txt.
 import { Chat, ConsoleLogger } from 'chat'
 import { createWebAdapter } from '@chat-adapter/web'
 import { createMemoryState } from '@chat-adapter/state-memory'

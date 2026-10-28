@@ -1,5 +1,3 @@
-// Reading/progress structure adapted from Anthropic's MIT Chat SDK quickstart.
-// Source commit and paths: ../REFERENCES.md; license: ../third-party/anthropic-MIT.txt.
 import { assistantText, messageText, runOutcome, toolCall, type SessionEvent } from '@zoowork-ai/sdk'
 
 export interface MessageView { id: string; role: 'user' | 'assistant'; text: string }

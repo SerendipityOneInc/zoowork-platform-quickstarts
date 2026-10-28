@@ -1,4 +1,3 @@
-// Local Hono host adapted from Anthropic's MIT quickstart; see ../REFERENCES.md.
 import { serve } from '@hono/node-server'
 import { Hono } from 'hono'
 import { readFile } from 'node:fs/promises'
