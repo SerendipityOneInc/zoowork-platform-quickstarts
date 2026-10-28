@@ -1,4 +1,3 @@
-/* Reading layout adapted from Anthropic's MIT app.css; see REFERENCES.md. */
 :root { font-family: system-ui, -apple-system, 'Segoe UI', sans-serif; color: #252820; background: #f7f6f2; font-synthesis: none; --muted:#61675d; --line:#dedfd5; --accent:#36523d; --paper:#fffefa; }
 * { box-sizing:border-box; }
 body { margin:0; }

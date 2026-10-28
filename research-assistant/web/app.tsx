@@ -1,5 +1,3 @@
-// React/useChat/sidebar structure adapted from Anthropic's MIT Chat SDK sample.
-// Source and license: ../REFERENCES.md, ../third-party/anthropic-MIT.txt.
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { createRoot } from 'react-dom/client'
 import Markdown from 'react-markdown'

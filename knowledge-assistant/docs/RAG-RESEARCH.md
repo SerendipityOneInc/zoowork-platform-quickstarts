@@ -18,22 +18,6 @@ This is a design option, not a verified integration in this PR.
 Borrow adapter separation, source citations and small evaluation datasets. Keep Platform
 as the Agent runtime when adapting the example.
 
-## Claude
-
-[RAG cookbook](https://github.com/anthropics/claude-cookbooks/tree/main/capabilities/retrieval_augmented_generation)
-contains a traditional retrieval notebook and evaluation materials. It is a recipe, not
-a complete browser starter.
-
-[Managed Agents Knowledge Wiki](https://github.com/anthropics/claude-quickstarts/tree/main/managed-agents/knowledge-wiki)
-extracts documents into a memory-store wiki, resolves questions, consolidates it and
-answers with provenance. Latest checked path commit: `09bdac604c1709ff1e38175e832b5f8124f0e63e`,
-2026-09-22. Consolidation requires gated Dreaming access and a preview SDK. This is not
-an adapter for an existing third-party vector store. Borrow provenance and explicit
-missing-information behavior, rather than assuming Platform offers the same memory API.
-
-[anthropic-retrieval-demo](https://github.com/anthropics/anthropic-retrieval-demo) has
-older external search examples but is archived. It is historical reference.
-
 ## Discuss before implementation
 
 1. Connect an existing retrieval service, or teach ingestion from documents too?
