@@ -16,7 +16,7 @@ export class ApiError extends Error {
   }
 }
 
-const UNREACHABLE = "Could not reach the app server. Check that npm run dev is still running.";
+const UNREACHABLE = "Could not reach the app server. Check that npm run dev is still running and that this computer is online.";
 
 async function call<T>(path: string, fallback: string, init: { method?: string; body?: unknown } = {}): Promise<T> {
   let response: Response;

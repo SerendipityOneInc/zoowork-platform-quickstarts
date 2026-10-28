@@ -11,6 +11,8 @@ export type AppNotice = {
   message: string;
   /** A message that was not sent and could not be put back in the composer. */
   unsentText?: string;
+  /** The operation that failed (`archive`, `rename`, ...). Its next success clears the notice. */
+  op?: string;
 };
 
 const notices = new Map<string, AppNotice>();
@@ -22,6 +24,15 @@ export function setAppNotice(threadId: string, notice: AppNotice | null): void {
   if (notice) notices.set(threadId, notice);
   else notices.delete(threadId);
   for (const l of listeners) l();
+}
+
+/** An operation succeeded: clear the notice its earlier failure left, and nothing else. */
+export function clearAppNotice(threadId: string, op: string): void {
+  if (notices.get(threadId)?.op === op) setAppNotice(threadId, null);
+}
+
+export function getAppNotice(threadId: string): AppNotice | null {
+  return notices.get(threadId) ?? null;
 }
 
 const subscribe = (listener: () => void) => {

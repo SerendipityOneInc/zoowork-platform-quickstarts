@@ -4,16 +4,9 @@ import type { ToolCallMessagePartProps, ToolCallMessagePartStatus } from "@assis
 import { useEffect, useState, type ReactNode } from "react";
 import { ToolFallback } from "@/components/assistant-ui/elements/tool-fallback.aui";
 import type { ToolActivity } from "@/lib/chat/reducer";
+import { blockedDetail, blockedLabel } from "@/lib/chat/tool-outcome";
 import { looksLikeJson } from "@/lib/chat/tool-preview";
 import { ApprovalBar } from "./approval-bar";
-
-const BLOCKED: Record<string, string> = {
-  "approval-denied": "Not run: the call was denied.",
-  "approval-timeout": "Not run: the approval request timed out.",
-  "approval-cancelled": "Not run: the approval request was cancelled.",
-  interrupted: "Not run: the reply was stopped.",
-  unfinished: "The run ended before this call returned.",
-};
 
 /** The reducer's state for this call, carried on the part as its artifact. */
 export const toolActivity = (props: ToolCallMessagePartProps): ToolActivity | undefined =>
@@ -67,14 +60,16 @@ export function ToolCard(props: ToolCardProps) {
 
   return (
     <ToolFallback.Root open={open} onOpenChange={setOpen}>
-      <ToolFallback.Trigger toolName={toolName} status={triggerStatus(tool, status)} />
+      <ToolFallback.Trigger
+        toolName={toolName}
+        status={triggerStatus(tool, status)}
+        {...(tool?.phase === "blocked" ? { label: blockedLabel(tool.blockedReason) } : {})}
+      />
       <ToolFallback.Content>
         {details ?? <ToolFallback.Args argsText={argsText} />}
         {tool?.approvalId && <ApprovalBar approvalId={tool.approvalId} />}
         {tool?.phase === "blocked" && (
-          <p className="text-muted-foreground text-xs">
-            {BLOCKED[tool.blockedReason ?? ""] ?? `Not run (${tool.blockedReason ?? "blocked"}).`}
-          </p>
+          <p className="text-muted-foreground text-xs">{blockedDetail(tool.blockedReason)}</p>
         )}
         {tool?.phase === "failed" && <p className="text-destructive text-xs">The tool returned an error.</p>}
         {tool?.phase === "succeeded" && preview ? preview : null}

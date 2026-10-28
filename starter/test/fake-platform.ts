@@ -194,7 +194,9 @@ export function createFakePlatform(options: FakePlatformOptions = {}): ChatClien
           s.run.aborted = true;
           s.run.approval?.resolve("interrupted");
           const echo = emit(s, "user.interrupt", {});
-          receipts.push({ id: echo.id, type: "user.interrupt", accepted: true, seq: echo.seq });
+          const receipt: PostEventReceipt = { id: echo.id, type: "user.interrupt", accepted: true, seq: echo.seq };
+          if (key) s.keys.set(key, receipt);
+          receipts.push(receipt);
         } else {
           throw new ZooworkError(400, "unsupported event type in the fake", "invalid_request");
         }

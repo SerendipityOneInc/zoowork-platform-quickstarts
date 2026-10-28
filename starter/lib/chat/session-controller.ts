@@ -24,6 +24,12 @@ export interface SessionSnapshot {
   connection: Connection;
   /** The stream has not delivered the Session's history yet. */
   loading: boolean;
+  /**
+   * The history replay is still arriving: true from a fresh connect until the
+   * stream has been quiet for a moment. The thread keeps to the latest
+   * message meanwhile.
+   */
+  replaying: boolean;
   /** A message was accepted and its run has not started yet. */
   awaitingRun: boolean;
   /** A stop was requested and the run has not ended yet. */
@@ -39,6 +45,7 @@ export const initialSnapshot: SessionSnapshot = {
   outgoing: [],
   connection: "idle",
   loading: true,
+  replaying: false,
   awaitingRun: false,
   stopping: false,
   deciding: {},
@@ -49,6 +56,8 @@ export const initialSnapshot: SessionSnapshot = {
 const START_WARNING_MS = 30_000;
 /** An empty Session sends no history; stop showing it as loading after this long. */
 const EMPTY_HISTORY_MS = 800;
+/** The replay counts as done once the stream has been quiet this long. */
+const REPLAY_SETTLE_MS = 400;
 const FLUSH_MS = 30;
 const RETRY_MAX_MS = 15_000;
 
@@ -69,7 +78,10 @@ export class SessionController {
   private retryTimer: ReturnType<typeof setTimeout> | undefined;
   private loadingTimer: ReturnType<typeof setTimeout> | undefined;
   private startTimer: ReturnType<typeof setTimeout> | undefined;
+  private settleTimer: ReturnType<typeof setTimeout> | undefined;
   private retries = 0;
+  /** The conversation is on screen. When it is not, the stream stays open only while a run is in flight. */
+  private foreground = false;
   /** A send that failed. Sending the same text again reuses its key, so it is delivered at most once. */
   private failedSend: { text: string; key: string } | null = null;
   /** Kept across a failed interrupt so the retry is the same request. */
@@ -91,34 +103,63 @@ export class SessionController {
   private update(patch: Partial<SessionSnapshot>) {
     this.snapshot = { ...this.snapshot, ...patch };
     for (const listener of this.listeners) listener();
+    // A conversation in the background stops following once its run is over.
+    if (this.wanted && !this.foreground && !isBusy(this.snapshot)) this.close();
   }
 
-  /** Start (or resume) following the Session. */
+  /** Whether the stream is followed (on screen, or in the background while a run is in flight). */
+  get following(): boolean {
+    return this.wanted;
+  }
+
+  /** Start (or resume) following the Session, as the conversation on screen. */
   open() {
+    this.foreground = true;
     this.wanted = true;
     if (!this.source && !this.retryTimer) this.connect();
+  }
+
+  /**
+   * The conversation left the screen. A run in flight keeps the stream open,
+   * so the sidebar still shows it working, until the run ends; otherwise the
+   * stream closes now.
+   */
+  release() {
+    this.foreground = false;
+    if (!isBusy(this.snapshot)) this.close();
   }
 
   /** Stop following. The Agent keeps working; open() resumes from the last cursor. */
   close() {
     this.wanted = false;
+    this.foreground = false;
     this.source?.close();
     this.source = null;
     clearTimeout(this.retryTimer);
     this.retryTimer = undefined;
     clearTimeout(this.loadingTimer);
+    clearTimeout(this.settleTimer);
     this.flush();
-    this.update({ connection: "idle" });
+    this.update({ connection: "idle", replaying: false });
+  }
+
+  /** Mark the replay done once no event has arrived for a moment. */
+  private settleLater() {
+    if (!this.snapshot.replaying) return;
+    clearTimeout(this.settleTimer);
+    this.settleTimer = setTimeout(() => this.update({ replaying: false }), REPLAY_SETTLE_MS);
   }
 
   private connect() {
     this.retryTimer = undefined;
     const source = new EventSource(api.streamUrl(this.sessionId, this.cursor));
     this.source = source;
-    this.update({ connection: this.cursor ? "reconnecting" : "connecting" });
+    // Without a cursor the stream replays the whole history first.
+    this.update({ connection: this.cursor ? "reconnecting" : "connecting", ...(this.cursor ? {} : { replaying: true }) });
     source.onopen = () => {
       this.retries = 0;
       this.update({ connection: "live" });
+      this.settleLater();
       if (this.snapshot.loading) {
         clearTimeout(this.loadingTimer);
         this.loadingTimer = setTimeout(() => {
@@ -169,6 +210,7 @@ export class SessionController {
       this.update({
         connection: "closed",
         loading: false,
+        replaying: false,
         notice: describe(envelope.code, "This conversation can no longer be loaded"),
       });
     } else {
@@ -204,6 +246,7 @@ export class SessionController {
     const deciding = Object.fromEntries(Object.entries(this.snapshot.deciding).filter(([id]) => pending.has(id)));
     if (Object.keys(deciding).length !== Object.keys(this.snapshot.deciding).length) patch.deciding = deciding;
     this.update(patch);
+    this.settleLater();
   }
 
   /**

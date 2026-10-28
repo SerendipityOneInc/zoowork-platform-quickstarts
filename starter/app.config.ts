@@ -17,5 +17,7 @@ export const appConfig: AppConfig = {
   ],
   accentColor: "#5755c6",
   accentForeground: "#ffffff",
+  // Optional logo from public/, e.g. "/logo.svg". Without it: the first letter of name.
+  // icon: "/logo.svg",
   footnote: "Conversations are stored as ZooWork Sessions. Replies can be wrong; check important facts.",
 };

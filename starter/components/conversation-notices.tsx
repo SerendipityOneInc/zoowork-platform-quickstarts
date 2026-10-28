@@ -8,10 +8,11 @@ import { useChat } from "@/lib/chat/runtime-provider";
 /**
  * Notices for the open conversation, shown above the composer: a failure
  * that kept an unsent message (with Restore), the last stream or action
- * error, and the read-only state of an archived conversation.
+ * error, progress of a first message or a stop, and the read-only state of
+ * an archived conversation.
  */
 export function ConversationNotices() {
-  const { threadId, session, snapshot, controller, restoreDraft } = useChat();
+  const { threadId, session, snapshot, controller, starting, restoreDraft } = useChat();
   const notice = useAppNotice(threadId);
 
   return (
@@ -43,6 +44,11 @@ export function ConversationNotices() {
             <XIcon />
           </Button>
         </div>
+      )}
+      {starting && (
+        <p role="status" className="text-muted-foreground shimmer px-1 text-xs">
+          Starting conversation…
+        </p>
       )}
       {snapshot.stopping && (
         <p role="status" className="text-muted-foreground px-1 text-xs">

@@ -19,6 +19,11 @@ export type ComposerSend = {
   restoreText: (text: string) => boolean;
   /** Show or clear this conversation's page notice. */
   setNotice: (notice: AppNotice | null) => void;
+  /**
+   * Show the first message of a new chat as a pending bubble while its
+   * Session is created (the composer stays disabled), or clear it with null.
+   */
+  setStarting?: (text: string | null) => void;
 };
 
 /** What the composer looks like when a send fails. */
@@ -45,15 +50,21 @@ export function restoreIfSafe(target: ComposerTarget, unsent: string): boolean {
  * in the conversation's notice with a Restore action, rather than losing it
  * as an unhandled rejection. Sending the same text again reuses the failed
  * attempt's idempotency key, so it cannot be delivered twice.
+ *
+ * A new chat's first message shows at once as a pending bubble while the
+ * Session is created. On failure the bubble goes away before the text is
+ * restored, so the text ends up in exactly one place.
  */
 export async function sendFromComposer(input: ComposerSend): Promise<boolean> {
-  const { text, ensureSession, send, restoreText, setNotice } = input;
+  const { text, ensureSession, send, restoreText, setNotice, setStarting = () => {} } = input;
   setNotice(null);
   let sessionId = input.sessionId;
   if (!sessionId) {
+    setStarting(text);
     try {
       sessionId = await ensureSession(text);
     } catch (error) {
+      setStarting(null);
       const message =
         error instanceof ApiError
           ? error.message
@@ -62,8 +73,12 @@ export async function sendFromComposer(input: ComposerSend): Promise<boolean> {
       return false;
     }
   }
+  // send() shows its own outgoing bubble before it awaits, so the pending
+  // one is cleared only after that, without a frame where neither shows.
+  const sending = send(sessionId, text);
+  if (!input.sessionId) setStarting(null);
   try {
-    await send(sessionId, text);
+    await sending;
     return true;
   } catch {
     // The controller shows why. Keep the text where the user can get it back.

@@ -20,9 +20,29 @@ export const NOTICES: Record<string, string> = {
   http_403: "The Project key cannot access this Agent. Check the key and its Project.",
   http_409: "The Agent is busy or the conversation changed. Try again in a moment.",
   http_429: "Rate limited. Wait a moment, then try again.",
-  timeout_or_cancelled: "The request timed out. Try again.",
 };
 
+/**
+ * The app server could not get an answer from ZooWork Platform. Safe calls
+ * were already retried once, so this is usually a slow or broken connection
+ * between this computer and the Platform, not a problem in the app.
+ */
+const UNREACHABLE: Record<string, string> = {
+  request_failed: "the app could not reach ZooWork Platform. Check your internet connection and try again.",
+  timeout_or_cancelled: "ZooWork Platform did not answer in time. Check your internet connection and try again.",
+  http_502: "ZooWork Platform is temporarily unavailable. Try again in a moment.",
+  http_503: "ZooWork Platform is temporarily unavailable. Try again in a moment.",
+  http_504: "ZooWork Platform did not answer in time. Try again in a moment.",
+};
+
+/** Connection-class codes: worth a second look before reporting them, and worth retrying. */
+export const isTransientCode = (code: string | undefined) => !!code && (code in UNREACHABLE || code === "network_error");
+
 export function describe(code: string | undefined, fallback: string): string {
-  return (code && NOTICES[code]) || (code ? `${fallback} (${code})` : fallback);
+  if (code && NOTICES[code]) return NOTICES[code];
+  if (code && UNREACHABLE[code]) {
+    const reason = UNREACHABLE[code];
+    return `${fallback}: ${reason} (${code})`;
+  }
+  return code ? `${fallback} (${code})` : fallback;
 }

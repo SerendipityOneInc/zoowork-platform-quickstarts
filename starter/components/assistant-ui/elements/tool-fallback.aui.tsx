@@ -142,12 +142,15 @@ function ToolFallbackTrigger({
   toolName,
   status,
   responseDeliveryStatus,
+  label: labelOverride,
   className,
   ...props
 }: React.ComponentProps<typeof CollapsibleTrigger> & {
   toolName: string;
   status?: ToolCallMessagePartStatus;
   responseDeliveryStatus?: ToolCallMessagePart["responseDeliveryStatus"];
+  /** Replaces the status word, such as "Denied" for a call the user denied. */
+  label?: string;
 }) {
   const statusType = status?.type ?? "complete";
   const isRunning = statusType === "running";
@@ -156,7 +159,8 @@ function ToolFallbackTrigger({
 
   const Icon = statusIconMap[statusType];
   const label =
-    responseDeliveryStatus === "queued"
+    labelOverride ??
+    (responseDeliveryStatus === "queued"
       ? "Reply queued, not sent yet"
       : statusType === "running"
         ? "Running tool"
@@ -164,7 +168,7 @@ function ToolFallbackTrigger({
           ? "Waiting on tool"
           : statusType === "incomplete"
             ? `${isCancelled ? "Cancelled" : "Failed"} tool`
-            : "Used tool";
+            : "Used tool");
 
   return (
     <CollapsibleTrigger

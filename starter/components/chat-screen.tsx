@@ -8,10 +8,22 @@ import { Sidebar } from "@/components/sidebar";
 import { StatusBar } from "@/components/status-bar";
 import { ToolCallPart } from "@/components/tool-uis";
 import { Button } from "@/components/ui/button";
-import { ChatRuntimeProvider } from "@/lib/chat/runtime-provider";
+import { ChatRuntimeProvider, useChat } from "@/lib/chat/runtime-provider";
 import { cn } from "@/lib/utils";
 
 const THREAD_COMPONENTS = { ToolFallback: ToolCallPart, BeforeComposer: ConversationNotices };
+
+/** The open conversation. It stays at the latest message while its history is still arriving. */
+function ConversationThread() {
+  const { snapshot, starting } = useChat();
+  return (
+    <Thread
+      components={THREAD_COMPONENTS}
+      autoScroll={snapshot.replaying}
+      disabledPlaceholder={starting ? "Starting conversation…" : "This conversation is read-only."}
+    />
+  );
+}
 
 /** The page: conversation sidebar, status bar and the open conversation. */
 export function ChatScreen() {
@@ -53,7 +65,7 @@ export function ChatScreen() {
             }
           />
           <div className="min-h-0 flex-1">
-            <Thread components={THREAD_COMPONENTS} />
+            <ConversationThread />
           </div>
         </main>
       </div>

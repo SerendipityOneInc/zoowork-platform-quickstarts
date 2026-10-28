@@ -1,57 +1,49 @@
 "use client";
 
 import { RefreshCwIcon } from "lucide-react";
-import { useCallback, useEffect, useState, type ReactNode } from "react";
+import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
 import { Button } from "@/components/ui/button";
 import { api, ApiError } from "@/lib/chat/api";
-import { describe } from "@/lib/chat/notices";
 import { useChat } from "@/lib/chat/runtime-provider";
-import type { AppStatus } from "@/lib/chat/wire";
+import { activityOf, agentPill, initialCheck, recordPoll, statusPill, type StatusPoll, type Tone } from "@/lib/chat/status";
 import { cn } from "@/lib/utils";
 
 const POLL_MS = 60_000;
+/** A failure that may pass is checked again this soon before it is shown. */
+const RECHECK_MS = 3_000;
 
-type Shown = { tone: "ok" | "warn" | "error" | "idle"; label: string; detail?: string };
-
-function shown(status: AppStatus | null, error: string | null): Shown {
-  if (error) return { tone: "error", label: "Server unreachable", detail: error };
-  if (!status) return { tone: "idle", label: "Checking the Agent…" };
-  switch (status.agent) {
-    case "ready":
-      return { tone: "ok", label: "Agent ready" };
-    case "definition_changed":
-      return {
-        tone: "warn",
-        label: "Agent out of date",
-        detail: "agent/agent.md changed since the last setup. Run npm run setup.",
-      };
-    case "not_running":
-      return { tone: "warn", label: "Agent stopped", detail: "The Agent is not running. Run npm run setup." };
-    default:
-      return { tone: "error", label: "Agent unavailable", detail: describe(status.code, "The Agent is unavailable") };
-  }
-}
-
-const DOT: Record<Shown["tone"], string> = {
+const DOT: Record<Tone, string> = {
   ok: "bg-success",
   warn: "bg-warning",
   error: "bg-destructive",
   idle: "bg-muted-foreground/50",
 };
 
-/** Agent and Platform readiness from /api/status, the open conversation, and its stream connection. */
+/**
+ * The open conversation's title, its stream connection, and a status pill:
+ * Agent readiness from /api/status, or what the conversation is doing while
+ * the Agent is ready (lib/chat/status.ts).
+ */
 export function StatusBar({ leading }: { leading?: ReactNode }) {
-  const { session, snapshot, controller } = useChat();
-  const [status, setStatus] = useState<AppStatus | null>(null);
-  const [error, setError] = useState<string | null>(null);
+  const { session, snapshot, controller, starting } = useChat();
+  const [check, setCheck] = useState(initialCheck);
+  const checkRef = useRef(initialCheck);
+  const recheck = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
 
   const refresh = useCallback(async () => {
+    clearTimeout(recheck.current);
+    let poll: StatusPoll;
     try {
-      setStatus(await api.status());
-      setError(null);
+      poll = { status: await api.status() };
     } catch (e) {
-      setError(e instanceof ApiError ? e.message : "Could not read the app status.");
+      poll = {
+        error: e instanceof ApiError ? { code: e.code, message: e.message } : { code: "network_error", message: "Could not read the app status." },
+      };
     }
+    const { check: next, recheckSoon } = recordPoll(checkRef.current, poll);
+    checkRef.current = next;
+    setCheck(next);
+    if (recheckSoon) recheck.current = setTimeout(() => void refresh(), RECHECK_MS);
   }, []);
 
   useEffect(() => {
@@ -61,11 +53,13 @@ export function StatusBar({ leading }: { leading?: ReactNode }) {
     window.addEventListener("focus", onFocus);
     return () => {
       clearInterval(timer);
+      clearTimeout(recheck.current);
       window.removeEventListener("focus", onFocus);
     };
   }, [refresh]);
 
-  const agent = shown(status, error);
+  const agent = agentPill(check);
+  const pill = statusPill(agent, activityOf(snapshot, starting));
   const reconnecting = controller && snapshot.connection === "reconnecting";
 
   return (
@@ -85,9 +79,9 @@ export function StatusBar({ leading }: { leading?: ReactNode }) {
             Reconnecting…
           </span>
         )}
-        <span role="status" className="text-muted-foreground flex items-center gap-1.5 text-xs">
-          <span aria-hidden className={cn("size-2 rounded-full", DOT[agent.tone])} />
-          {agent.label}
+        <span role="status" className="text-muted-foreground flex shrink-0 items-center gap-1.5 text-xs">
+          <span aria-hidden className={cn("size-2 rounded-full", DOT[pill.tone], pill.active && "animate-pulse")} />
+          {pill.label}
         </span>
       </div>
       {agent.detail && (

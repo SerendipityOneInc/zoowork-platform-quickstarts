@@ -1,6 +1,5 @@
 @import "tailwindcss";
 @import "tw-animate-css";
-@import "shadcn/tailwind.css";
 @import "tw-shimmer";
 
 @custom-variant dark (&:is(.dark *));
@@ -8,7 +7,9 @@
 /*
  * ZooWork brand tokens (the zoowork.ai docs theme), mapped onto the shadcn
  * variables the components use. Controls use the neutral ink colour, links
- * and highlights the brand purple. app.config.ts can override --primary.
+ * and highlights the brand colour. app.config.ts's accentColor sets
+ * --primary and --zw-brand on <html> (app/layout.tsx), so buttons and links
+ * follow it; dark mode mixes links with white so they stay readable.
  */
 
 :root {
@@ -193,6 +194,12 @@
   }
 }
 
+/*
+ * State variants the shadcn/ui and assistant-ui components use (from the
+ * shadcn package's tailwind.css, inlined so the CLI is not a dependency).
+ */
 @custom-variant data-open (&:where([data-state="open"], [data-open]:not([data-open="false"])));
 
 @custom-variant data-closed (&:where([data-state="closed"], [data-closed]:not([data-closed="false"])));
+
+@custom-variant data-active (&:where([data-state="active"], [data-active]:not([data-active="false"])));

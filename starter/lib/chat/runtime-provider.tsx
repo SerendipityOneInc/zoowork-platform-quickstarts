@@ -2,8 +2,9 @@
 
 // Connects this app's conversations to assistant-ui. The thread list is the
 // Session index from /api/sessions; the open thread's messages come from its
-// SessionController, folded by the reducer. Only the open conversation keeps
-// an event stream; switching away closes it and switching back resumes from
+// SessionController, folded by the reducer. The open conversation keeps an
+// event stream; one the user switches away from keeps its stream only while
+// its run is in flight (controller-pool.ts), and switching back resumes from
 // the last cursor.
 
 import {
@@ -28,10 +29,11 @@ import {
 } from "react";
 import { appConfig } from "@/app.config";
 import { ApiError } from "./api";
-import { setAppNotice } from "./app-notice";
+import { clearAppNotice, setAppNotice } from "./app-notice";
+import { ControllerPool } from "./controller-pool";
 import { toThreadMessages } from "./reducer";
 import { restoreIfSafe, sendFromComposer } from "./send-message";
-import { initialSnapshot, isBusy, SessionController, type SessionSnapshot } from "./session-controller";
+import { initialSnapshot, isBusy, type SessionController, type SessionSnapshot } from "./session-controller";
 import { SessionIndex, type IndexSnapshot } from "./session-index";
 import { MESSAGE_MAX, type SessionSummary } from "./wire";
 
@@ -42,6 +44,8 @@ type ChatContextValue = {
   session: SessionSummary | null;
   controller: SessionController | null;
   snapshot: SessionSnapshot;
+  /** The first message of this new chat is waiting for its Session to be created. */
+  starting: boolean;
   index: IndexSnapshot;
   reloadIndex: () => void;
   /** Put text back into the open composer, after any draft already there. */
@@ -58,16 +62,24 @@ export function useChat(): ChatContextValue {
 
 const noSubscribe = () => () => {};
 const getInitial = () => initialSnapshot;
+const noRunning: readonly string[] = [];
+const getNoRunning = () => noRunning;
 
 let draftCounter = 0;
 const newDraftId = () => `draft-${++draftCounter}`;
 
 type ListedThread<S extends "regular" | "archived"> = ExternalStoreThreadData<S> & { lastMessageAt: Date };
 
+/**
+ * Rows for the thread list. `custom.running` marks a conversation with a run
+ * in flight, including one in the background (assistant-ui only knows about
+ * the open one).
+ */
 function listed<S extends "regular" | "archived">(
   status: S,
   sessions: readonly SessionSummary[],
   index: SessionIndex,
+  running: ReadonlySet<string>,
 ): ListedThread<S>[] {
   return sessions.map((s) => ({
     status,
@@ -75,29 +87,24 @@ function listed<S extends "regular" | "archived">(
     remoteId: s.id,
     title: s.title,
     lastMessageAt: new Date(s.updatedAt),
+    ...(running.has(s.id) ? { custom: { running: true } } : {}),
   }));
 }
-
-const DELETE_CONFIRM =
-  "Delete this conversation? Its Session is deleted on ZooWork Platform and cannot be restored.";
 
 export function ChatRuntimeProvider({ children }: { children: ReactNode }) {
   const [index] = useState(() => new SessionIndex());
   const indexState = useSyncExternalStore(index.subscribe, index.getSnapshot, index.getSnapshot);
   const [threadId, setThreadId] = useState("draft-0");
-  const controllers = useRef(new Map<string, SessionController>());
+  const [pool] = useState(() => new ControllerPool());
+  const runningIds = useSyncExternalStore(pool.subscribe, pool.getRunning, getNoRunning);
+  const running = useMemo(() => new Set(runningIds), [runningIds]);
+  /** Local thread id → the first message of a new chat whose Session is being created. */
+  const [starting, setStarting] = useState<Readonly<Record<string, string>>>({});
   const runtimeRef = useRef<AssistantRuntime | null>(null);
   const threadIdRef = useRef(threadId);
   threadIdRef.current = threadId;
 
-  const controllerFor = useCallback((sessionId: string) => {
-    let controller = controllers.current.get(sessionId);
-    if (!controller) {
-      controller = new SessionController(sessionId);
-      controllers.current.set(sessionId, controller);
-    }
-    return controller;
-  }, []);
+  const controllerFor = useCallback((sessionId: string) => pool.get(sessionId), [pool]);
 
   // Load the list once, then open the conversation named in the URL hash. Read the
   // hash before loading: the hash-sync effect below clears it as soon as loading ends.
@@ -116,10 +123,10 @@ export function ChatRuntimeProvider({ children }: { children: ReactNode }) {
   const controller = sessionId ? controllerFor(sessionId) : null;
 
   useEffect(() => {
-    if (!controller) return;
-    controller.open();
-    return () => controller.close();
-  }, [controller]);
+    if (!sessionId) return;
+    pool.open(sessionId);
+    return () => pool.release(sessionId);
+  }, [pool, sessionId]);
 
   useEffect(() => {
     if (indexState.loading) return;
@@ -129,13 +136,7 @@ export function ChatRuntimeProvider({ children }: { children: ReactNode }) {
     }
   }, [sessionId, indexState.loading]);
 
-  useEffect(() => {
-    const all = controllers.current;
-    return () => {
-      for (const c of all.values()) c.dispose();
-      all.clear();
-    };
-  }, []);
+  useEffect(() => () => pool.disposeAll(), [pool]);
 
   const snapshot = useSyncExternalStore(
     controller?.subscribe ?? noSubscribe,
@@ -143,7 +144,13 @@ export function ChatRuntimeProvider({ children }: { children: ReactNode }) {
     getInitial,
   );
 
-  const messages = useMemo(() => toThreadMessages(snapshot.view, snapshot.outgoing), [snapshot.view, snapshot.outgoing]);
+  const startingText = starting[threadId];
+  const messages = useMemo(() => {
+    const thread = toThreadMessages(snapshot.view, snapshot.outgoing);
+    // The first message of a new chat, shown while its Session is created.
+    if (startingText !== undefined) thread.push({ id: "starting", role: "user", content: [{ type: "text", text: startingText }] });
+    return thread;
+  }, [snapshot.view, snapshot.outgoing, startingText]);
 
   const restoreDraft = useCallback((text: string) => {
     const composer = runtimeRef.current?.thread.composer;
@@ -184,6 +191,8 @@ export function ChatRuntimeProvider({ children }: { children: ReactNode }) {
         send: (id, t) => controllerFor(id).send(t),
         restoreText,
         setNotice: (notice) => setAppNotice(sentFrom, notice),
+        setStarting: (pending) =>
+          setStarting(({ [sentFrom]: _, ...rest }) => (pending === null ? rest : { ...rest, [sentFrom]: pending })),
       });
       const id = index.sessionIdFor(sentFrom);
       if (sent && id) index.touch(id);
@@ -196,17 +205,18 @@ export function ChatRuntimeProvider({ children }: { children: ReactNode }) {
   }, [controller]);
 
   const threads = useMemo(
-    () => listed("regular", indexState.sessions.filter((s) => !s.archived), index),
+    () => listed("regular", indexState.sessions.filter((s) => !s.archived), index, running),
     // links changes the local ids of chats created on this page.
-    [indexState.sessions, indexState.links, index],
+    [indexState.sessions, indexState.links, index, running],
   );
   const archivedThreads = useMemo(
-    () => listed("archived", indexState.sessions.filter((s) => s.archived), index),
-    [indexState.sessions, indexState.links, index],
+    () => listed("archived", indexState.sessions.filter((s) => s.archived), index, running),
+    [indexState.sessions, indexState.links, index, running],
   );
 
-  const reportListError = useCallback((localId: string, error: unknown, fallback: string) => {
-    setAppNotice(localId, { message: error instanceof ApiError ? error.message : fallback });
+  /** Show why a list action failed; the notice stays until that action succeeds or is dismissed. */
+  const reportListError = useCallback((localId: string, op: string, error: unknown, fallback: string) => {
+    setAppNotice(localId, { message: error instanceof ApiError ? error.message : fallback, op });
   }, []);
 
   const threadList = useMemo<ExternalStoreThreadListAdapter>(
@@ -226,34 +236,38 @@ export function ChatRuntimeProvider({ children }: { children: ReactNode }) {
         try {
           await index.rename(target, title);
         } catch (error) {
-          reportListError(id, error, "Could not rename the conversation.");
+          reportListError(id, "rename", error, "Could not rename the conversation.");
           throw error;
         }
+        clearAppNotice(id, "rename");
       },
+      // Archive and Delete are confirmed in the sidebar (thread-list.aui.tsx) before they get here.
       onArchive: async (id) => {
         const target = index.sessionIdFor(id);
         if (!target) return;
         try {
           await index.archive(target);
         } catch (error) {
-          reportListError(id, error, "Could not archive the conversation.");
+          reportListError(id, "archive", error, "Could not archive the conversation.");
+          return;
         }
+        clearAppNotice(id, "archive");
       },
       onDelete: async (id) => {
         const target = index.sessionIdFor(id);
-        if (!target || !window.confirm(DELETE_CONFIRM)) return;
+        if (!target) return;
         try {
           await index.remove(target);
         } catch (error) {
-          reportListError(id, error, "Could not delete the conversation.");
+          reportListError(id, "delete", error, "Could not delete the conversation.");
           return;
         }
-        controllers.current.get(target)?.dispose();
-        controllers.current.delete(target);
+        clearAppNotice(id, "delete");
+        pool.remove(target);
         if (threadIdRef.current === id) setThreadId(newDraftId());
       },
     }),
-    [threadId, indexState.loading, threads, archivedThreads, index, reportListError],
+    [threadId, indexState.loading, threads, archivedThreads, index, reportListError, pool],
   );
 
   const suggestions = useMemo(
@@ -267,7 +281,8 @@ export function ChatRuntimeProvider({ children }: { children: ReactNode }) {
     convertMessage: (m) => m,
     isRunning: isBusy(snapshot),
     isLoading: !!controller && snapshot.loading && snapshot.view.turns.length === 0,
-    isDisabled: !!session?.archived || snapshot.connection === "closed",
+    // Also while a new chat's first message waits for its Session, so a second send cannot interleave.
+    isDisabled: !!session?.archived || snapshot.connection === "closed" || startingText !== undefined,
     suggestions,
     onNew,
     onCancel,
@@ -277,9 +292,10 @@ export function ChatRuntimeProvider({ children }: { children: ReactNode }) {
 
   const reloadIndex = useCallback(() => void index.load(), [index]);
 
+  const isStarting = startingText !== undefined;
   const value = useMemo<ChatContextValue>(
-    () => ({ threadId, session, controller, snapshot, index: indexState, reloadIndex, restoreDraft }),
-    [threadId, session, controller, snapshot, indexState, reloadIndex, restoreDraft],
+    () => ({ threadId, session, controller, snapshot, starting: isStarting, index: indexState, reloadIndex, restoreDraft }),
+    [threadId, session, controller, snapshot, isStarting, indexState, reloadIndex, restoreDraft],
   );
 
   return (

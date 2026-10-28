@@ -13,8 +13,18 @@ import { StarterError } from "./errors";
 export const AGENT_FILE = join("agent", "agent.md");
 
 const THINKING: readonly ThinkingLevel[] = ["off", "low", "medium", "high", "max"];
-const KEYS = new Set(["name", "model", "thinking", "max_tokens", "tools", "global_skills", "skills", "timezone"]);
+const KEYS = new Set(["name", "model", "thinking", "max_tokens", "tools", "permissions", "global_skills", "skills", "timezone"]);
 const TOOL_NAME = /^[A-Za-z0-9_.:-]+\*?$/;
+/** Permission keys are exact tool names: the Platform does not expand wildcards in them. */
+const EXACT_TOOL_NAME = /^[A-Za-z0-9_.:-]+$/;
+/** The values `tool_policy.permissions` accepts (docs: Build → Permission policies). */
+export const PERMISSIONS = ["always_ask", "always_allow"] as const;
+export type Permission = (typeof PERMISSIONS)[number];
+
+/** Is `tool` exposed by a `tools` entry? An entry is an exact name, `*`, or one trailing `prefix*`. */
+function listed(tool: string, tools: readonly string[]): boolean {
+  return tools.some((entry) => (entry.endsWith("*") ? tool.startsWith(entry.slice(0, -1)) : entry === tool));
+}
 
 export interface AgentDefinition {
   /** The exact resource sections setup sends, without the starter's ownership labels. */
@@ -77,7 +87,25 @@ export function parseAgentDefinition(source: string): AgentDefinition {
   if (!tools.every((t): t is string => typeof t === "string" && TOOL_NAME.test(t))) fail("each tool must be an exact tool name");
   // An allow list restricts the tool surface to these names. An empty list
   // denies every tool, so the Agent can only reply in text.
-  resource.tool_policy = tools.length ? { allow: [...new Set(tools)] } : { deny: ["*"] };
+  const policy: Record<string, unknown> = tools.length ? { allow: [...new Set(tools)] } : { deny: ["*"] };
+
+  // Which calls wait for Allow / Deny in the chat. Tools without an entry run
+  // without asking. The whole policy is written on every setup, so this file
+  // is the only place approvals are kept.
+  if (fm.permissions !== undefined && fm.permissions !== null) {
+    if (typeof fm.permissions !== "object" || Array.isArray(fm.permissions)) {
+      fail("permissions must be a mapping of tool name to always_ask or always_allow");
+    }
+    const permissions: Record<string, Permission> = {};
+    for (const [tool, value] of Object.entries(fm.permissions as Record<string, unknown>)) {
+      if (!EXACT_TOOL_NAME.test(tool)) fail(`permissions: "${tool}" must be an exact tool name (no wildcards)`);
+      if (!PERMISSIONS.includes(value as Permission)) fail(`permissions.${tool} must be one of ${PERMISSIONS.join(", ")}`);
+      if (!listed(tool, tools)) fail(`permissions.${tool} names a tool that is not in tools`);
+      permissions[tool] = value as Permission;
+    }
+    if (Object.keys(permissions).length) policy.permissions = permissions;
+  }
+  resource.tool_policy = policy;
 
   if (fm.global_skills !== undefined) {
     if (typeof fm.global_skills !== "boolean") fail("global_skills must be true or false");

@@ -198,11 +198,13 @@ const defaultComponents = memoizeMarkdownComponents({
       {...props}
     />
   ),
+  // A wide table scrolls sideways inside its wrapper. Cells keep a minimum
+  // width, so many columns overflow instead of being squeezed unreadably.
   table: ({ className, ...props }) => (
-    <div className="aui-md-table-wrapper my-3 overflow-x-auto">
+    <div className="aui-md-table-wrapper my-3 max-w-full overflow-x-auto">
       <table
         className={cn(
-          "aui-md-table w-full border-separate border-spacing-0",
+          "aui-md-table min-w-full border-separate border-spacing-0",
           className,
         )}
         {...props}
@@ -212,7 +214,7 @@ const defaultComponents = memoizeMarkdownComponents({
   th: ({ className, ...props }) => (
     <th
       className={cn(
-        "aui-md-th bg-muted px-3 py-1.5 text-start font-medium first:rounded-ss-lg last:rounded-se-lg [[align=center]]:text-center [[align=right]]:text-right",
+        "aui-md-th bg-muted min-w-32 px-3 py-1.5 text-start font-medium first:rounded-ss-lg last:rounded-se-lg [[align=center]]:text-center [[align=right]]:text-right",
         className,
       )}
       {...props}
@@ -221,7 +223,7 @@ const defaultComponents = memoizeMarkdownComponents({
   td: ({ className, ...props }) => (
     <td
       className={cn(
-        "aui-md-td border-muted-foreground/20 border-s border-b px-3 py-1.5 text-start last:border-e [[align=center]]:text-center [[align=right]]:text-right",
+        "aui-md-td border-muted-foreground/20 min-w-32 border-s border-b px-3 py-1.5 text-start last:border-e [[align=center]]:text-center [[align=right]]:text-right",
         className,
       )}
       {...props}
