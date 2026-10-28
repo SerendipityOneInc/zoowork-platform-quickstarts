@@ -1,16 +1,18 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
-  // Keep `next dev` from appending its own rules to this starter's AGENTS.md.
+  // AGENTS.md is maintained by hand; stop `next dev` from appending its own block.
   agentRules: false,
-  // Managed Agents turns and file downloads stream through route handlers;
-  // keep them out of any response cache.
-  headers: async () => [
-    {
-      source: "/api/:path*",
-      headers: [{ key: "Cache-Control", value: "no-store" }],
+  // The dev-only Next.js badge defaults to bottom-left, over the sidebar footnote.
+  devIndicators: { position: "bottom-right" },
+  turbopack: {
+    rules: {
+      "*.css": {
+        loaders: ["@tailwindcss/turbopack"],
+        as: "*.css",
+      },
     },
-  ],
+  },
 };
 
 export default nextConfig;

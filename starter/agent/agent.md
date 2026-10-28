@@ -16,6 +16,12 @@ tools:
   - web_search
   - web_fetch
 
+# Optional. Ask before a tool runs: the chat then shows Allow / Deny on that
+# call's card. always_ask or always_allow, for tools listed above. Setup writes
+# the whole tool policy, so approvals live here, not in Console.
+# permissions:
+#   web_fetch: always_ask
+
 # Automatic global Skills are off, so the Agent only has what is listed here.
 global_skills: false
 # skills:

@@ -4,6 +4,7 @@ import { loadAgentDefinition } from "./agent-definition";
 import { readApiKey } from "./config";
 import { StarterError } from "./errors";
 import { agentStatus } from "./lifecycle";
+import { withTransientRetry } from "./retry";
 import { fileSessionStore, sessionsPath, type SessionEntry, type SessionStore } from "./sessions";
 import { agentStatePath, loadAgentState, webPidPath } from "./state";
 
@@ -50,7 +51,8 @@ export function getRuntime(): Promise<Runtime> {
 }
 
 async function createRuntime(): Promise<Runtime> {
-  return createPlatformRuntime(createZooworkClient({ apiKey: readApiKey() }));
+  // Calls that are safe to repeat are retried once on a network failure.
+  return createPlatformRuntime(withTransientRetry(createZooworkClient({ apiKey: readApiKey() })));
 }
 
 /**

@@ -1,57 +1,70 @@
 "use client";
 
-// The Allow/Deny gate for a tool call the Agent is waiting on. A tool waits
-// for approval when the Agent's tool policy requires it. Allow runs the call
-// once; Deny ends it without running, and the Agent continues without it.
-// Adapted from the Claude Managed Agents assistant-ui quickstart (MIT).
-
-import { CheckIcon, ShieldAlertIcon, XIcon } from "lucide-react";
+import { ShieldQuestionIcon } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { cn } from "@/lib/utils";
+import { useChat } from "@/lib/chat/runtime-provider";
+import type { Approval } from "@/lib/chat/reducer";
 
-type Approval = { id: string; approved?: boolean; reason?: string };
+const RESOLUTION: Record<string, string> = {
+  "allow-once": "Allowed once.",
+  "allow-always": "Allowed for the rest of this conversation.",
+  deny: "Denied.",
+};
 
-export function ApprovalBar({
-  approval,
-  respondToApproval,
-  what = "run this",
-  className,
-}: {
-  approval?: Approval;
-  respondToApproval?: (response: { approved: boolean }) => void;
-  what?: string;
-  className?: string;
-}) {
-  if (approval && approval.approved !== undefined) {
+function resolutionText(approval: Approval): string {
+  if (approval.state === "closed") return "The approval request ended without a decision.";
+  return (approval.resolution && RESOLUTION[approval.resolution]) || "Resolved.";
+}
+
+const timeOf = (iso: string) => {
+  const date = new Date(iso);
+  return Number.isNaN(date.getTime()) ? undefined : date.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+};
+
+/**
+ * Allow / Deny for a tool call that waits for approval under the Agent's
+ * tool policy. After a decision it shows the outcome the stream reported.
+ */
+export function ApprovalBar({ approvalId }: { approvalId: string }) {
+  const { snapshot, controller, session } = useChat();
+  const approval = snapshot.view.approvals[approvalId];
+  if (!approval) return null;
+
+  if (approval.state !== "pending") {
     return (
-      <div
-        className={cn(
-          "flex items-center gap-1.5 text-xs",
-          approval.approved ? "text-emerald-600 dark:text-emerald-400" : "text-red-600 dark:text-red-400",
-          className,
-        )}
-      >
-        {approval.approved ? <CheckIcon className="size-3.5" /> : <XIcon className="size-3.5" />}
-        {/* A gate that ended without a decision (stopped, timed out) shows that reason instead. */}
-        <span className="font-medium">{approval.approved ? "Allowed" : (approval.reason ?? "Denied")}</span>
-      </div>
+      <p data-slot="approval-outcome" className="text-muted-foreground text-xs">
+        {resolutionText(approval)}
+      </p>
     );
   }
-  if (!approval || !respondToApproval) return null;
+
+  const deciding = snapshot.deciding[approvalId];
+  const locked = !!deciding || !controller || !!session?.archived;
+  const expires = approval.timeoutAt ? timeOf(approval.timeoutAt) : undefined;
+
   return (
-    <div className={cn("flex flex-col gap-2", className)}>
-      <div className="flex items-center gap-2 text-amber-700 text-xs dark:text-amber-400">
-        <ShieldAlertIcon className="size-3.5" />
-        <span className="font-medium">The Agent wants to {what}. Allow?</span>
-      </div>
+    <div
+      role="group"
+      aria-label={`Approval needed for ${approval.toolName}`}
+      data-slot="approval-bar"
+      className="border-warning/40 bg-warning/10 flex flex-wrap items-center gap-x-3 gap-y-2 rounded-md border px-3 py-2"
+    >
+      <ShieldQuestionIcon className="text-warning size-4 shrink-0" aria-hidden />
+      <p className="min-w-0 flex-1 text-sm">
+        The Agent wants to run <b className="font-medium">{approval.toolName}</b>.
+        {expires && <span className="text-muted-foreground"> Waits until {expires}.</span>}
+      </p>
       <div className="flex items-center gap-2">
-        <Button size="sm" onClick={() => respondToApproval({ approved: true })}>
-          <CheckIcon className="size-3.5" />
-          Allow
+        <Button size="sm" disabled={locked} onClick={() => void controller?.decide(approvalId, "allow-once")}>
+          {deciding === "allow-once" ? "Allowing…" : "Allow"}
         </Button>
-        <Button size="sm" variant="outline" onClick={() => respondToApproval({ approved: false })}>
-          <XIcon className="size-3.5" />
-          Deny
+        <Button
+          size="sm"
+          variant="outline"
+          disabled={locked}
+          onClick={() => void controller?.decide(approvalId, "deny")}
+        >
+          {deciding === "deny" ? "Denying…" : "Deny"}
         </Button>
       </div>
     </div>

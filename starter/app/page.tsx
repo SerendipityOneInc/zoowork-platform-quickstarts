@@ -1,5 +1,5 @@
-import { Assistant } from "./assistant";
+import { ChatScreen } from "@/components/chat-screen";
 
-export default function Page() {
-  return <Assistant />;
+export default function Home() {
+  return <ChatScreen />;
 }

@@ -1,76 +1,105 @@
 "use client";
 
-// A thin strip above the conversation: setup problems, a changed agent
-// definition, and connection or request notices.
+import { RefreshCwIcon } from "lucide-react";
+import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
+import { Button } from "@/components/ui/button";
+import { api, ApiError } from "@/lib/chat/api";
+import { useChat } from "@/lib/chat/runtime-provider";
+import { activityOf, agentPill, initialCheck, recordPoll, statusPill, type StatusPoll, type Tone } from "@/lib/chat/status";
+import { cn } from "@/lib/utils";
 
-import { useAui, useAuiState } from "@assistant-ui/react";
-import { useEffect, useState } from "react";
-import { ApiError, getStatus } from "@/lib/chat/api";
-import { setAppNotice, useAppNotice } from "@/lib/chat/app-notice";
-import { useActiveSessionSnapshot } from "@/lib/chat/runtime-provider";
-import { describe } from "@/lib/chat/notices";
-import type { AppStatus } from "@/lib/chat/wire";
+const POLL_MS = 60_000;
+/** A failure that may pass is checked again this soon before it is shown. */
+const RECHECK_MS = 3_000;
 
-function Banner({ tone, children }: { tone: "info" | "warn" | "error"; children: React.ReactNode }) {
-  const styles = {
-    info: "border-sky-500/30 bg-sky-500/10 text-sky-800 dark:text-sky-300",
-    warn: "border-amber-500/40 bg-amber-500/10 text-amber-800 dark:text-amber-300",
-    error: "border-red-500/40 bg-red-500/10 text-red-700 dark:text-red-400",
-  }[tone];
-  return <div role="status" className={`rounded-md border px-3 py-1.5 text-xs ${styles}`}>{children}</div>;
-}
+const DOT: Record<Tone, string> = {
+  ok: "bg-success",
+  warn: "bg-warning",
+  error: "bg-destructive",
+  idle: "bg-muted-foreground/50",
+};
 
-export function StatusBar() {
-  const [status, setStatus] = useState<AppStatus | null>(null);
-  const { sessionId, isLoaded, isConnected, notice } = useActiveSessionSnapshot();
-  const aui = useAui();
-  const threadId = useAuiState((s) => s.threadListItem.id);
-  const appNotice = useAppNotice(threadId);
-  // Put an unsent message back after any draft the user wrote meanwhile.
-  const restoreUnsent = () => {
-    if (!appNotice?.unsentText || !threadId) return;
-    const composer = aui.composer();
-    const draft = composer.getState().text;
-    composer.setText(draft.trim() ? `${draft}\n\n${appNotice.unsentText}` : appNotice.unsentText);
-    setAppNotice(threadId, null);
-  };
+/**
+ * The open conversation's title, its stream connection, and a status pill:
+ * Agent readiness from /api/status, or what the conversation is doing while
+ * the Agent is ready (lib/chat/status.ts).
+ */
+export function StatusBar({ leading }: { leading?: ReactNode }) {
+  const { session, snapshot, controller, starting } = useChat();
+  const [check, setCheck] = useState(initialCheck);
+  const checkRef = useRef(initialCheck);
+  const recheck = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
 
-  useEffect(() => {
-    let cancelled = false;
-    getStatus()
-      .then((s) => !cancelled && setStatus(s))
-      .catch((error: unknown) => {
-        if (cancelled) return;
-        // Keep the code, not the already-translated message, so describe() runs once.
-        const code = error instanceof ApiError ? error.code : "request_failed";
-        setStatus({ agent: "unavailable", ...(code ? { code } : {}) });
-      });
-    return () => {
-      cancelled = true;
-    };
+  const refresh = useCallback(async () => {
+    clearTimeout(recheck.current);
+    let poll: StatusPoll;
+    try {
+      poll = { status: await api.status() };
+    } catch (e) {
+      poll = {
+        error: e instanceof ApiError ? { code: e.code, message: e.message } : { code: "network_error", message: "Could not read the app status." },
+      };
+    }
+    const { check: next, recheckSoon } = recordPoll(checkRef.current, poll);
+    checkRef.current = next;
+    setCheck(next);
+    if (recheckSoon) recheck.current = setTimeout(() => void refresh(), RECHECK_MS);
   }, []);
 
+  useEffect(() => {
+    void refresh();
+    const timer = setInterval(() => void refresh(), POLL_MS);
+    const onFocus = () => void refresh();
+    window.addEventListener("focus", onFocus);
+    return () => {
+      clearInterval(timer);
+      clearTimeout(recheck.current);
+      window.removeEventListener("focus", onFocus);
+    };
+  }, [refresh]);
+
+  const agent = agentPill(check);
+  const pill = statusPill(agent, activityOf(snapshot, starting));
+  const reconnecting = controller && snapshot.connection === "reconnecting";
+
   return (
-    <div className="mx-auto flex w-full max-w-(--thread-max-width) flex-col gap-1 px-4 pt-2 empty:hidden">
-      {status?.agent === "unavailable" && <Banner tone="error">{describe(status.code, "The Agent is not available")}</Banner>}
-      {status?.agent === "definition_changed" && (
-        <Banner tone="warn">agent/agent.md changed since the last setup. Run npm run setup to update the Agent.</Banner>
-      )}
-      {status?.agent === "not_running" && <Banner tone="warn">The Agent is stopped. Run npm run setup to start it.</Banner>}
-      {appNotice && (
-        <Banner tone="error">
-          {appNotice.message}
-          {appNotice.unsentText && (
-            <button type="button" onClick={restoreUnsent} className="ml-2 font-medium underline underline-offset-2">
-              Restore unsent message
-            </button>
+    <header data-slot="status-bar" className="border-border bg-background flex flex-col border-b">
+      <div className="flex h-12 items-center gap-3 px-4">
+        {leading}
+        <h2 className="min-w-0 flex-1 truncate text-sm font-medium">
+          {session?.title ?? "New chat"}
+          {session?.archived && (
+            <span className="text-muted-foreground border-border ms-2 rounded-sm border px-1.5 py-0.5 text-xs font-normal">
+              Archived
+            </span>
           )}
-        </Banner>
+        </h2>
+        {reconnecting && (
+          <span role="status" className="text-muted-foreground shimmer text-xs">
+            Reconnecting…
+          </span>
+        )}
+        <span role="status" className="text-muted-foreground flex shrink-0 items-center gap-1.5 text-xs">
+          <span aria-hidden className={cn("size-2 rounded-full", DOT[pill.tone], pill.active && "animate-pulse")} />
+          {pill.label}
+        </span>
+      </div>
+      {agent.detail && (
+        <div
+          className={cn(
+            "flex items-center gap-3 border-t px-4 py-2 text-sm",
+            agent.tone === "error"
+              ? "border-destructive/30 bg-destructive/10 text-destructive"
+              : "border-warning/30 bg-warning/10",
+          )}
+        >
+          <p className="min-w-0 flex-1">{agent.detail}</p>
+          <Button size="xs" variant="outline" onClick={() => void refresh()}>
+            <RefreshCwIcon aria-hidden />
+            Check again
+          </Button>
+        </div>
       )}
-      {notice && <Banner tone="error">{notice}</Banner>}
-      {sessionId && isLoaded && !isConnected && !notice && (
-        <div className="px-1 text-[11px] text-muted-foreground">Reconnecting…</div>
-      )}
-    </div>
+    </header>
   );
 }

@@ -1,409 +1,329 @@
-"use client";
+// One conversation in the browser: its event stream, the messages sent from
+// this page that the stream has not echoed yet, and the stop and approval
+// actions. React reads it through subscribe/getSnapshot.
 
-// One controller per Session, kept in a registry so switching conversations
-// keeps each one's state. It owns the moving parts of a live conversation:
-//
-//   1. the stream: one EventSource on /api/sessions/[id]/stream. Opened
-//      without a cursor it replays the whole Session, then stays live. The
-//      Platform cursor of every frame is remembered; a reconnect resumes
-//      after it, so nothing is lost or folded twice.
-//   2. sending: an optimistic bubble shows at once and is swapped for the
-//      echoed user.message, keeping the same message id.
-//   3. actions: stop (a real interrupt) and Allow/Deny for approvals.
-//
-// React subscribes with useSyncExternalStore; nothing here touches React.
-//
-// Adapted from the Claude Managed Agents assistant-ui quickstart session
-// controller (MIT, see third-party/anthropic-MIT.txt). The ZooWork stream's
-// server-side cursor replaces that controller's history/tail buffering.
-
-import { aliasUserMessage, applyEvent, initialProjection, isBusy, type Projection, type ThreadMessage } from "./reducer";
-import { ensureOk, errorCodeOf, postJson, sessionUrl } from "./api";
+import { api, ApiError } from "./api";
 import { describe } from "./notices";
+import {
+  applyEvents,
+  emptyView,
+  pendingApprovals,
+  settleOutgoing,
+  type ApprovalDecision,
+  type OutgoingMessage,
+  type SessionView,
+} from "./reducer";
 import type { RelayEnvelope, WireEvent } from "./wire";
 
-type PendingMessage = {
-  id: string;
-  clientMessageId: string;
-  text: string;
-  createdAt: Date;
-  /** Last seq folded when it was sent: only a later echo can be its own. */
-  afterSeq: number;
-  /** The accepted user.message's seq, once known. */
-  seq?: number;
-  /** The messages route accepted it. */
-  accepted?: boolean;
-};
+export type Connection = "idle" | "connecting" | "live" | "reconnecting" | "closed";
 
-export type ControllerSnapshot = {
-  messages: readonly ThreadMessage[];
-  projection: Projection;
-  /** The first replay has settled (spinner while false). */
-  isLoaded: boolean;
-  isConnected: boolean;
-  /** The Agent is working, a decision is pending, or a message is on its way. */
-  isBusy: boolean;
-  /** The Session can no longer be read (deleted, or not this app's). */
-  isDead: boolean;
-  /** A transport or request problem, for a banner. */
+export interface SessionSnapshot {
+  view: SessionView;
+  /** Sent from this page and not yet echoed by the stream. */
+  outgoing: readonly OutgoingMessage[];
+  connection: Connection;
+  /** The stream has not delivered the Session's history yet. */
+  loading: boolean;
+  /**
+   * The history replay is still arriving: true from a fresh connect until the
+   * stream has been quiet for a moment. The thread keeps to the latest
+   * message meanwhile.
+   */
+  replaying: boolean;
+  /** A message was accepted and its run has not started yet. */
+  awaitingRun: boolean;
+  /** A stop was requested and the run has not ended yet. */
+  stopping: boolean;
+  /** Approvals with a decision on the way. */
+  deciding: Readonly<Record<string, ApprovalDecision>>;
+  /** Why the last action or the stream failed. */
   notice: string | null;
+}
+
+export const initialSnapshot: SessionSnapshot = {
+  view: emptyView(),
+  outgoing: [],
+  connection: "idle",
+  loading: true,
+  replaying: false,
+  awaitingRun: false,
+  stopping: false,
+  deciding: {},
+  notice: null,
 };
 
-type Listener = () => void;
+/** A run that has not started this long after its message was accepted is reported. */
+const START_WARNING_MS = 30_000;
+/** An empty Session sends no history; stop showing it as loading after this long. */
+const EMPTY_HISTORY_MS = 800;
+/** The replay counts as done once the stream has been quiet this long. */
+const REPLAY_SETTLE_MS = 400;
+const FLUSH_MS = 30;
+const RETRY_MAX_MS = 15_000;
 
-const LOADED_AFTER_QUIET_MS = 300;
-/** If an accepted message has not started a run by then, say so. */
-const RUN_START_WARNING_MS = 90_000;
+const NOT_STARTED =
+  "The message was accepted, but the Agent has not started. Run npm run status; if the Agent is stopped, run npm run setup.";
 
-const newId = () =>
-  typeof crypto.randomUUID === "function"
-    ? crypto.randomUUID().replace(/-/g, "")
-    : `${Date.now().toString(36)}${Math.random().toString(36).slice(2, 12)}`;
+const newKey = (prefix: string) => `${prefix}-${crypto.randomUUID()}`;
 
 export class SessionController {
-  readonly sessionId: string;
-  private projection: Projection = initialProjection();
-  private pending: PendingMessage[] = [];
-  /** Approval ids answered in this tab, shown as settled until the Agent's own event lands. */
-  private answered = new Map<string, boolean>();
-  /** seq of an accepted message whose run has not started yet. */
-  private awaitingRunAfter: number | undefined;
-  private runWarningTimer: ReturnType<typeof setTimeout> | null = null;
-  /** A failed send, so retrying the same text reuses its idempotency key. */
-  private retry: { text: string; clientMessageId: string } | null = null;
-
+  private snapshot: SessionSnapshot = initialSnapshot;
+  private readonly listeners = new Set<() => void>();
   private source: EventSource | null = null;
+  private wanted = false;
+  /** The last Platform cursor received; a reopened stream resumes after it. */
   private cursor: string | undefined;
   private queue: WireEvent[] = [];
-  private flushScheduled = false;
-  private loadedTimer: ReturnType<typeof setTimeout> | null = null;
-  private reopenTimer: ReturnType<typeof setTimeout> | null = null;
-  private reopenDelay = 1_000;
-  private failedOpens = 0;
-  private disposed = false;
+  private flushTimer: ReturnType<typeof setTimeout> | undefined;
+  private retryTimer: ReturnType<typeof setTimeout> | undefined;
+  private loadingTimer: ReturnType<typeof setTimeout> | undefined;
+  private startTimer: ReturnType<typeof setTimeout> | undefined;
+  private settleTimer: ReturnType<typeof setTimeout> | undefined;
+  private retries = 0;
+  /** The conversation is on screen. When it is not, the stream stays open only while a run is in flight. */
+  private foreground = false;
+  /** A send that failed. Sending the same text again reuses its key, so it is delivered at most once. */
+  private failedSend: { text: string; key: string } | null = null;
+  /** Kept across a failed interrupt so the retry is the same request. */
+  private stopKey: string | null = null;
+  /** Assistant turns after this sequence number belong to the last accepted message. */
+  private sentAfterSeq = 0;
 
-  private snapshot: ControllerSnapshot;
-  private listeners = new Set<Listener>();
-  private flags = { isLoaded: false, isConnected: false, isDead: false, notice: null as string | null };
-  /** The current notice came from the stream, so a healthy reconnect clears it. */
-  private streamNotice = false;
+  constructor(readonly sessionId: string) {}
 
-  constructor(sessionId: string) {
-    this.sessionId = sessionId;
-    this.snapshot = this.compute();
-  }
-
-  // ------------------------------------------------------------ subscription
-  subscribe = (listener: Listener): (() => void) => {
+  subscribe = (listener: () => void) => {
     this.listeners.add(listener);
-    return () => this.listeners.delete(listener);
-  };
-  getSnapshot = (): ControllerSnapshot => this.snapshot;
-
-  private emit() {
-    this.snapshot = this.compute();
-    for (const l of this.listeners) l();
-  }
-
-  private compute(): ControllerSnapshot {
-    // A pending bubble without a known seq matches the first newer echo with
-    // the same text. Once its send was accepted, that echo is its own: adopt
-    // the seq and let the projection show it under the bubble's id.
-    const hidden = new Set<number>();
-    for (const p of this.pending) {
-      if (p.seq !== undefined) continue;
-      for (const [seq, index] of this.projection.userSeqs) {
-        if (seq <= p.afterSeq || hidden.has(index)) continue;
-        const part = this.projection.messages[index]!.content[0];
-        if (part?.type !== "text" || part.text !== p.text) continue;
-        if (p.accepted) {
-          p.seq = seq;
-          this.projection = aliasUserMessage(this.projection, seq, p.id);
-        } else {
-          // Still waiting for the messages route: hide the echo so it does not show twice.
-          hidden.add(index);
-        }
-        break;
-      }
-    }
-    const { projection } = this;
-    // An accepted message whose echo has folded is shown by the projection.
-    this.pending = this.pending.filter((p) => p.seq === undefined || !projection.userSeqs.has(p.seq));
-    let messages: readonly ThreadMessage[] = projection.messages;
-    if (hidden.size) messages = messages.filter((_, i) => !hidden.has(i));
-    if (this.answered.size) messages = messages.map((m) => this.withAnswers(m));
-    if (this.pending.length) {
-      messages = [
-        ...messages,
-        ...this.pending.map(
-          (p): ThreadMessage => ({ id: p.id, role: "user", content: [{ type: "text", text: p.text }], createdAt: p.createdAt }),
-        ),
-      ];
-    }
-    const awaitingRun = this.awaitingRunAfter !== undefined && projection.lastRunStartSeq < this.awaitingRunAfter;
-    return {
-      messages,
-      projection,
-      ...this.flags,
-      isBusy: isBusy(projection) || this.pending.length > 0 || awaitingRun,
+    return () => {
+      this.listeners.delete(listener);
     };
+  };
+
+  getSnapshot = () => this.snapshot;
+
+  private update(patch: Partial<SessionSnapshot>) {
+    this.snapshot = { ...this.snapshot, ...patch };
+    for (const listener of this.listeners) listener();
+    // A conversation in the background stops following once its run is over.
+    if (this.wanted && !this.foreground && !isBusy(this.snapshot)) this.close();
   }
 
-  private withAnswers(message: ThreadMessage): ThreadMessage {
-    if (message.role !== "assistant") return message;
-    let changed = false;
-    const content = message.content.map((part) => {
-      if (part.type !== "tool-call" || !part.approval || part.approval.approved !== undefined) return part;
-      const approved = this.answered.get(part.approval.id);
-      if (approved === undefined) return part;
-      changed = true;
-      return { ...part, approval: { ...part.approval, approved } };
-    });
-    return changed ? { ...message, content } : message;
+  /** Whether the stream is followed (on screen, or in the background while a run is in flight). */
+  get following(): boolean {
+    return this.wanted;
   }
 
-  private set(patch: Partial<typeof this.flags>) {
-    this.flags = { ...this.flags, ...patch };
-    this.emit();
+  /** Start (or resume) following the Session, as the conversation on screen. */
+  open() {
+    this.foreground = true;
+    this.wanted = true;
+    if (!this.source && !this.retryTimer) this.connect();
   }
 
-  // ----------------------------------------------------------------- stream
-  /** Open the stream if it is not open. Idempotent. */
-  attach(): void {
-    if (this.disposed || this.source || this.reopenTimer || this.flags.isDead) return;
-    this.open();
+  /**
+   * The conversation left the screen. A run in flight keeps the stream open,
+   * so the sidebar still shows it working, until the run ends; otherwise the
+   * stream closes now.
+   */
+  release() {
+    this.foreground = false;
+    if (!isBusy(this.snapshot)) this.close();
   }
 
-  /** Close the stream but keep state and cursor; attach() resumes after the last event. */
-  detach(): void {
-    if (this.reopenTimer) clearTimeout(this.reopenTimer);
-    this.reopenTimer = null;
+  /** Stop following. The Agent keeps working; open() resumes from the last cursor. */
+  close() {
+    this.wanted = false;
+    this.foreground = false;
     this.source?.close();
     this.source = null;
-    if (this.flags.isConnected) this.set({ isConnected: false });
+    clearTimeout(this.retryTimer);
+    this.retryTimer = undefined;
+    clearTimeout(this.loadingTimer);
+    clearTimeout(this.settleTimer);
+    this.flush();
+    this.update({ connection: "idle", replaying: false });
   }
 
-  dispose(): void {
-    this.disposed = true;
-    this.detach();
-    for (const t of [this.loadedTimer, this.runWarningTimer]) if (t) clearTimeout(t);
+  /** Mark the replay done once no event has arrived for a moment. */
+  private settleLater() {
+    if (!this.snapshot.replaying) return;
+    clearTimeout(this.settleTimer);
+    this.settleTimer = setTimeout(() => this.update({ replaying: false }), REPLAY_SETTLE_MS);
+  }
+
+  private connect() {
+    this.retryTimer = undefined;
+    const source = new EventSource(api.streamUrl(this.sessionId, this.cursor));
+    this.source = source;
+    // Without a cursor the stream replays the whole history first.
+    this.update({ connection: this.cursor ? "reconnecting" : "connecting", ...(this.cursor ? {} : { replaying: true }) });
+    source.onopen = () => {
+      this.retries = 0;
+      this.update({ connection: "live" });
+      this.settleLater();
+      if (this.snapshot.loading) {
+        clearTimeout(this.loadingTimer);
+        this.loadingTimer = setTimeout(() => {
+          if (this.snapshot.loading && !this.queue.length) this.update({ loading: false });
+        }, EMPTY_HISTORY_MS);
+      }
+    };
+    source.onmessage = (message) => this.receive(source, message);
+    source.onerror = () => {
+      if (source !== this.source) return;
+      if (source.readyState === EventSource.CLOSED) {
+        // The browser gave up (for example a non-SSE error response); retry with backoff.
+        this.source = null;
+        this.reconnectLater();
+      } else {
+        // EventSource reconnects by itself and sends the last id as Last-Event-ID.
+        this.update({ connection: "reconnecting" });
+      }
+    };
+  }
+
+  private reconnectLater() {
+    if (!this.wanted || this.retryTimer) return;
+    const delay = Math.min(1_000 * 2 ** this.retries, RETRY_MAX_MS);
+    this.retries += 1;
+    this.update({ connection: "reconnecting" });
+    this.retryTimer = setTimeout(() => this.connect(), delay);
+  }
+
+  private receive(source: EventSource, message: MessageEvent<string>) {
+    if (source !== this.source) return;
+    let envelope: RelayEnvelope;
+    try {
+      envelope = JSON.parse(message.data) as RelayEnvelope;
+    } catch {
+      return;
+    }
+    if (envelope.kind === "event") {
+      if (message.lastEventId) this.cursor = message.lastEventId;
+      this.queue.push(envelope.event);
+      this.flushTimer ??= setTimeout(() => this.flush(), FLUSH_MS);
+      return;
+    }
+    source.close();
+    this.source = null;
+    this.flush();
+    if (envelope.fatal) {
+      this.update({
+        connection: "closed",
+        loading: false,
+        replaying: false,
+        notice: describe(envelope.code, "This conversation can no longer be loaded"),
+      });
+    } else {
+      this.reconnectLater();
+    }
+  }
+
+  /** Apply queued events in one update, so a long replay renders once. */
+  private flush() {
+    clearTimeout(this.flushTimer);
+    this.flushTimer = undefined;
+    if (!this.queue.length) return;
+    const events = this.queue;
+    this.queue = [];
+    const before = this.snapshot.view;
+    const view = applyEvents(before, events);
+    const patch: Partial<SessionSnapshot> = { view, loading: false };
+    patch.outgoing = settleOutgoing(this.snapshot.outgoing, view, before.lastSeq);
+
+    if (
+      this.snapshot.awaitingRun &&
+      view.turns.some((t) => t.role === "assistant" && t.seq > this.sentAfterSeq)
+    ) {
+      patch.awaitingRun = false;
+      clearTimeout(this.startTimer);
+      if (this.snapshot.notice === NOT_STARTED) patch.notice = null;
+    }
+    if (before.activeRunId && !view.activeRunId) {
+      patch.stopping = false;
+      this.stopKey = null;
+    }
+    const pending = new Set(pendingApprovals(view).map((a) => a.approvalId));
+    const deciding = Object.fromEntries(Object.entries(this.snapshot.deciding).filter(([id]) => pending.has(id)));
+    if (Object.keys(deciding).length !== Object.keys(this.snapshot.deciding).length) patch.deciding = deciding;
+    this.update(patch);
+    this.settleLater();
+  }
+
+  /**
+   * Post a message, shown at once as an outgoing bubble. Throws on failure
+   * after setting the notice, so the composer can keep the text.
+   */
+  async send(text: string): Promise<void> {
+    const key = this.failedSend?.text === text ? this.failedSend.key : newKey("msg");
+    const baseSeq = this.snapshot.view.lastSeq;
+    this.update({ outgoing: [...this.snapshot.outgoing, { key, text }], notice: null });
+    let receipt: { seq?: number };
+    try {
+      receipt = await api.sendMessage(this.sessionId, text, key);
+    } catch (error) {
+      this.failedSend = { text, key };
+      this.update({
+        outgoing: this.snapshot.outgoing.filter((m) => m.key !== key),
+        notice: error instanceof ApiError ? error.message : "Your message was not sent.",
+      });
+      throw error;
+    }
+    this.failedSend = null;
+    this.sentAfterSeq = receipt.seq ?? baseSeq;
+    const { view } = this.snapshot;
+    const started = view.turns.some((t) => t.role === "assistant" && t.seq > this.sentAfterSeq);
+    const echoed = receipt.seq !== undefined && view.lastSeq >= receipt.seq;
+    this.update({
+      awaitingRun: !started && !view.activeRunId,
+      ...(echoed ? { outgoing: this.snapshot.outgoing.filter((m) => m.key !== key) } : {}),
+    });
+    clearTimeout(this.startTimer);
+    if (!started) {
+      this.startTimer = setTimeout(() => {
+        if (this.snapshot.awaitingRun) this.update({ notice: NOT_STARTED });
+      }, START_WARNING_MS);
+    }
+  }
+
+  /** Interrupt the run on the Platform. Closing the page does not. */
+  async interrupt(): Promise<void> {
+    if (this.snapshot.stopping) return;
+    this.stopKey ??= newKey("stop");
+    this.update({ stopping: true, notice: null });
+    try {
+      const { accepted } = await api.interrupt(this.sessionId, this.stopKey);
+      this.stopKey = null;
+      if (!accepted) this.update({ stopping: false, awaitingRun: false });
+    } catch (error) {
+      this.update({ stopping: false, notice: error instanceof ApiError ? error.message : "Could not stop the reply." });
+    }
+  }
+
+  /** Send an approval decision. The approval stays pending on screen until the stream reports it resolved. */
+  async decide(approvalId: string, decision: ApprovalDecision): Promise<void> {
+    if (this.snapshot.deciding[approvalId]) return;
+    this.update({ deciding: { ...this.snapshot.deciding, [approvalId]: decision }, notice: null });
+    try {
+      await api.resolveApproval(this.sessionId, approvalId, decision);
+    } catch (error) {
+      const { [approvalId]: _, ...rest } = this.snapshot.deciding;
+      this.update({
+        deciding: rest,
+        notice: error instanceof ApiError ? error.message : "Could not send the decision.",
+      });
+    }
+  }
+
+  dismissNotice() {
+    if (this.snapshot.notice) this.update({ notice: null });
+  }
+
+  dispose() {
+    this.close();
+    clearTimeout(this.startTimer);
     this.listeners.clear();
   }
-
-  private open() {
-    const url = sessionUrl(this.sessionId, `/stream${this.cursor ? `?cursor=${encodeURIComponent(this.cursor)}` : ""}`);
-    const source = new EventSource(url);
-    this.source = source;
-    source.onopen = () => {
-      this.reopenDelay = 1_000;
-      this.failedOpens = 0;
-      this.markActivity();
-      const clear = this.streamNotice;
-      this.streamNotice = false;
-      this.set({ isConnected: true, ...(clear ? { notice: null } : {}) });
-    };
-    source.onmessage = (message) => {
-      // The browser also sends this as Last-Event-ID on its own reconnects.
-      if (message.lastEventId) this.cursor = message.lastEventId;
-      let envelope: RelayEnvelope;
-      try {
-        envelope = JSON.parse(message.data) as RelayEnvelope;
-      } catch {
-        return;
-      }
-      if (envelope.kind === "event") {
-        this.queue.push(envelope.event);
-        this.scheduleFlush();
-        this.markActivity();
-        return;
-      }
-      if (envelope.fatal) {
-        source.close();
-        if (this.source === source) this.source = null;
-        this.streamNotice = true;
-        this.set({ isConnected: false, isLoaded: true, notice: describe(envelope.code, "The conversation stream failed") });
-      } else {
-        this.streamNotice = true;
-        this.set({ notice: describe(envelope.code, "Reconnecting to the conversation") });
-      }
-    };
-    source.onerror = () => {
-      if (this.disposed) return;
-      if (this.flags.isConnected) this.set({ isConnected: false });
-      // CONNECTING: the browser retries by itself and sends Last-Event-ID.
-      // CLOSED: the route answered with an error status; reopen with backoff.
-      if (source.readyState === EventSource.CLOSED && this.source === source) {
-        this.source = null;
-        this.failedOpens += 1;
-        void this.scheduleReopen();
-      }
-    };
-  }
-
-  private async scheduleReopen() {
-    if (this.reopenTimer || this.disposed) return;
-    if (this.failedOpens >= 3) {
-      // Find out why the stream keeps failing instead of retrying blindly.
-      try {
-        const res = await fetch(sessionUrl(this.sessionId), { cache: "no-store" });
-        if (!res.ok) {
-          const code = await errorCodeOf(res);
-          if (res.status === 404) {
-            this.set({ isDead: true, isLoaded: true, notice: describe(code, "This conversation no longer exists") });
-            return;
-          }
-          this.streamNotice = true;
-          this.set({ isLoaded: true, notice: describe(code, "Cannot reach the conversation") });
-        }
-      } catch {
-        this.streamNotice = true;
-        this.set({ isLoaded: true, notice: "Cannot reach the local server. Is npm run dev still running?" });
-      }
-    }
-    const delay = this.reopenDelay;
-    this.reopenDelay = Math.min(delay * 2, 30_000);
-    this.reopenTimer = setTimeout(() => {
-      this.reopenTimer = null;
-      if (!this.disposed && !this.source && !this.flags.isDead) this.open();
-    }, delay);
-  }
-
-  /** Fold queued events in one pass, so a long replay re-renders once, not per event. */
-  private scheduleFlush() {
-    if (this.flushScheduled) return;
-    this.flushScheduled = true;
-    setTimeout(() => {
-      this.flushScheduled = false;
-      const events = this.queue;
-      this.queue = [];
-      let projection = this.projection;
-      for (const event of events) projection = applyEvent(projection, event);
-      if (projection === this.projection) return;
-      this.projection = projection;
-      if (this.awaitingRunAfter !== undefined && projection.lastRunStartSeq > this.awaitingRunAfter) this.clearAwaitingRun();
-      for (const id of this.answered.keys()) if (!projection.pendingApprovals.includes(id)) this.answered.delete(id);
-      this.emit();
-    }, 0);
-  }
-
-  /** The replay counts as loaded once the stream has been quiet briefly. */
-  private markActivity() {
-    if (this.flags.isLoaded) return;
-    if (this.loadedTimer) clearTimeout(this.loadedTimer);
-    this.loadedTimer = setTimeout(() => {
-      this.loadedTimer = null;
-      this.set({ isLoaded: true });
-    }, LOADED_AFTER_QUIET_MS);
-  }
-
-  /** Wait for the accepted message's run to start, unless it already has. */
-  private startAwaitingRun(seq: number) {
-    this.clearAwaitingRun();
-    // A fast run can start, and even finish, before the messages route answers.
-    if (this.projection.lastRunStartSeq > seq) return;
-    this.awaitingRunAfter = seq;
-    this.runWarningTimer = setTimeout(() => {
-      this.runWarningTimer = null;
-      if (this.awaitingRunAfter === undefined) return;
-      this.awaitingRunAfter = undefined;
-      this.set({ notice: "The message was accepted, but the Agent has not started. Check npm run status." });
-    }, RUN_START_WARNING_MS);
-  }
-
-  private clearAwaitingRun() {
-    this.awaitingRunAfter = undefined;
-    if (this.runWarningTimer) clearTimeout(this.runWarningTimer);
-    this.runWarningTimer = null;
-  }
-
-  // --------------------------------------------------------------- actions
-  // The stream is opened by the thread's effect (runtime-provider.tsx) while
-  // the conversation is on screen; sending does not open it, so a message sent
-  // from a conversation the user has already left cannot leak a connection.
-  async sendMessage(text: string): Promise<void> {
-    if (this.snapshot.isBusy) throw new Error("The Agent is still working on the previous message.");
-    const clientMessageId = this.retry?.text === text ? this.retry.clientMessageId : newId();
-    const message: PendingMessage = {
-      id: `local-${clientMessageId}`,
-      clientMessageId,
-      text,
-      createdAt: new Date(),
-      afterSeq: this.projection.lastSeq,
-    };
-    this.pending.push(message);
-    this.set({ notice: null });
-
-    let res: Response;
-    try {
-      res = await postJson(sessionUrl(this.sessionId, "/messages"), { text, clientMessageId });
-    } catch {
-      // The request may or may not have reached the Platform. Sending the same
-      // text again reuses the key, so it cannot be delivered twice.
-      this.retry = { text, clientMessageId };
-      this.dropPending(message, "Could not reach the local server. The message may not have been sent; reload to check, or send it again.");
-      throw new Error("send failed");
-    }
-    if (!res.ok) {
-      const code = await errorCodeOf(res);
-      if (res.status >= 500 || code === "timeout_or_cancelled") this.retry = { text, clientMessageId };
-      this.dropPending(message, describe(code, "The message was not sent"));
-      throw new Error(code ?? "send failed");
-    }
-    this.retry = null;
-    message.accepted = true;
-    const body = (await res.json().catch(() => ({}))) as { seq?: number };
-    if (typeof body.seq === "number" && message.seq === undefined) {
-      message.seq = body.seq;
-      this.projection = aliasUserMessage(this.projection, body.seq, message.id);
-    }
-    // Without a seq, the text match in compute() hides the echo's duplicate until the bubble is replaced.
-    this.startAwaitingRun(body.seq ?? message.afterSeq);
-    this.emit();
-  }
-
-  private dropPending(message: PendingMessage, notice: string) {
-    this.pending = this.pending.filter((p) => p !== message);
-    this.set({ notice });
-  }
-
-  async interrupt(): Promise<void> {
-    this.clearAwaitingRun();
-    const res = await postJson(sessionUrl(this.sessionId, "/interrupt"), {});
-    if (!res.ok) this.set({ notice: describe(await errorCodeOf(res), "Could not stop the Agent") });
-    else this.emit();
-  }
-
-  async respondToApproval(approvalId: string, approved: boolean): Promise<void> {
-    if (this.answered.has(approvalId)) return;
-    this.answered.set(approvalId, approved);
-    this.emit();
-    try {
-      await ensureOk(
-        await postJson(sessionUrl(this.sessionId, `/approvals/${encodeURIComponent(approvalId)}`), {
-          decision: approved ? "allow-once" : "deny",
-        }),
-        "record the decision",
-      );
-    } catch (error) {
-      this.answered.delete(approvalId);
-      this.set({ notice: error instanceof Error ? error.message : "The decision was not recorded" });
-    }
-  }
 }
 
-// ------------------------------------------------------------------ registry
-const registry = new Map<string, SessionController>();
-
-export function getSessionController(sessionId: string): SessionController {
-  let controller = registry.get(sessionId);
-  if (!controller) {
-    controller = new SessionController(sessionId);
-    registry.set(sessionId, controller);
-  }
-  return controller;
-}
-
-export function dropSessionController(sessionId: string): void {
-  registry.get(sessionId)?.dispose();
-  registry.delete(sessionId);
-}
+/** Whether the composer should treat the conversation as busy. */
+export const isBusy = (s: SessionSnapshot) => !!s.view.activeRunId || s.awaitingRun || s.outgoing.length > 0;

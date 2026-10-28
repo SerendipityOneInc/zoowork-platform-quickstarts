@@ -5,14 +5,34 @@ import { parseAgentDefinition } from "../lib/zoowork/agent-definition";
 
 const def = (frontmatter: string, body = "Be helpful.") => `---\n${frontmatter}\n---\n\n${body}\n`;
 
-test("the shipped agent/agent.md parses", () => {
+// agent/agent.md is meant to be edited, so this checks its structure only,
+// never the example's name, tools or wording.
+test("agent/agent.md parses into a complete Agent definition", () => {
   const { resource } = parseAgentDefinition(readFileSync("agent/agent.md", "utf8"));
-  assert.equal(resource.name, "Starter Assistant");
-  assert.deepEqual(resource.tool_policy, { allow: ["web_search", "web_fetch"] });
-  assert.equal(resource.include_global_skills, false);
+  assert.ok(resource.name.trim(), "name is set");
+  assert.equal(resource.persona?.docs.length, 1);
   assert.equal(resource.persona?.docs[0]?.name, "AGENTS.md");
-  assert.match(resource.persona!.docs[0]!.content, /helpful assistant/);
-  assert.equal(resource.model, undefined);
+  assert.ok(resource.persona?.docs[0]?.content.trim(), "the instructions are not empty");
+  assert.equal(typeof resource.include_global_skills, "boolean");
+  const policy = resource.tool_policy as { allow?: unknown; deny?: unknown };
+  assert.ok(Array.isArray(policy.allow) || Array.isArray(policy.deny), "tools become an allow or deny list");
+});
+
+test("permissions become tool_policy.permissions next to the allow list", () => {
+  const { resource } = parseAgentDefinition(
+    def(["name: A", "tools: [web_search, web_fetch, mcp__crm__*]", "permissions:", "  web_fetch: always_ask", "  mcp__crm__delete: always_ask", "  web_search: always_allow"].join("\n")),
+  );
+  assert.deepEqual(resource.tool_policy, {
+    allow: ["web_search", "web_fetch", "mcp__crm__*"],
+    permissions: { web_fetch: "always_ask", mcp__crm__delete: "always_ask", web_search: "always_allow" },
+  });
+});
+
+test("without permissions, or with an empty block, the policy has none", () => {
+  for (const extra of ["", "\npermissions:", "\npermissions: {}"]) {
+    const { resource } = parseAgentDefinition(def(`name: A\ntools: [web_fetch]${extra}`));
+    assert.deepEqual(resource.tool_policy, { allow: ["web_fetch"] });
+  }
 });
 
 test("maps model, thinking, skills and timezone", () => {
@@ -56,6 +76,13 @@ test("rejects mistakes instead of ignoring them", () => {
     ["name: A\n", /must start with a --- frontmatter block/],
     ["---\nname: A\n", /not closed/],
     [def("name: [unclosed"), /not valid YAML/],
+    [def("name: A\ntools: [web_fetch]\npermissions: [web_fetch]"), /permissions must be a mapping/],
+    [def("name: A\ntools: [web_fetch]\npermissions:\n  web_fetch: ask"), /permissions.web_fetch must be one of always_ask, always_allow/],
+    [def("name: A\ntools: [web_fetch]\npermissions:\n  web_fetch: auto"), /must be one of/],
+    [def("name: A\ntools: [web_fetch]\npermissions:\n  web_search: always_ask"), /permissions.web_search names a tool that is not in tools/],
+    [def("name: A\ntools: []\npermissions:\n  web_fetch: always_ask"), /not in tools/],
+    [def("name: A\ntools: [\"mcp__crm__*\"]\npermissions:\n  \"mcp__crm__*\": always_ask"), /exact tool name/],
+    [def("name: A\ntools: []\ntool_policy: {}"), /unknown key "tool_policy"/],
   ];
   for (const [source, message] of bad) assert.throws(() => parseAgentDefinition(source), message);
 });

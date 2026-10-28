@@ -29,6 +29,55 @@ export function declares(actual: unknown, desired: unknown): boolean {
   return actual === desired;
 }
 
+const isPlainObject = (value: unknown): value is Record<string, unknown> =>
+  !!value && typeof value === "object" && !Array.isArray(value);
+
+/** A policy section without empty values, so `permissions: {}` and no `permissions` compare equal. */
+function compact(value: unknown): unknown {
+  if (Array.isArray(value)) return value.map(compact);
+  if (!isPlainObject(value)) return value;
+  const out: Record<string, unknown> = {};
+  for (const [k, v] of Object.entries(value)) {
+    const c = compact(v);
+    if (c === undefined || c === null || (isPlainObject(c) && !Object.keys(c).length)) continue;
+    out[k] = c;
+  }
+  return out;
+}
+
+/**
+ * Is the tool policy exactly the declared one? Unlike other sections, a
+ * field the Platform has and agent/agent.md does not (an approval added in
+ * Console or with the SDK) counts as drift: every setup writes the whole
+ * policy and so replaces it. Key order does not matter.
+ */
+export function samePolicy(actual: unknown, desired: unknown): boolean {
+  const a = compact(actual ?? {});
+  const d = compact(desired ?? {});
+  return declares(a, d) && declares(d, a);
+}
+
+/**
+ * Tool policy fields on the Platform Agent that the definition does not
+ * declare, such as `permissions.web_fetch` or `rules`. Writing the policy
+ * removes them.
+ */
+export function undeclaredPolicyFields(actual: unknown, desired: unknown): string[] {
+  const a = compact(actual ?? {});
+  const d = compact(desired ?? {});
+  if (!isPlainObject(a)) return [];
+  const declared = isPlainObject(d) ? d : {};
+  const fields: string[] = [];
+  for (const [key, value] of Object.entries(a)) {
+    if (key === "permissions" && isPlainObject(value)) {
+      // Name each approval, the setting a reader is most likely to have added by hand.
+      const kept = isPlainObject(declared.permissions) ? declared.permissions : {};
+      for (const tool of Object.keys(value)) if (!(tool in kept)) fields.push(`permissions.${tool}`);
+    } else if (!(key in declared)) fields.push(key);
+  }
+  return fields;
+}
+
 /** Read the recorded Agent and confirm it still carries this instance's labels. */
 export async function ownedAgent(client: Pick<ZooworkClient, "getAgent">, state: AgentState): Promise<AgentRecord> {
   if (!state.agentId) throw new StarterError("agent_creation_uncertain_run_setup_again");
@@ -88,10 +137,23 @@ const thinkingOf = (declared: Record<string, unknown> | undefined) =>
 
 /** Does the Agent's declaration match the definition, including settings that were removed? */
 function matches(declared: Record<string, unknown> | undefined, desired: AgentResource, clearThinking: boolean): boolean {
-  return declares(declared, desired) && !(clearThinking && thinkingOf(declared) !== null);
+  const { tool_policy: policy, ...rest } = desired;
+  return (
+    declares(declared, rest) &&
+    samePolicy(declared?.tool_policy, policy) &&
+    !(clearThinking && thinkingOf(declared) !== null)
+  );
 }
 
 export type ApplyResult = { state: AgentState; agentId: string; action: "created" | "updated" | "unchanged" };
+
+export type ApplyOptions = {
+  /**
+   * Called before an update that removes tool policy fields agent/agent.md
+   * does not declare (for example an approval added in Console), with their names.
+   */
+  onReplacePolicy?: (fields: string[]) => void;
+};
 
 /**
  * Make the Platform Agent match the agent definition, then start it.
@@ -102,6 +164,8 @@ export type ApplyResult = { state: AgentState; agentId: string; action: "created
  * - Recorded Agent with a different declaration: write the definition's
  *   sections with `updateAgent` and read the Agent back to confirm. A write
  *   the Platform did not apply fails as `agent_update_not_confirmed`.
+ *   The tool policy is replaced as a whole, so `onReplacePolicy` is told
+ *   first about any policy field the definition does not declare.
  *
  * Caller holds the state lock.
  */
@@ -110,6 +174,7 @@ export async function applyAgent(
   path: string,
   existing: AgentState | undefined,
   resource: AgentResource,
+  { onReplacePolicy }: ApplyOptions = {},
 ): Promise<ApplyResult> {
   const state = existing ?? newAgentState(resource);
   if (state.agentDeleteRequestedAt || state.agentDeletedAt) throw new StarterError("cleanup_incomplete_run_cleanup");
@@ -129,6 +194,8 @@ export async function applyAgent(
 
   const current = await ownedAgent(client, state);
   if (!matches(current.declared, desired, removed.clearThinking)) {
+    const replaced = undeclaredPolicyFields(current.declared?.tool_policy, desired.tool_policy);
+    if (replaced.length) onReplacePolicy?.(replaced);
     const sections: Record<string, unknown> = removed.clearThinking
       ? { ...desired, model: { ...desired.model, thinking: null } }
       : { ...desired };
@@ -152,6 +219,8 @@ export type AgentStatusReport = {
   definitionApplied: boolean;
   /** A removal setup will refuse, as an error code. */
   unsupportedRemoval?: string;
+  /** Tool policy fields on the Agent that agent/agent.md does not declare; the next setup removes them. */
+  undeclaredPolicy: string[];
 };
 
 export async function agentStatus(
@@ -167,6 +236,7 @@ export async function agentStatus(
     desiredState: agent.status?.desired_state ?? "unknown",
     definitionApplied: !removed.unsupported && matches(agent.declared, desired, removed.clearThinking),
     ...(removed.unsupported ? { unsupportedRemoval: removed.unsupported } : {}),
+    undeclaredPolicy: undeclaredPolicyFields(agent.declared?.tool_policy, desired.tool_policy),
   };
 }
 

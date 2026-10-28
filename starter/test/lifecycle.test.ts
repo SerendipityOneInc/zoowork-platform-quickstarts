@@ -4,7 +4,15 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { test } from "node:test";
 import { ZooworkError, type AgentRecord, type AgentResource } from "@zoowork-ai/sdk";
-import { agentStatus, applyAgent, cleanupAgent, declares, type LifecycleClient } from "../lib/zoowork/lifecycle";
+import {
+  agentStatus,
+  applyAgent,
+  cleanupAgent,
+  declares,
+  samePolicy,
+  undeclaredPolicyFields,
+  type LifecycleClient,
+} from "../lib/zoowork/lifecycle";
 import { createRecordedSession } from "../lib/zoowork/session-create";
 import { fileSessionStore } from "../lib/zoowork/sessions";
 import { loadAgentState, newAgentState, saveAgentState } from "../lib/zoowork/state";
@@ -94,6 +102,24 @@ test("declares compares only desired fields", () => {
   assert.ok(!declares(undefined, { a: 1 }));
 });
 
+test("the tool policy must match exactly; key order and empty sections do not count", () => {
+  assert.ok(samePolicy({ permissions: { b: "always_ask", a: "always_ask" }, allow: ["x"] }, { allow: ["x"], permissions: { a: "always_ask", b: "always_ask" } }));
+  assert.ok(samePolicy({ allow: ["x"], permissions: {} }, { allow: ["x"] }));
+  assert.ok(samePolicy(undefined, {}));
+  assert.ok(!samePolicy({ allow: ["x"], permissions: { x: "always_ask" } }, { allow: ["x"] }), "an extra approval is drift");
+  assert.ok(!samePolicy({ allow: ["x"] }, { allow: ["x"], permissions: { x: "always_ask" } }));
+  assert.ok(!samePolicy({ allow: ["x"], rules: [{ match: { tool: "x" } }] }, { allow: ["x"] }));
+  assert.deepEqual(
+    undeclaredPolicyFields(
+      { allow: ["x"], rules: [{}], permissions: { x: "always_ask", y: "always_allow" } },
+      { allow: ["x"], permissions: { x: "always_allow" } },
+    ),
+    ["rules", "permissions.y"],
+  );
+  assert.deepEqual(undeclaredPolicyFields({ allow: ["x"], permissions: { x: "always_ask" } }, { allow: ["x"] }), ["permissions.x"]);
+  assert.deepEqual(undeclaredPolicyFields({ allow: ["x"] }, { allow: ["y"] }), []);
+});
+
 test("setup creates once, records state, labels the Agent and starts it", async () => {
   const dir = await tempDir();
   const path = join(dir, "agent.json");
@@ -141,6 +167,56 @@ test("a changed definition updates the same Agent and is confirmed by reading it
   const after = await loadAgentState(path);
   assert.equal(after?.pendingUpdate, undefined);
   assert.equal((await agentStatus(p.client, after!, resource("v2"))).definitionApplied, true);
+});
+
+test("permissions in the definition are written, and removing them clears them", async () => {
+  const dir = await tempDir();
+  const path = join(dir, "agent.json");
+  const p = fakePlatform();
+  const asking = { ...resource(), tool_policy: { allow: ["web_search"], permissions: { web_search: "always_ask" } } };
+  const { agentId } = await applyAgent(p.client, path, undefined, asking);
+  assert.deepEqual(p.agents.get(agentId)!.declared.tool_policy, asking.tool_policy);
+  // Deleting the permissions block is a change: the policy is written without it.
+  const state = await loadAgentState(path);
+  assert.equal((await agentStatus(p.client, state!, resource())).definitionApplied, false);
+  const replaced: string[][] = [];
+  const result = await applyAgent(p.client, path, state, resource(), { onReplacePolicy: (f) => replaced.push(f) });
+  assert.equal(result.action, "updated");
+  assert.deepEqual(p.agents.get(agentId)!.declared.tool_policy, { allow: ["web_search"] });
+  assert.deepEqual(replaced, [["permissions.web_search"]], "setup names what it removes");
+});
+
+test("an approval added outside agent.md shows as drift, and setup warns before replacing it", async () => {
+  const dir = await tempDir();
+  const path = join(dir, "agent.json");
+  const p = fakePlatform();
+  const { agentId } = await applyAgent(p.client, path, undefined, resource());
+  // Someone adds an approval with the SDK or in Console.
+  p.agents.get(agentId)!.declared.tool_policy = { allow: ["web_search"], permissions: { web_search: "always_ask" } };
+  const state = await loadAgentState(path);
+  const status = await agentStatus(p.client, state!, resource());
+  assert.equal(status.definitionApplied, false);
+  assert.deepEqual(status.undeclaredPolicy, ["permissions.web_search"]);
+
+  const warnings: string[][] = [];
+  const order: string[] = [];
+  const client: LifecycleClient = {
+    ...p.client,
+    updateAgent: async (...args) => {
+      order.push("update");
+      return p.client.updateAgent(...args);
+    },
+  };
+  await applyAgent(client, path, state, resource(), {
+    onReplacePolicy: (fields) => {
+      order.push("warn");
+      warnings.push(fields);
+    },
+  });
+  assert.deepEqual(warnings, [["permissions.web_search"]]);
+  assert.deepEqual(order, ["warn", "update"], "the warning comes before the write");
+  assert.deepEqual(p.agents.get(agentId)!.declared.tool_policy, { allow: ["web_search"] });
+  assert.deepEqual((await agentStatus(p.client, (await loadAgentState(path))!, resource())).undeclaredPolicy, []);
 });
 
 test("refuses Agents without this instance's labels", async () => {

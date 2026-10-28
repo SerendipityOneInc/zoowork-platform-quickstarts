@@ -2,31 +2,24 @@
 
 import {
   createContext,
-  memo,
+  forwardRef,
   useCallback,
   useContext,
   useEffect,
-  useLayoutEffect,
   useRef,
   useState,
 } from "react";
+import { useIsomorphicLayoutEffect } from "../utils/useIsomorphicLayoutEffect";
 import { cva, type VariantProps } from "class-variance-authority";
 import { BrainIcon, ChevronDownIcon } from "lucide-react";
+import { cn } from "@/lib/utils";
 import {
-  useScrollLock,
-  useAuiState,
-  type ReasoningMessagePartComponent,
-  type ReasoningGroupComponent,
-} from "@assistant-ui/react";
-import { MarkdownText } from "@/components/assistant-ui/markdown-text";
-import {
-  Collapsible,
+  CollapsibleRoot as Collapsible,
   CollapsibleContent,
   CollapsibleTrigger,
-} from "@/components/ui/collapsible";
-import { cn } from "@/lib/utils";
+} from "./collapsible-root";
 
-const ANIMATION_DURATION = 200;
+export const ANIMATION_DURATION = 200;
 
 const ReasoningPreviewContext = createContext(false);
 
@@ -52,57 +45,70 @@ export type ReasoningRootProps = Omit<
     onOpenChange?: (open: boolean) => void;
     defaultOpen?: boolean;
     /**
-     * Whether the reasoning is currently streaming. When provided, it
-     * supersedes `defaultOpen`: the disclosure auto-opens while streaming
-     * with a bottom-pinned live preview, auto-collapses when streaming
-     * ends, and the first manual toggle takes over permanently.
+     * Whether the reasoning is currently streaming. While `true` the
+     * disclosure is held open with a bottom-pinned live preview; when
+     * streaming ends it returns to `defaultOpen`, and the first manual
+     * toggle takes over the open/close state permanently. The live preview
+     * keeps following the newest tokens while the disclosure is open during
+     * streaming, even after a manual toggle, and pauses while the reader is
+     * scrolled up.
      */
     streaming?: boolean;
+    /** Called right before the disclosure animates, on toggle and on streaming transitions. */
+    onAnimationStart?: () => void;
   };
 
-function ReasoningRoot({
-  className,
-  variant,
-  open: controlledOpen,
-  onOpenChange: controlledOnOpenChange,
-  defaultOpen = false,
-  streaming,
-  children,
-  ...props
-}: ReasoningRootProps) {
-  const collapsibleRef = useRef<HTMLDivElement>(null);
-  const initialOpenRef = useRef(defaultOpen);
+const ReasoningRoot = forwardRef<
+  HTMLDivElement,
+  Omit<ReasoningRootProps, "ref">
+>(function ReasoningRoot(
+  {
+    className,
+    variant,
+    open: controlledOpen,
+    onOpenChange: controlledOnOpenChange,
+    defaultOpen = false,
+    streaming,
+    onAnimationStart,
+    children,
+    ...props
+  },
+  ref,
+) {
+  const [initialOpen] = useState(defaultOpen);
   const [userOpen, setUserOpen] = useState<boolean | null>(null);
-  const lockScroll = useScrollLock(collapsibleRef, ANIMATION_DURATION);
 
   const isControlled = controlledOpen !== undefined;
   const isOpen = isControlled
     ? controlledOpen
-    : (userOpen ?? streaming ?? initialOpenRef.current);
-  const isAutoMode = isControlled || userOpen === null;
-  const isPreview = streaming === true && isOpen && isAutoMode;
+    : (userOpen ?? (streaming || initialOpen));
+  const isPreview = streaming === true && isOpen;
 
   const prevStreamingRef = useRef(streaming);
-  useLayoutEffect(() => {
+  useIsomorphicLayoutEffect(() => {
     if (prevStreamingRef.current === streaming) return;
     prevStreamingRef.current = streaming;
-    if (!isControlled && userOpen === null) lockScroll();
-  }, [streaming, isControlled, userOpen, lockScroll]);
+    // A streaming transition only animates the panel when the resting state
+    // is collapsed; with `defaultOpen` the disclosure stays open across it.
+    if (!isControlled && userOpen === null && !initialOpen) {
+      onAnimationStart?.();
+    }
+  }, [streaming, isControlled, userOpen, initialOpen, onAnimationStart]);
 
   const handleOpenChange = useCallback(
     (open: boolean) => {
-      lockScroll();
+      onAnimationStart?.();
       if (!isControlled) {
         setUserOpen(open);
       }
       controlledOnOpenChange?.(open);
     },
-    [lockScroll, isControlled, controlledOnOpenChange],
+    [onAnimationStart, isControlled, controlledOnOpenChange],
   );
 
   return (
     <Collapsible
-      ref={collapsibleRef}
+      ref={ref}
       data-slot="reasoning-root"
       data-variant={variant}
       open={isOpen}
@@ -123,7 +129,7 @@ function ReasoningRoot({
       </ReasoningPreviewContext.Provider>
     </Collapsible>
   );
-}
+});
 
 function ReasoningFade({
   side = "bottom",
@@ -137,9 +143,9 @@ function ReasoningFade({
         className={cn(
           "aui-reasoning-fade pointer-events-none absolute inset-x-0 top-0 z-10 h-8",
           "bg-[linear-gradient(to_bottom,var(--color-background),transparent)]",
-          "group-data-[variant=muted]/reasoning-root:bg-[linear-gradient(to_bottom,hsl(var(--muted)/0.5),transparent)]",
+          "group-data-[variant=muted]/reasoning-root:bg-[linear-gradient(to_bottom,color-mix(in_oklab,var(--color-muted)_50%,var(--color-background)),transparent)]",
           "fade-in-0 animate-in",
-          "duration-(--animation-duration)",
+          "animation-duration-(--animation-duration)",
           className,
         )}
         {...props}
@@ -153,9 +159,9 @@ function ReasoningFade({
       className={cn(
         "aui-reasoning-fade pointer-events-none absolute inset-x-0 bottom-0 z-10 h-8",
         "bg-[linear-gradient(to_top,var(--color-background),transparent)]",
-        "group-data-[variant=muted]/reasoning-root:bg-[linear-gradient(to_top,hsl(var(--muted)/0.5),transparent)]",
+        "group-data-[variant=muted]/reasoning-root:bg-[linear-gradient(to_top,color-mix(in_oklab,var(--color-muted)_50%,var(--color-background)),transparent)]",
         "fade-in-0 animate-in",
-        "duration-(--animation-duration)",
+        "animation-duration-(--animation-duration)",
         className,
       )}
       {...props}
@@ -170,7 +176,7 @@ function ReasoningTrigger({
   ...props
 }: React.ComponentProps<typeof CollapsibleTrigger> & {
   active?: boolean;
-  duration?: number;
+  duration?: number | undefined;
 }) {
   const durationText = duration ? ` (${duration}s)` : "";
 
@@ -189,18 +195,12 @@ function ReasoningTrigger({
       />
       <span
         data-slot="reasoning-trigger-label"
-        className="aui-reasoning-trigger-label-wrapper relative inline-block leading-none tabular-nums"
+        className={cn(
+          "aui-reasoning-trigger-label-wrapper inline-block leading-none tabular-nums",
+          active && "shimmer motion-reduce:animate-none",
+        )}
       >
-        <span>Reasoning{durationText}</span>
-        {active ? (
-          <span
-            aria-hidden
-            data-slot="reasoning-trigger-shimmer"
-            className="aui-reasoning-trigger-shimmer shimmer pointer-events-none absolute inset-0 motion-reduce:animate-none"
-          >
-            Reasoning{durationText}
-          </span>
-        ) : null}
+        Reasoning{durationText}
       </span>
       <ChevronDownIcon
         data-slot="reasoning-trigger-chevron"
@@ -233,8 +233,7 @@ function ReasoningContent({
         "data-open:animate-collapsible-down",
         "data-closed:fill-mode-forwards",
         "data-closed:pointer-events-none",
-        "data-open:duration-(--animation-duration)",
-        "data-closed:duration-(--animation-duration)",
+        "[--tw-duration:var(--animation-duration)]",
         className,
       )}
       {...props}
@@ -260,13 +259,43 @@ function ReasoningText({
     const scrollEl = scrollRef.current;
     const contentEl = contentRef.current;
     if (!scrollEl || !contentEl) return;
+
+    let pinned = true;
+    let lastScrollTop = scrollEl.scrollTop;
+    let lastScrollHeight = scrollEl.scrollHeight;
+    const isAtBottom = () =>
+      Math.abs(
+        scrollEl.scrollHeight - scrollEl.scrollTop - scrollEl.clientHeight,
+      ) <= 1 || scrollEl.scrollHeight <= scrollEl.clientHeight;
+
     const pin = () => {
+      if (!pinned) return;
       scrollEl.scrollTop = scrollEl.scrollHeight;
     };
+    // A pin's own scroll event can arrive after new content grew the scroll
+    // height and read as "not at bottom"; only an upward move at unchanged
+    // scroll height is user intent.
+    const onScroll = () => {
+      if (isAtBottom()) {
+        pinned = true;
+      } else if (
+        scrollEl.scrollTop < lastScrollTop &&
+        scrollEl.scrollHeight === lastScrollHeight
+      ) {
+        pinned = false;
+      }
+      lastScrollTop = scrollEl.scrollTop;
+      lastScrollHeight = scrollEl.scrollHeight;
+    };
+
     pin();
+    scrollEl.addEventListener("scroll", onScroll);
     const observer = new ResizeObserver(pin);
     observer.observe(contentEl);
-    return () => observer.disconnect();
+    return () => {
+      scrollEl.removeEventListener("scroll", onScroll);
+      observer.disconnect();
+    };
   }, [isPreview]);
 
   return (
@@ -285,8 +314,8 @@ function ReasoningText({
         "group-data-closed/collapsible-content:slide-out-to-top-4",
         "group-data-open/collapsible-content:blur-in-[2px]",
         "group-data-closed/collapsible-content:blur-out-[2px]",
-        "group-data-open/collapsible-content:duration-(--animation-duration)",
-        "group-data-closed/collapsible-content:duration-(--animation-duration)",
+        "group-data-open/collapsible-content:animation-duration-(--animation-duration)",
+        "group-data-closed/collapsible-content:animation-duration-(--animation-duration)",
         className,
       )}
       {...props}
@@ -298,62 +327,7 @@ function ReasoningText({
   );
 }
 
-const ReasoningImpl: ReasoningMessagePartComponent = () => <MarkdownText />;
-
-const ReasoningGroupImpl: ReasoningGroupComponent = ({
-  children,
-  startIndex,
-  endIndex,
-}) => {
-  const isReasoningStreaming = useAuiState((s) => {
-    if (s.message.status?.type !== "running") return false;
-    const lastIndex = s.message.parts.length - 1;
-    if (lastIndex < 0) return false;
-    const lastType = s.message.parts[lastIndex]?.type;
-    if (lastType !== "reasoning") return false;
-    return lastIndex >= startIndex && lastIndex <= endIndex;
-  });
-
-  return (
-    <ReasoningRoot streaming={isReasoningStreaming}>
-      <ReasoningTrigger active={isReasoningStreaming} />
-      <ReasoningContent aria-busy={isReasoningStreaming}>
-        <ReasoningText>{children}</ReasoningText>
-      </ReasoningContent>
-    </ReasoningRoot>
-  );
-};
-
-const Reasoning = memo(
-  ReasoningImpl,
-) as unknown as ReasoningMessagePartComponent & {
-  Root: typeof ReasoningRoot;
-  Trigger: typeof ReasoningTrigger;
-  Content: typeof ReasoningContent;
-  Text: typeof ReasoningText;
-  Fade: typeof ReasoningFade;
-};
-
-Reasoning.displayName = "Reasoning";
-Reasoning.Root = ReasoningRoot;
-Reasoning.Trigger = ReasoningTrigger;
-Reasoning.Content = ReasoningContent;
-Reasoning.Text = ReasoningText;
-Reasoning.Fade = ReasoningFade;
-
-/**
- * @deprecated This wrapper targets the legacy `components.ReasoningGroup`
- * prop on `<MessagePrimitive.Parts>`. Use `<MessagePrimitive.GroupedParts>`
- * with a `groupBy` returning `"group-reasoning"` and compose `ReasoningRoot`
- * / `ReasoningTrigger` / `ReasoningContent` / `ReasoningText` directly.
- * See `thread.tsx` for an example.
- */
-const ReasoningGroup = memo(ReasoningGroupImpl);
-ReasoningGroup.displayName = "ReasoningGroup";
-
 export {
-  Reasoning,
-  ReasoningGroup,
   ReasoningRoot,
   ReasoningTrigger,
   ReasoningContent,

@@ -7,21 +7,21 @@ that survives reloads and dropped connections. Then use the checklist below to b
 your own product.
 
 It is the companion workspace for the [Publish your Agent guide](https://zoowork.ai/guides/publish-agent).
-Use it with your coding agent (Claude Code, Codex, Cursor or another): point it at this
+Use it with your coding agent (Codex, Cursor or another): point it at this
 directory and ask it to change `agent/agent.md` and `app.config.ts` for your use case.
 
 The other directories in this repository are capability demos built around a business
 scenario (Custom Tools, Remote MCP, RAG, research). This starter has no business logic; it is
 the starting point for your own Agent.
 
-Like the [OpenAI ChatKit starter](https://github.com/openai/openai-chatkit-starter-app) and the
-[Claude Managed Agents quickstarts](https://github.com/anthropics/claude-quickstarts/tree/main/managed-agents),
-it is a minimal integration. It has **no end-user sign-in, no per-user limits and no public
+It is a minimal integration. It has **no end-user sign-in, no per-user limits and no public
 deployment setup**, and it only answers on `localhost`. See [Before you go public](#before-you-go-public).
 
 ## Requirements
 
-- Node.js **22 or later**, on the latest security release of your line, and npm.
+- Node.js **22.20 or later** (`engines` in `package.json`) and npm. The repository pins
+  24.22.1 in `.node-version`; `fnm use` or `nvm use` (or fnm's automatic switching) picks it
+  up. Check with `node --version` before `npm ci`.
 - A ZooWork Platform **Project key** (`zwp_live_…`) and Organization credits. Step 1 shows
   how to get them.
 
@@ -64,6 +64,8 @@ name: Starter Assistant
 tools:
   - web_search
   - web_fetch
+# permissions:
+#   web_fetch: always_ask
 global_skills: false
 ---
 
@@ -74,6 +76,7 @@ You are a helpful assistant inside a web chat. …
 | --- | --- | --- |
 | `name` | yes | The Agent's name in Platform. |
 | `tools` | yes | Tools the Agent may use, by exact name. `[]` makes a text-only Agent. |
+| `permissions` | no | Tools that ask before each call: a map of tool name to `always_ask` or `always_allow`. Each name must be in `tools`. See [Tool approvals](#tool-approvals). |
 | `model` | no | Model id. Omit to use the Platform default at creation. `npm run models` lists the models your key can use. |
 | `thinking` | no | `off`, `low`, `medium`, `high` or `max`. Needs `model`. |
 | `max_tokens` | no | Output token cap per model request. Needs `model`. |
@@ -82,6 +85,25 @@ You are a helpful assistant inside a web chat. …
 | `timezone` | no | Named IANA timezone, such as `Asia/Shanghai`. |
 
 Unknown keys are rejected, so a typo fails setup instead of being ignored.
+
+### Tool approvals
+
+To make a tool ask before it runs, list it under `permissions` with `always_ask`. For example,
+to approve every page the Agent reads:
+
+```yaml
+tools:
+  - web_search
+  - web_fetch
+permissions:
+  web_fetch: always_ask
+```
+
+Run `npm run setup`. From the next message on, each `web_fetch` call pauses: its card in the
+chat opens with **Allow** and **Deny**, and the header says "Waiting for your approval". Allow
+runs the call; Deny skips it, the card reads "Denied: web_fetch", and the Agent continues
+without it. A call nobody decides on is denied after about ten minutes. Tools without an entry
+run without asking (`always_allow` says so explicitly).
 
 Then create and start the Agent:
 
@@ -97,7 +119,12 @@ the same Agent and confirms the change by reading it back; a change the Platform
 fails as `agent_update_not_confirmed` instead of being reported as done. Existing conversations
 use the new configuration from their next message.
 
-Removing a line works for `thinking` (setup clears it). The Platform has no documented way to
+Setup writes the Agent's whole tool policy from `tools` and `permissions`. A tool approval
+added elsewhere (in Console or with the SDK) is therefore removed by the next setup; setup prints
+a `WARNING` naming each such field before it writes, and `npm run status` lists them. Keep
+approvals in `agent/agent.md`.
+
+Removing a line works for `thinking` (setup clears it) and `permissions` (setup removes them). The Platform has no documented way to
 clear `model`, `max_tokens` or `timezone`, so setup refuses to remove them: keep a value, or run
 `npm run cleanup` and then `npm run setup` to recreate the Agent. To remove all Skills, write
 `skills: []` instead of deleting the line.
@@ -106,24 +133,33 @@ clear `model`, `max_tokens` or `timezone`, so setup refuses to remove them: keep
 
 ```sh
 npm run dev
+# or, if port 3000 is in use:
+npm run dev -- --port 3001
 ```
 
-Open **http://localhost:3000** and send a message. You will see the Agent think, use its
-tools, and reply. Each conversation in the sidebar is one ZooWork Session.
+Open the URL `npm run dev` prints (**http://localhost:3000** by default) and send a message.
+You will see the Agent think, use its tools, and reply. Each conversation in the sidebar is
+one ZooWork Session.
 
 - **Reload or lose the connection**: the page reconnects and continues from where it stopped.
   The Agent keeps working while the page is closed; its reply is there when you come back.
 - **Stop** (the square button) interrupts the run on the Platform. Closing the page does not.
-- **Allow / Deny** appears when a tool call needs approval under the Agent's tool policy.
+- **Allow / Deny** appears on the card of a tool call that needs approval. Set which tools ask
+  in `agent/agent.md` ([Tool approvals](#tool-approvals)).
+- **Switch conversations** while one is working: the sidebar keeps a spinner on it until its
+  reply is done (for up to three background conversations at a time).
 - **Archive** moves a conversation to the sidebar's **Archived** group. It stays readable but
   accepts no new messages, and cannot be unarchived. **Delete** deletes the Session on the
-  Platform and removes it from the list.
+  Platform and removes it from the list. Both ask for confirmation first.
+
+The header shows whether the Agent is ready, and while it is, what the open conversation is
+doing ("Working…", "Waiting for your approval").
 
 Replies arrive as whole messages, with tool activity shown live. The Platform API does not
 currently stream replies token by token.
 
-If the page says `agent/agent.md` changed since the last setup, run `npm run setup`.
-`npm run status` shows the Agent's ID, state, and whether it matches the file.
+If the page says the Agent is out of date, run `npm run setup`. `npm run status` shows the
+Agent's ID, state, whether it matches the file, and any tool policy fields setup would remove.
 
 ## 5. Make it yours
 
@@ -134,11 +170,14 @@ app; the code stays the same.
 | Change | Where |
 | --- | --- |
 | What the Agent does | `agent/agent.md` (then `npm run setup`) |
-| Product name, description, greeting, placeholder, starter prompts, brand color, footnote | `app.config.ts` (no code changes; the fields are described in `lib/app-config.ts`) |
+| Product name, description, greeting, placeholder, starter prompts, brand color (buttons and links), logo, footnote | `app.config.ts` (no code changes; the fields are described in `lib/app-config.ts`) |
 | A custom card for one of your tools | `components/tool-uis/` (register it in `index.tsx`) |
-| Layout and components | `app/assistant.tsx`, `components/` |
+| Layout and components | `components/chat-screen.tsx`, `components/` |
+| Colours, radii and dark mode | `app/globals.css` |
 
-`app.config.ts` is sent to the browser. Never put keys or private data in it.
+`app.config.ts` is sent to the browser. Never put keys or private data in it. For a logo, put
+the image in `public/` (create the folder) and set `icon: "/logo.svg"`; it becomes the sidebar
+mark and the browser tab icon. Without it, both show the name's first letter on the brand color.
 
 ## Before you go public
 
@@ -189,6 +228,7 @@ Errors print a stable code and never the key or a provider response body.
 | `agent_update_not_confirmed` | The Platform accepted the update but the Agent does not show it. Run `npm run status`, check the changed values (model id, Skill names, tool names), and run setup again. |
 | `cleanup_incomplete_run_cleanup` | A cleanup stopped partway. Run `npm run cleanup` again to finish it, then `npm run setup`. |
 | `session_creation_uncertain_retry_cleanup` | A conversation was being created when its response was lost, and it could not be confirmed now. Keep `.local/`, check the connection and key, and run `npm run cleanup` again. |
+| `request_failed` / `timeout_or_cancelled` | The app server could not reach ZooWork Platform (a network failure, or no answer in time). Calls that are safe to repeat were already retried once. Check your internet connection and try again. If `npm run status` fails the same way, the problem is the connection to the Platform, not the app. |
 | `http_401` | The key was rejected. Check it was copied completely. |
 | `http_402` | Set up billing or add credits for the Organization in Platform Console. |
 | `http_403` | Check the key's Project and permissions. |
@@ -210,7 +250,9 @@ sidebar  ── GET/POST /api/sessions ──▶ local Session index ──creat
 thread   ── GET  …/[id]/stream (SSE) ──▶ relay ◀────── streamEvents(cursor) ── event log
 composer ── POST …/[id]/messages ─────▶ postEvents(user.message, idempotency key)
 stop     ── POST …/[id]/interrupt ────▶ postEvents(user.interrupt)
-allow    ── POST …/[id]/approvals/… ──▶ resolveApproval
+allow    ── POST …/[id]/approvals/… ──▶ listApprovals check, then resolveApproval
+archive  ── POST …/[id]/archive ──────▶ interrupt if running, then archiveSession
+status   ── GET  /api/status ─────────▶ getAgent (definition and state)
 ```
 
 - **One stream for history and live updates.** Opened without a cursor, the Platform stream
@@ -219,11 +261,17 @@ allow    ── POST …/[id]/approvals/… ──▶ resolveApproval
   reconnects with that id and the stream resumes right after it, so nothing is lost or shown
   twice. `lib/zoowork/relay.ts`
 - **One fold for every view.** `lib/chat/reducer.ts` is a pure function from Session events to
-  assistant-ui messages, used for both the replay and live events.
+  assistant-ui messages, used for both the replay and live events. It skips any event at or
+  below the last sequence number it applied, so an overlapping replay changes nothing.
   `lib/chat/session-controller.ts` owns the stream, the optimistic bubble for a sent message and
-  the stop/approval actions. `lib/chat/runtime-provider.tsx` connects both to assistant-ui.
+  the stop/approval actions. `lib/chat/runtime-provider.tsx` connects both to assistant-ui, with
+  the sidebar backed by the Session index (`lib/chat/session-index.ts`). The open conversation
+  keeps a stream; one you switch away from keeps it only while its run is in flight
+  (`lib/chat/controller-pool.ts`). Switching back resumes from the last cursor.
 - **Safe retries.** Each sent message carries an idempotency key, so a retried request is
-  delivered once and never starts a second paid run. Setup saves the exact create request and
+  delivered once and never starts a second paid run. Calls that are safe to repeat (reads,
+  keyed creates and events, archive) are retried once after a network failure
+  (`lib/zoowork/retry.ts`); Agent updates and approval decisions are sent once. Setup saves the exact create request and
   key before creating the Agent, and the app does the same before creating each conversation's
   Session, so a lost response is resolved by repeating the same request instead of creating a
   duplicate. Listing conversations and cleanup both finish such pending creates.
@@ -234,10 +282,10 @@ allow    ── POST …/[id]/approvals/… ──▶ resolveApproval
 | --- | --- |
 | `agent/agent.md` | The Agent definition |
 | `app.config.ts` | Page text and brand |
-| `app/api/` | Routes: sessions, stream, messages, interrupt, approvals, status |
-| `lib/zoowork/` | Server: configuration, client, setup/cleanup, Session index, relay |
-| `lib/chat/` | Browser: event reducer, session controller, assistant-ui runtime |
-| `components/` | assistant-ui components, tool cards, sidebar, status bar |
+| `app/api/` | Routes: sessions, stream, messages, interrupt, archive, approvals, status |
+| `lib/zoowork/` | Server: configuration, client, setup/cleanup, Session index, relay (`relay.ts`), route operations (`chat.ts`) |
+| `lib/chat/` | Browser: API client, event reducer, session controller, Session index, assistant-ui runtime |
+| `components/` | Chat screen, sidebar, status bar, tool cards (`tool-uis/`), assistant-ui and shadcn/ui components |
 | `scripts/` | `setup` / `status` / `cleanup` / `models` |
 | `test/` | Offline tests and the in-memory fake Platform they use |
 
@@ -249,18 +297,23 @@ npm run check
 ```
 
 `check` runs the TypeScript check, the offline tests and a production build. It needs no key
-and makes no network request to ZooWork. The tests cover the agent definition parser, the
-event reducer (tools, approvals, stop, failures, replay overlap), setup and cleanup recovery,
-and stream relay and resume against an in-memory fake of the Session API in `test/`.
+and makes no network request to ZooWork. The tests check that `agent/agent.md` has a valid
+structure, not its example values, so `check` stays green after you customize it. They cover
+the agent definition parser, the
+event reducer (tools, approvals, stop, failures, replay overlap), the route operations
+(ownership, idempotent sends, approval checks, archive), setup and cleanup recovery, and stream
+relay and resume against an in-memory fake of the Session API in `test/`.
+
+`npm ci` reports no install-script warning: `allowScripts` in `package.json` records that the
+install scripts of `esbuild` and `fsevents` (pulled in by `tsx`) are not run, which they do not
+need. Older npm versions ignore the field and run them as before.
 
 `npm run build` and `npm start` build and serve the app locally. They are not a deployment
 setup; see [Before you go public](#before-you-go-public).
 
 ## Sources and licenses
 
-The chat UI is built with [assistant-ui](https://www.assistant-ui.com/). Its copy-in components
-under `components/` are MIT-licensed by AgentbaseAI Inc. (see [`components/NOTICE.md`](components/NOTICE.md)).
-The app structure, reducer, session controller and runtime wiring are adapted from Anthropic's
-[Claude Managed Agents assistant-ui quickstart](https://github.com/anthropics/claude-quickstarts/tree/9ec32b91df50b0d4906cae64b13c6298055ff40d/managed-agents/assistant-ui)
-(MIT, [notice](third-party/anthropic-MIT.txt)) and rewritten for ZooWork Sessions.
-[REFERENCES.md](REFERENCES.md) lists the copied paths and changes.
+The chat UI is built with [assistant-ui](https://www.assistant-ui.com/) and
+[shadcn/ui](https://ui.shadcn.com/). Their generated components under `components/` (and
+`lib/utils.ts`, `hooks/`) are MIT-licensed by AgentbaseAI Inc. and shadcn; see
+[`components/NOTICE.md`](components/NOTICE.md) for what was generated and the license texts.

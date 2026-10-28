@@ -1,43 +1,27 @@
-import { isNotFound, StarterError } from "@/lib/zoowork/errors";
+import { deleteSession, getSessionSummary, renameSession } from "@/lib/zoowork/chat";
 import { readJson, route } from "@/lib/zoowork/http";
-import { getRuntime, ownedSession } from "@/lib/zoowork/runtime";
-import { titleFrom } from "@/lib/zoowork/sessions";
-import { summarize } from "../summary";
+import { getRuntime } from "@/lib/zoowork/runtime";
 
-// GET    /api/sessions/[id]          → SessionSummary
-// PATCH  /api/sessions/[id] {title}  → SessionSummary (the title is local to this app)
-// DELETE /api/sessions/[id]          → 204; the Platform cancels an in-flight run first
+type Context = { params: Promise<{ id: string }> };
 
-export const runtime = "nodejs";
-export const dynamic = "force-dynamic";
-
-type Ctx = { params: Promise<{ id: string }> };
-
-export const GET = route(async (_request, { params }: Ctx) => {
-  const rt = await getRuntime();
-  return Response.json(summarize(await ownedSession(rt, (await params).id)));
+export const GET = route<Context>(async (_request, { params }) => {
+  const { id } = await params;
+  return Response.json(await getSessionSummary(await getRuntime(), id));
 });
 
-export const PATCH = route(
-  async (request, { params }: Ctx) => {
-    const rt = await getRuntime();
-    const entry = await ownedSession(rt, (await params).id);
-    const body = await readJson(request);
-    if (typeof body.title !== "string" || !body.title.trim()) throw new StarterError("title_required");
-    const updated = await rt.sessions.update(entry.id, { title: titleFrom(body.title) });
-    return Response.json(summarize(updated ?? entry));
+export const PATCH = route<Context>(
+  async (request, { params }) => {
+    const { id } = await params;
+    return Response.json(await renameSession(await getRuntime(), id, await readJson(request)));
   },
   { write: true },
 );
 
-export const DELETE = route(async (_request, { params }: Ctx) => {
-  const rt = await getRuntime();
-  const entry = await ownedSession(rt, (await params).id);
-  try {
-    await rt.client.deleteSession(rt.agentId, entry.id);
-  } catch (error) {
-    if (!isNotFound(error)) throw error;
-  }
-  await rt.sessions.remove(entry.id);
-  return new Response(null, { status: 204 });
-}, { sameOrigin: true });
+export const DELETE = route<Context>(
+  async (_request, { params }) => {
+    const { id } = await params;
+    await deleteSession(await getRuntime(), id);
+    return new Response(null, { status: 204 });
+  },
+  { sameOrigin: true },
+);

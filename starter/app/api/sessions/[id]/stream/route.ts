@@ -1,21 +1,19 @@
 import { route } from "@/lib/zoowork/http";
-import { relayStream, resumeCursor, sseResponse } from "@/lib/zoowork/relay";
-import { getRuntime, ownedSession } from "@/lib/zoowork/runtime";
+import { relayErrorResponse, relayStream, resumeCursor, sseHeaders } from "@/lib/zoowork/relay";
+import { getRuntime, ownedSession, type Runtime } from "@/lib/zoowork/runtime";
 
-// GET /api/sessions/[id]/stream — the conversation, as Server-Sent Events.
-//
-// One stream carries both the history and the live tail: without a cursor
-// the Platform replays the Session from its first event, then continues
-// live. Each frame's SSE id is the Platform resume cursor, so a dropped
-// connection resumes exactly where it stopped. See lib/zoowork/relay.ts.
+type Context = { params: Promise<{ id: string }> };
 
-export const runtime = "nodejs";
-export const dynamic = "force-dynamic";
-
-type Ctx = { params: Promise<{ id: string }> };
-
-export const GET = route(async (request, { params }: Ctx) => {
-  const rt = await getRuntime();
-  const entry = await ownedSession(rt, (await params).id);
-  return sseResponse(relayStream(rt.client, rt.agentId, entry.id, resumeCursor(request), request.signal));
+export const GET = route<Context>(async (request, { params }) => {
+  const { id } = await params;
+  let runtime: Runtime;
+  try {
+    runtime = await getRuntime();
+    await ownedSession(runtime, id);
+  } catch (error) {
+    // Answer in SSE so the browser's EventSource can read the reason.
+    return relayErrorResponse(error);
+  }
+  const stream = relayStream(runtime.client, runtime.agentId, id, resumeCursor(request), request.signal);
+  return new Response(stream, { headers: sseHeaders() });
 });
