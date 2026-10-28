@@ -16,7 +16,8 @@ test('debug observes real SDK calls and deduplicates history/stream event proven
     const opened = new Promise<void>(resolve => { streamOpened = resolve })
     const later = f.platform.later.bind(f.platform), stream = f.platform.client.streamEvents
     f.platform.later = action => { void opened.then(() => later(action)) }
-    f.platform.client.streamEvents = (...args) => { streamOpened(); return stream(...args) }
+    // streamEvents is overloaded (cursor, and deprecated `after`), so forward the arguments untyped.
+    f.platform.client.streamEvents = (...args: unknown[]) => { streamOpened(); return Reflect.apply(stream, undefined, args) }
     const c = await f.store.create('topic', randomUUID())
     await f.research.send(c.id, 'private question', randomUUID(), async () => {})
     await f.research.history(c.id)

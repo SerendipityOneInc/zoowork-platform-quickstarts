@@ -21,7 +21,7 @@
     "test:browser": "playwright test"
   },
   "dependencies": {
-    "@zoowork-ai/sdk": "0.12.0",
+    "@zoowork-ai/sdk": "0.13.0",
     "chat": "4.34.0",
     "@chat-adapter/web": "4.34.0",
     "@chat-adapter/state-memory": "4.34.0",
