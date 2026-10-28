@@ -1,70 +1,88 @@
-"use client";
-
-// Fetch helpers for this app's own routes. The browser never talks to
-// ZooWork directly: the Project key stays in the server process.
+// The browser's client for this app's own /api routes. It never talks to the
+// Platform and never sees the key.
 
 import { describe } from "./notices";
 import type { AppStatus, SessionSummary } from "./wire";
 
-/** A failed route call. `code` is the server's stable error code, when it sent one. */
+/** A failed API call: a stable code from the server and a message safe to show. */
 export class ApiError extends Error {
   constructor(
-    readonly code: string | undefined,
+    readonly code: string,
     readonly status: number,
     message: string,
   ) {
     super(message);
+    this.name = "ApiError";
   }
 }
 
-export const sessionUrl = (id: string, suffix = "") => `/api/sessions/${encodeURIComponent(id)}${suffix}`;
+const UNREACHABLE = "Could not reach the app server. Check that npm run dev is still running.";
 
-export const postJson = (url: string, body: unknown, method = "POST") =>
-  fetch(url, { method, headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
-
-export async function errorCodeOf(res: Response): Promise<string | undefined> {
+async function call<T>(path: string, fallback: string, init: { method?: string; body?: unknown } = {}): Promise<T> {
+  let response: Response;
   try {
-    return ((await res.json()) as { error?: string }).error;
+    response = await fetch(path, {
+      method: init.method ?? "GET",
+      headers: init.body === undefined ? {} : { "content-type": "application/json" },
+      body: init.body === undefined ? undefined : JSON.stringify(init.body),
+      cache: "no-store",
+    });
   } catch {
-    return undefined;
+    throw new ApiError("network_error", 0, UNREACHABLE);
   }
+  if (response.status === 204) return undefined as T;
+  const body = (await response.json().catch(() => null)) as unknown;
+  if (!response.ok) {
+    const code =
+      body && typeof body === "object" && typeof (body as { error?: unknown }).error === "string"
+        ? (body as { error: string }).error
+        : `http_${response.status}`;
+    throw new ApiError(code, response.status, describe(code, fallback));
+  }
+  return body as T;
 }
 
-/** Throw an ApiError with readable text for a non-2xx response. */
-export async function ensureOk(res: Response, what: string): Promise<Response> {
-  if (res.ok) return res;
-  const code = await errorCodeOf(res);
-  throw new ApiError(code, res.status, describe(code, `Could not ${what}`));
-}
+const session = (id: string) => `/api/sessions/${encodeURIComponent(id)}`;
 
-async function json<T>(res: Response, what: string): Promise<T> {
-  return (await (await ensureOk(res, what)).json()) as T;
-}
+export const api = {
+  status: () => call<AppStatus>("/api/status", "Could not read the app status"),
 
-export async function getStatus(): Promise<AppStatus> {
-  return json(await fetch("/api/status", { cache: "no-store" }), "read the app status");
-}
+  listSessions: () => call<SessionSummary[]>("/api/sessions", "Could not load the conversations"),
 
-export async function listSessions(): Promise<SessionSummary[]> {
-  return (await json<{ sessions: SessionSummary[] }>(await fetch("/api/sessions", { cache: "no-store" }), "list conversations")).sessions;
-}
+  createSession: (threadId: string, text: string) =>
+    call<SessionSummary>("/api/sessions", "Could not start the conversation", {
+      method: "POST",
+      body: { threadId, text },
+    }),
 
-export async function createSession(threadId: string, title: string): Promise<SessionSummary> {
-  return json(await postJson("/api/sessions", { threadId, title }), "start the conversation");
-}
+  renameSession: (id: string, title: string) =>
+    call<SessionSummary>(session(id), "Could not rename the conversation", { method: "PATCH", body: { title } }),
 
-export async function getSession(id: string): Promise<SessionSummary> {
-  return json(await fetch(sessionUrl(id), { cache: "no-store" }), "open the conversation");
-}
+  archiveSession: (id: string) =>
+    call<SessionSummary>(`${session(id)}/archive`, "Could not archive the conversation", { method: "POST" }),
 
-export async function renameSession(id: string, title: string): Promise<void> {
-  await ensureOk(await postJson(sessionUrl(id), { title }, "PATCH"), "rename the conversation");
-}
+  deleteSession: (id: string) => call<void>(session(id), "Could not delete the conversation", { method: "DELETE" }),
 
-export async function archiveSession(id: string): Promise<void> {
-  await ensureOk(await postJson(sessionUrl(id, "/archive"), {}), "archive the conversation");
-}
+  sendMessage: (id: string, text: string, idempotencyKey: string) =>
+    call<{ accepted: true; seq?: number }>(`${session(id)}/messages`, "Your message was not sent", {
+      method: "POST",
+      body: { text, idempotencyKey },
+    }),
 
-export async function deleteSession(id: string): Promise<void> {
-  await ensureOk(await fetch(sessionUrl(id), { method: "DELETE" }), "delete the conversation");
-}
+  interrupt: (id: string, idempotencyKey: string) =>
+    call<{ accepted: boolean }>(`${session(id)}/interrupt`, "Could not stop the reply", {
+      method: "POST",
+      body: { idempotencyKey },
+    }),
+
+  resolveApproval: (id: string, approvalId: string, decision: "allow-once" | "allow-always" | "deny") =>
+    call<{ status: string; signaled: boolean }>(
+      `${session(id)}/approvals/${encodeURIComponent(approvalId)}`,
+      "Could not send the decision",
+      { method: "POST", body: { decision } },
+    ),
+
+  /** The event stream URL. A cursor resumes after that event; without one the Session replays from the start. */
+  streamUrl: (id: string, cursor?: string) =>
+    `${session(id)}/stream${cursor ? `?cursor=${encodeURIComponent(cursor)}` : ""}`,
+};

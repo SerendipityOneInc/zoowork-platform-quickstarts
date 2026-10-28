@@ -7,16 +7,14 @@ that survives reloads and dropped connections. Then use the checklist below to b
 your own product.
 
 It is the companion workspace for the [Publish your Agent guide](https://zoowork.ai/guides/publish-agent).
-Use it with your coding agent (Claude Code, Codex, Cursor or another): point it at this
+Use it with your coding agent (Codex, Cursor or another): point it at this
 directory and ask it to change `agent/agent.md` and `app.config.ts` for your use case.
 
 The other directories in this repository are capability demos built around a business
 scenario (Custom Tools, Remote MCP, RAG, research). This starter has no business logic; it is
 the starting point for your own Agent.
 
-Like the [OpenAI ChatKit starter](https://github.com/openai/openai-chatkit-starter-app) and the
-[Claude Managed Agents quickstarts](https://github.com/anthropics/claude-quickstarts/tree/main/managed-agents),
-it is a minimal integration. It has **no end-user sign-in, no per-user limits and no public
+It is a minimal integration. It has **no end-user sign-in, no per-user limits and no public
 deployment setup**, and it only answers on `localhost`. See [Before you go public](#before-you-go-public).
 
 ## Requirements
@@ -114,7 +112,8 @@ tools, and reply. Each conversation in the sidebar is one ZooWork Session.
 - **Reload or lose the connection**: the page reconnects and continues from where it stopped.
   The Agent keeps working while the page is closed; its reply is there when you come back.
 - **Stop** (the square button) interrupts the run on the Platform. Closing the page does not.
-- **Allow / Deny** appears when a tool call needs approval under the Agent's tool policy.
+- **Allow / Deny** appears on the tool call's card when it needs approval under the Agent's
+  tool policy.
 - **Archive** moves a conversation to the sidebar's **Archived** group. It stays readable but
   accepts no new messages, and cannot be unarchived. **Delete** deletes the Session on the
   Platform and removes it from the list.
@@ -136,7 +135,8 @@ app; the code stays the same.
 | What the Agent does | `agent/agent.md` (then `npm run setup`) |
 | Product name, description, greeting, placeholder, starter prompts, brand color, footnote | `app.config.ts` (no code changes; the fields are described in `lib/app-config.ts`) |
 | A custom card for one of your tools | `components/tool-uis/` (register it in `index.tsx`) |
-| Layout and components | `app/assistant.tsx`, `components/` |
+| Layout and components | `components/chat-screen.tsx`, `components/` |
+| Colours, radii and dark mode | `app/globals.css` |
 
 `app.config.ts` is sent to the browser. Never put keys or private data in it.
 
@@ -210,7 +210,9 @@ sidebar  ── GET/POST /api/sessions ──▶ local Session index ──creat
 thread   ── GET  …/[id]/stream (SSE) ──▶ relay ◀────── streamEvents(cursor) ── event log
 composer ── POST …/[id]/messages ─────▶ postEvents(user.message, idempotency key)
 stop     ── POST …/[id]/interrupt ────▶ postEvents(user.interrupt)
-allow    ── POST …/[id]/approvals/… ──▶ resolveApproval
+allow    ── POST …/[id]/approvals/… ──▶ listApprovals check, then resolveApproval
+archive  ── POST …/[id]/archive ──────▶ interrupt if running, then archiveSession
+status   ── GET  /api/status ─────────▶ getAgent (definition and state)
 ```
 
 - **One stream for history and live updates.** Opened without a cursor, the Platform stream
@@ -219,9 +221,12 @@ allow    ── POST …/[id]/approvals/… ──▶ resolveApproval
   reconnects with that id and the stream resumes right after it, so nothing is lost or shown
   twice. `lib/zoowork/relay.ts`
 - **One fold for every view.** `lib/chat/reducer.ts` is a pure function from Session events to
-  assistant-ui messages, used for both the replay and live events.
+  assistant-ui messages, used for both the replay and live events. It skips any event at or
+  below the last sequence number it applied, so an overlapping replay changes nothing.
   `lib/chat/session-controller.ts` owns the stream, the optimistic bubble for a sent message and
-  the stop/approval actions. `lib/chat/runtime-provider.tsx` connects both to assistant-ui.
+  the stop/approval actions. `lib/chat/runtime-provider.tsx` connects both to assistant-ui, with
+  the sidebar backed by the Session index (`lib/chat/session-index.ts`). Only the open
+  conversation keeps a stream; switching back resumes from its last cursor.
 - **Safe retries.** Each sent message carries an idempotency key, so a retried request is
   delivered once and never starts a second paid run. Setup saves the exact create request and
   key before creating the Agent, and the app does the same before creating each conversation's
@@ -234,10 +239,10 @@ allow    ── POST …/[id]/approvals/… ──▶ resolveApproval
 | --- | --- |
 | `agent/agent.md` | The Agent definition |
 | `app.config.ts` | Page text and brand |
-| `app/api/` | Routes: sessions, stream, messages, interrupt, approvals, status |
-| `lib/zoowork/` | Server: configuration, client, setup/cleanup, Session index, relay |
-| `lib/chat/` | Browser: event reducer, session controller, assistant-ui runtime |
-| `components/` | assistant-ui components, tool cards, sidebar, status bar |
+| `app/api/` | Routes: sessions, stream, messages, interrupt, archive, approvals, status |
+| `lib/zoowork/` | Server: configuration, client, setup/cleanup, Session index, relay (`relay.ts`), route operations (`chat.ts`) |
+| `lib/chat/` | Browser: API client, event reducer, session controller, Session index, assistant-ui runtime |
+| `components/` | Chat screen, sidebar, status bar, tool cards (`tool-uis/`), assistant-ui and shadcn/ui components |
 | `scripts/` | `setup` / `status` / `cleanup` / `models` |
 | `test/` | Offline tests and the in-memory fake Platform they use |
 
@@ -250,17 +255,16 @@ npm run check
 
 `check` runs the TypeScript check, the offline tests and a production build. It needs no key
 and makes no network request to ZooWork. The tests cover the agent definition parser, the
-event reducer (tools, approvals, stop, failures, replay overlap), setup and cleanup recovery,
-and stream relay and resume against an in-memory fake of the Session API in `test/`.
+event reducer (tools, approvals, stop, failures, replay overlap), the route operations
+(ownership, idempotent sends, approval checks, archive), setup and cleanup recovery, and stream
+relay and resume against an in-memory fake of the Session API in `test/`.
 
 `npm run build` and `npm start` build and serve the app locally. They are not a deployment
 setup; see [Before you go public](#before-you-go-public).
 
 ## Sources and licenses
 
-The chat UI is built with [assistant-ui](https://www.assistant-ui.com/). Its copy-in components
-under `components/` are MIT-licensed by AgentbaseAI Inc. (see [`components/NOTICE.md`](components/NOTICE.md)).
-The app structure, reducer, session controller and runtime wiring are adapted from Anthropic's
-[Claude Managed Agents assistant-ui quickstart](https://github.com/anthropics/claude-quickstarts/tree/9ec32b91df50b0d4906cae64b13c6298055ff40d/managed-agents/assistant-ui)
-(MIT, [notice](third-party/anthropic-MIT.txt)) and rewritten for ZooWork Sessions.
-[REFERENCES.md](REFERENCES.md) lists the copied paths and changes.
+The chat UI is built with [assistant-ui](https://www.assistant-ui.com/) and
+[shadcn/ui](https://ui.shadcn.com/). Their generated components under `components/` (and
+`lib/utils.ts`, `hooks/`) are MIT-licensed by AgentbaseAI Inc. and shadcn; see
+[`components/NOTICE.md`](components/NOTICE.md) for what was generated and the license texts.

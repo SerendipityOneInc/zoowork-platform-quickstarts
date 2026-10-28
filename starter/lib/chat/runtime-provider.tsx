@@ -1,162 +1,290 @@
 "use client";
 
-// Connects ZooWork Sessions to assistant-ui, in two layers:
-//
-//   useRemoteThreadListRuntime — the sidebar. Its adapter is this app's
-//     Session index (session-list-adapter.ts); thread id = Session id.
-//
-//   useSessionThreadRuntime — one per open thread. It takes the Session's
-//     controller (stream + actions) and hands its folded messages to
-//     useExternalStoreRuntime. A brand-new chat has no Session yet; the
-//     first send creates it through initialize().
-//
-// Adapted from the Claude Managed Agents assistant-ui quickstart
-// (MIT, see third-party/anthropic-MIT.txt).
+// Connects this app's conversations to assistant-ui. The thread list is the
+// Session index from /api/sessions; the open thread's messages come from its
+// SessionController, folded by the reducer. Only the open conversation keeps
+// an event stream; switching away closes it and switching back resumes from
+// the last cursor.
 
 import {
   AssistantRuntimeProvider,
-  useAui,
-  useAuiState,
   useExternalStoreRuntime,
-  useRemoteThreadListRuntime,
   type AppendMessage,
+  type AssistantRuntime,
+  type ExternalStoreThreadData,
+  type ExternalStoreThreadListAdapter,
   type ThreadMessageLike,
 } from "@assistant-ui/react";
-import { useEffect, useMemo, useRef, useSyncExternalStore } from "react";
+import {
+  createContext,
+  useCallback,
+  useContext,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  useSyncExternalStore,
+  type ReactNode,
+} from "react";
+import { appConfig } from "@/app.config";
+import { ApiError } from "./api";
 import { setAppNotice } from "./app-notice";
-import { initialProjection, type ThreadMessage } from "./reducer";
+import { toThreadMessages } from "./reducer";
 import { restoreIfSafe, sendFromComposer } from "./send-message";
-import { getSessionController, type ControllerSnapshot, type SessionController } from "./session-controller";
-import { rememberFirstMessage, sessionListAdapter } from "./session-list-adapter";
+import { initialSnapshot, isBusy, SessionController, type SessionSnapshot } from "./session-controller";
+import { SessionIndex, type IndexSnapshot } from "./session-index";
+import { MESSAGE_MAX, type SessionSummary } from "./wire";
 
-const EMPTY: ControllerSnapshot = {
-  messages: [],
-  projection: initialProjection(),
-  isLoaded: true,
-  isConnected: false,
-  isBusy: false,
-  isDead: false,
-  notice: null,
+type ChatContextValue = {
+  /** The open conversation's local thread id. */
+  threadId: string;
+  /** Its Session, or null for a new chat that has not sent yet. */
+  session: SessionSummary | null;
+  controller: SessionController | null;
+  snapshot: SessionSnapshot;
+  index: IndexSnapshot;
+  reloadIndex: () => void;
+  /** Put text back into the open composer, after any draft already there. */
+  restoreDraft: (text: string) => void;
 };
-const subscribeNothing = () => () => {};
-const getEmpty = () => EMPTY;
 
-function useControllerSnapshot(controller: SessionController | null): ControllerSnapshot {
-  return useSyncExternalStore(
-    controller ? controller.subscribe : subscribeNothing,
-    controller ? controller.getSnapshot : getEmpty,
-    getEmpty,
-  );
+const ChatContext = createContext<ChatContextValue | null>(null);
+
+export function useChat(): ChatContextValue {
+  const value = useContext(ChatContext);
+  if (!value) throw new Error("useChat must be used inside ChatRuntimeProvider");
+  return value;
 }
 
-function textOf(message: AppendMessage): string {
-  return message.content
-    .filter((p) => p.type === "text")
-    .map((p) => (p as { text: string }).text)
-    .join("\n")
-    .trim();
+const noSubscribe = () => () => {};
+const getInitial = () => initialSnapshot;
+
+let draftCounter = 0;
+const newDraftId = () => `draft-${++draftCounter}`;
+
+type ListedThread<S extends "regular" | "archived"> = ExternalStoreThreadData<S> & { lastMessageAt: Date };
+
+function listed<S extends "regular" | "archived">(
+  status: S,
+  sessions: readonly SessionSummary[],
+  index: SessionIndex,
+): ListedThread<S>[] {
+  return sessions.map((s) => ({
+    status,
+    id: index.threadIdFor(s.id),
+    remoteId: s.id,
+    title: s.title,
+    lastMessageAt: new Date(s.updatedAt),
+  }));
 }
 
-/** Pass only the fields assistant-ui knows; the reducer's bookkeeping stays out. */
-function toThreadMessageLike(m: ThreadMessage): ThreadMessageLike {
-  return {
-    id: m.id,
-    role: m.role,
-    content: m.content as ThreadMessageLike["content"],
-    createdAt: m.createdAt,
-    ...(m.status ? { status: m.status } : {}),
-  };
-}
+const DELETE_CONFIRM =
+  "Delete this conversation? Its Session is deleted on ZooWork Platform and cannot be restored.";
 
-function useSessionThreadRuntime() {
-  const aui = useAui();
-  const threadId = useAuiState((s) => s.threadListItem.id);
-  const sessionId = useAuiState((s) => s.threadListItem.externalId ?? s.threadListItem.remoteId);
-  const archived = useAuiState((s) => s.threadListItem.custom?.archived === true);
-  const controller = sessionId ? getSessionController(sessionId) : null;
-  const snapshot = useControllerSnapshot(controller);
+export function ChatRuntimeProvider({ children }: { children: ReactNode }) {
+  const [index] = useState(() => new SessionIndex());
+  const indexState = useSyncExternalStore(index.subscribe, index.getSnapshot, index.getSnapshot);
+  const [threadId, setThreadId] = useState("draft-0");
+  const controllers = useRef(new Map<string, SessionController>());
+  const runtimeRef = useRef<AssistantRuntime | null>(null);
+  const threadIdRef = useRef(threadId);
+  threadIdRef.current = threadId;
 
-  // Keep a stream open only for the conversation on screen: browsers cap
-  // concurrent connections per origin. The controller keeps its state and
-  // cursor, so returning resumes after the last event it saw.
-  const isActive = useAuiState((s) => s.threads.mainThreadId === s.threadListItem.id);
-  // Read at failure time, after awaiting: the user may have switched away.
-  const isActiveRef = useRef(isActive);
-  isActiveRef.current = isActive;
+  const controllerFor = useCallback((sessionId: string) => {
+    let controller = controllers.current.get(sessionId);
+    if (!controller) {
+      controller = new SessionController(sessionId);
+      controllers.current.set(sessionId, controller);
+    }
+    return controller;
+  }, []);
+
+  // Load the list once, then open the conversation named in the URL hash. Read the
+  // hash before loading: the hash-sync effect below clears it as soon as loading ends.
   useEffect(() => {
-    if (!controller || !isActive) return;
-    controller.attach();
-    return () => controller.detach();
-  }, [controller, isActive]);
+    const wanted = decodeURIComponent(window.location.hash.slice(1));
+    void index.load().then(() => {
+      if (wanted && index.find(wanted)) setThreadId(index.threadIdFor(wanted));
+    });
+  }, [index]);
 
-  const ensureSession = useMemo(
-    () =>
-      async (firstText: string): Promise<string> => {
-        rememberFirstMessage(threadId, firstText);
-        const { externalId, remoteId } = await aui.threadListItem().initialize();
-        const id = externalId ?? remoteId;
-        if (!id) throw new Error("The conversation was not created.");
-        // The external-store runtime does not title new threads by itself.
-        // The server titled the Session from this first message; show it.
-        void Promise.resolve(aui.threadListItem().generateTitle()).catch(() => {});
-        return id;
-      },
-    [aui, threadId],
+  const sessionId = indexState.links[threadId] ?? (indexState.sessions.some((s) => s.id === threadId) ? threadId : null);
+  const session = useMemo(
+    () => indexState.sessions.find((s) => s.id === sessionId) ?? null,
+    [indexState.sessions, sessionId],
+  );
+  const controller = sessionId ? controllerFor(sessionId) : null;
+
+  useEffect(() => {
+    if (!controller) return;
+    controller.open();
+    return () => controller.close();
+  }, [controller]);
+
+  useEffect(() => {
+    if (indexState.loading) return;
+    const hash = sessionId ? `#${encodeURIComponent(sessionId)}` : "";
+    if (window.location.hash !== hash) {
+      window.history.replaceState(null, "", `${window.location.pathname}${window.location.search}${hash}`);
+    }
+  }, [sessionId, indexState.loading]);
+
+  useEffect(() => {
+    const all = controllers.current;
+    return () => {
+      for (const c of all.values()) c.dispose();
+      all.clear();
+    };
+  }, []);
+
+  const snapshot = useSyncExternalStore(
+    controller?.subscribe ?? noSubscribe,
+    controller?.getSnapshot ?? getInitial,
+    getInitial,
   );
 
-  return useExternalStoreRuntime<ThreadMessage>({
-    messages: snapshot.messages as ThreadMessage[],
-    convertMessage: toThreadMessageLike,
-    isLoading: !snapshot.isLoaded,
-    isRunning: snapshot.isBusy,
-    isDisabled: snapshot.isDead || archived,
+  const messages = useMemo(() => toThreadMessages(snapshot.view, snapshot.outgoing), [snapshot.view, snapshot.outgoing]);
 
-    onNew: async (message: AppendMessage) => {
-      const text = textOf(message);
+  const restoreDraft = useCallback((text: string) => {
+    const composer = runtimeRef.current?.thread.composer;
+    if (!composer) return;
+    const current = composer.getState().text;
+    composer.setText(current.trim() ? `${current}\n\n${text}` : text);
+  }, []);
+
+  const onNew = useCallback(
+    async (message: AppendMessage) => {
+      const text = message.content
+        .map((part) => (part.type === "text" ? part.text : ""))
+        .join("\n\n")
+        .trim();
       if (!text) return;
-      await sendFromComposer({
+      const sentFrom = threadIdRef.current;
+      const restoreText = (unsent: string) => {
+        const composer = runtimeRef.current?.thread.composer;
+        if (!composer) return false;
+        return restoreIfSafe(
+          {
+            isActive: threadIdRef.current === sentFrom,
+            text: composer.getState().text,
+            setText: (t) => composer.setText(t),
+          },
+          unsent,
+        );
+      };
+      if (text.length > MESSAGE_MAX) {
+        const notice = `Messages can be at most ${MESSAGE_MAX.toLocaleString("en-US")} characters.`;
+        setAppNotice(sentFrom, restoreText(text) ? { message: notice } : { message: notice, unsentText: text });
+        return;
+      }
+      const sent = await sendFromComposer({
         text,
-        sessionId: sessionId ?? null,
-        ensureSession,
-        send: (id, t) => getSessionController(id).sendMessage(t),
-        restoreText: (t) => {
-          if (!isActiveRef.current) return false;
-          const composer = aui.composer();
-          return restoreIfSafe({ isActive: true, text: composer.getState().text, setText: (x) => composer.setText(x) }, t);
-        },
-        setNotice: (notice) => setAppNotice(threadId, notice),
+        sessionId: index.sessionIdFor(sentFrom),
+        ensureSession: (first) => index.create(sentFrom, first),
+        send: (id, t) => controllerFor(id).send(t),
+        restoreText,
+        setNotice: (notice) => setAppNotice(sentFrom, notice),
       });
+      const id = index.sessionIdFor(sentFrom);
+      if (sent && id) index.touch(id);
     },
+    [index, controllerFor],
+  );
 
-    // No onCancel: assistant-ui's cancel removes the last user message and
-    // puts its text back in the composer, but the Session has already taken
-    // that message. The stop button calls useStopActiveRun() instead.
+  const onCancel = useCallback(async () => {
+    await controller?.interrupt();
+  }, [controller]);
 
-    onRespondToToolApproval: async ({ approvalId, approved }) => {
-      await controller?.respondToApproval(approvalId, approved);
-    },
+  const threads = useMemo(
+    () => listed("regular", indexState.sessions.filter((s) => !s.archived), index),
+    // links changes the local ids of chats created on this page.
+    [indexState.sessions, indexState.links, index],
+  );
+  const archivedThreads = useMemo(
+    () => listed("archived", indexState.sessions.filter((s) => s.archived), index),
+    [indexState.sessions, indexState.links, index],
+  );
+
+  const reportListError = useCallback((localId: string, error: unknown, fallback: string) => {
+    setAppNotice(localId, { message: error instanceof ApiError ? error.message : fallback });
+  }, []);
+
+  const threadList = useMemo<ExternalStoreThreadListAdapter>(
+    () => ({
+      threadId,
+      isLoading: indexState.loading,
+      threads,
+      archivedThreads,
+      onSwitchToNewThread: () => {
+        // An unsent new chat is reused rather than replaced.
+        if (index.sessionIdFor(threadIdRef.current)) setThreadId(newDraftId());
+      },
+      onSwitchToThread: (id) => setThreadId(id),
+      onRename: async (id, title) => {
+        const target = index.sessionIdFor(id);
+        if (!target) return;
+        try {
+          await index.rename(target, title);
+        } catch (error) {
+          reportListError(id, error, "Could not rename the conversation.");
+          throw error;
+        }
+      },
+      onArchive: async (id) => {
+        const target = index.sessionIdFor(id);
+        if (!target) return;
+        try {
+          await index.archive(target);
+        } catch (error) {
+          reportListError(id, error, "Could not archive the conversation.");
+        }
+      },
+      onDelete: async (id) => {
+        const target = index.sessionIdFor(id);
+        if (!target || !window.confirm(DELETE_CONFIRM)) return;
+        try {
+          await index.remove(target);
+        } catch (error) {
+          reportListError(id, error, "Could not delete the conversation.");
+          return;
+        }
+        controllers.current.get(target)?.dispose();
+        controllers.current.delete(target);
+        if (threadIdRef.current === id) setThreadId(newDraftId());
+      },
+    }),
+    [threadId, indexState.loading, threads, archivedThreads, index, reportListError],
+  );
+
+  const suggestions = useMemo(
+    () =>
+      appConfig.suggestions.map((s) => ({ title: s.title, prompt: s.prompt, ...(s.label ? { label: s.label } : {}) })),
+    [],
+  );
+
+  const runtime = useExternalStoreRuntime<ThreadMessageLike>({
+    messages,
+    convertMessage: (m) => m,
+    isRunning: isBusy(snapshot),
+    isLoading: !!controller && snapshot.loading && snapshot.view.turns.length === 0,
+    isDisabled: !!session?.archived || snapshot.connection === "closed",
+    suggestions,
+    onNew,
+    onCancel,
+    adapters: { threadList },
   });
-}
+  runtimeRef.current = runtime;
 
-export function ZooworkRuntimeProvider({ children }: { children: React.ReactNode }) {
-  const runtime = useRemoteThreadListRuntime({
-    adapter: sessionListAdapter,
-    runtimeHook: useSessionThreadRuntime,
-  });
-  return <AssistantRuntimeProvider runtime={runtime}>{children}</AssistantRuntimeProvider>;
-}
+  const reloadIndex = useCallback(() => void index.load(), [index]);
 
-/** Stop the open conversation's run on the Platform (a real user.interrupt). */
-export function useStopActiveRun(): () => void {
-  const sessionId = useAuiState((s) => s.threadListItem.externalId ?? s.threadListItem.remoteId) ?? null;
-  return () => {
-    if (sessionId) void getSessionController(sessionId).interrupt();
-  };
-}
+  const value = useMemo<ChatContextValue>(
+    () => ({ threadId, session, controller, snapshot, index: indexState, reloadIndex, restoreDraft }),
+    [threadId, session, controller, snapshot, indexState, reloadIndex, restoreDraft],
+  );
 
-/** The open conversation's live state, for the status strip. */
-export function useActiveSessionSnapshot(): ControllerSnapshot & { sessionId: string | null } {
-  const sessionId = useAuiState((s) => s.threadListItem.externalId ?? s.threadListItem.remoteId) ?? null;
-  const controller = sessionId ? getSessionController(sessionId) : null;
-  return { ...useControllerSnapshot(controller), sessionId };
+  return (
+    <ChatContext.Provider value={value}>
+      <AssistantRuntimeProvider runtime={runtime}>{children}</AssistantRuntimeProvider>
+    </ChatContext.Provider>
+  );
 }

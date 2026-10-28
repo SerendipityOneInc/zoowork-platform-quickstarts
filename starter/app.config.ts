@@ -15,7 +15,7 @@ export const appConfig: AppConfig = {
     { title: "Search the web", label: "with sources", prompt: "What are the main differences between HTTP/2 and HTTP/3? Cite your sources." },
     { title: "Explain a concept", label: "in plain words", prompt: "Explain what an idempotency key is, with a short example." },
   ],
-  accentColor: "#2563eb",
+  accentColor: "#5755c6",
   accentForeground: "#ffffff",
   footnote: "Conversations are stored as ZooWork Sessions. Replies can be wrong; check important facts.",
 };
