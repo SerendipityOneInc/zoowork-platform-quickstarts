@@ -1,7 +1,7 @@
 # Customer Support
 
 A runnable English support workbench built with ZooWork Platform and the published
-`@zoowork-ai/sdk@0.12.0`. Ask about an order, inspect its shipment, continue the conversation,
+`@zoowork-ai/sdk@0.13.0`. Ask about an order, inspect its shipment, continue the conversation,
 and create an after-sales ticket after reviewing its exact contents in the browser.
 
 The application creates its own Agent with a **Platform Project key**. It uses application-executed
