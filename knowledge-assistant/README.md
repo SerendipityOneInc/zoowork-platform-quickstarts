@@ -13,7 +13,7 @@ Read [the application plan](PLAN.md) and [RAG research](docs/RAG-RESEARCH.md). D
 
 ## Run the foundation
 
-Use Node.js 22 or later, on the latest security release of your line, and a Platform Project key.
+Use Node.js 22.20 or later, on the latest security release of your line, and a Platform Project key.
 
 ```sh
 npm ci
