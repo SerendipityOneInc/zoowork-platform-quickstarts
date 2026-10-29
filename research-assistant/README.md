@@ -6,7 +6,7 @@ The brief is the primary result. Conversation and expandable activity provide co
 
 ## Run
 
-Requires **Node.js 22 or later**, on the latest security release of your line, and a Platform Project key (`zwp_live_`). Each demo installs independently, with no sibling application or local SDK override.
+Requires **Node.js 22.20 or later**, on the latest security release of your line, and a Platform Project key (`zwp_live_`). Each demo installs independently, with no sibling application or local SDK override.
 
 ```sh
 npm ci

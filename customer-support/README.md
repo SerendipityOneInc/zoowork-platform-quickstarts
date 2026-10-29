@@ -29,7 +29,7 @@ The workbench runs a real Agent, so you need your own **Platform Project key** f
 
 ## Run with Platform
 
-Use Node.js **22 or later**, on the latest security release of your line, and npm (tested on 24.22.1).
+Use Node.js **22.20 or later**, on the latest security release of your line, and npm (tested on 24.22.1).
 Node.js 22 reports an experimental warning for its built-in SQLite driver; Node.js 24 does not.
 
 From a fresh checkout:
