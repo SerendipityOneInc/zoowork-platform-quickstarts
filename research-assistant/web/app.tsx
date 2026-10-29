@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { createRoot } from 'react-dom/client'
 import Markdown from 'react-markdown'
+import remarkGfm from 'remark-gfm'
 import { useChat, type UIMessage } from '@chat-adapter/web/react'
 import { safeUrl, type BriefView, type ResearchView, type SourceView, type ToolView } from '../src/brief.js'
 import { SdkDebugPanel } from './sdk-debug.js'
@@ -22,7 +23,7 @@ async function api<T>(path: string, body?: unknown): Promise<T> {
 }
 const toMessages = (view: View): ChatMessage[] => view.messages.map(m => ({ id: m.id, role: m.role, parts: [{ type: 'text', text: m.text }] }))
 function Report({ text, sources = [] }: { text: string; sources?: SourceView[] }) {
-  return <Markdown skipHtml disallowedElements={['img']} urlTransform={url => safeUrl(url) ?? ''} components={{
+  return <Markdown remarkPlugins={[remarkGfm]} skipHtml disallowedElements={['img']} urlTransform={url => safeUrl(url) ?? ''} components={{
     a: ({ href, children }) => {
       const index = sources.findIndex(s => s.url === safeUrl(href ?? ''))
       const citation = index >= 0 && /^\d+$/.test(String(children))

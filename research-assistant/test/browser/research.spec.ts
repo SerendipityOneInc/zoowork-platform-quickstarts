@@ -11,6 +11,8 @@ test('topic → brief → reload → follow-up → version → export and histor
   await page.getByLabel('What would you like to research?').fill('Node.js support timelines')
   await page.getByRole('button', { name: 'Start research', exact: true }).click()
   await expect(page.getByRole('heading', { name: 'Node.js support timelines (simulated sources)', exact: true })).toBeVisible()
+  await expect(page.locator('.report table').getByRole('columnheader', { name: 'Status', exact: true })).toBeVisible()
+  await expect(page.locator('.report table').getByRole('cell', { name: 'Maintenance LTS', exact: true })).toBeVisible()
   await expect(page.getByText('Read in this run', { exact: true })).toHaveCount(2)
   await expect(page.getByRole('list', { name: 'SDK call log' }).getByText('postEvents', { exact: true })).toBeVisible()
   await page.getByRole('checkbox', { name: 'Show history and status reads' }).uncheck()
