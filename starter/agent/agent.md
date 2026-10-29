@@ -11,7 +11,7 @@ name: Starter Assistant
 # model: <model id from npm run models>
 # thinking: low
 
-# Tools the Agent may use, by exact name. Use [] for a text-only Agent.
+# Built-in tools to enable, by exact name.
 tools:
   - web_search
   - web_fetch

@@ -75,7 +75,7 @@ You are a helpful assistant inside a web chat. …
 | Key | Required | Meaning |
 | --- | --- | --- |
 | `name` | yes | The Agent's name in Platform. |
-| `tools` | yes | Tools the Agent may use, by exact name. `[]` makes a text-only Agent. |
+| `tools` | yes | Built-in tools to enable, by exact name, such as `web_search` and `exec`. |
 | `permissions` | no | Tools that ask before each call: a map of tool name to `always_ask` or `always_allow`. Each name must be in `tools`. See [Tool approvals](#tool-approvals). |
 | `model` | no | Model id. Omit to use the Platform default at creation. `npm run models` lists the models your key can use. |
 | `thinking` | no | `off`, `low`, `medium`, `high` or `max`. Needs `model`. |
