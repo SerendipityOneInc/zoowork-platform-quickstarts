@@ -21,7 +21,7 @@
   "dependencies": {
     "@assistant-ui/react": "0.15.32",
     "@assistant-ui/react-markdown": "0.14.24",
-    "@zoowork-ai/sdk": "0.13.0",
+    "@zoowork-ai/sdk": "0.14.0",
     "class-variance-authority": "0.7.1",
     "cn": "0.5.0",
     "lucide-react": "1.62.0",

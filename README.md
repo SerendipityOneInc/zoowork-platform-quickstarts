@@ -17,7 +17,6 @@ companion workspace for the [Publish your Agent guide](https://zoowork.ai/guides
 | [Customer Support](customer-support/) | Track orders and shipments; confirm and save support tickets | Custom Tools, durable Sessions and recovery |
 | [Product Advisor](product-advisor/) | Search, compare and shortlist products | Remote MCP and approvals |
 | [Research Assistant](research-assistant/) | Research a topic and continue a saved, sourced brief | Vercel Chat SDK |
-| [Knowledge Assistant](knowledge-assistant/) | Agent setup, status and cleanup; the knowledge-base app is not built yet | External RAG (planned) |
 
 ## Run an application
 
