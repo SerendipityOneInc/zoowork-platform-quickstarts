@@ -17,6 +17,8 @@ export class FakePlatform {
   readonly calls: { method: string; session?: string; key?: string; text?: string }[] = []
   readonly keys = new Map<string, string>()
   delay = 5
+  /** Extra pause between the last tool event and the brief, so tests can observe a run in progress. */
+  briefDelay = 0
   dropStream = false
   ambiguousInput = false
   ambiguousCreate = false
@@ -72,8 +74,13 @@ export class FakePlatform {
           this.emit(id, 'agent.tool', { phase: 'start', toolName: 'web_fetch', toolCallId: fetch, args: { url } }, run)
           this.emit(id, 'agent.tool', { phase: 'end', toolName: 'web_fetch', toolCallId: fetch, isError: false, executionStarted: true }, run)
         })
-        this.emit(id, 'agent.assistant', { message: { content: [{ type: 'text', text: report(s.turns === 1 ? undefined : 'Updated research brief (simulated sources)') }] } }, run)
-        this.emit(id, 'run.finished', { status: 'succeeded' }, run); s.record.run_status = 'idle'; s.run = undefined
+        const finish = () => {
+          if (s.run !== run) return
+          this.emit(id, 'agent.assistant', { message: { content: [{ type: 'text', text: report(s.turns === 1 ? undefined : 'Updated research brief (simulated sources)') }] } }, run)
+          this.emit(id, 'run.finished', { status: 'succeeded' }, run); s.record.run_status = 'idle'; s.run = undefined
+        }
+        if (!this.briefDelay) return finish()
+        const timer = setTimeout(() => { this.timers.delete(timer); finish() }, this.briefDelay); this.timers.add(timer)
       })
       if (this.ambiguousInput) throw new Error('fixture_lost_input_receipt')
       return { events: [{ id: message.id, seq: message.seq, accepted: true }] }
