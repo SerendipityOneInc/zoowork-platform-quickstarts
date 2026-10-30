@@ -633,6 +633,29 @@ summary {
   max-height: 130px;
   overflow-wrap: anywhere;
 }
+.approval-summary {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 4px 12px;
+  margin: 10px 0;
+  font-size: 0.8rem;
+}
+.approval-summary dt {
+  color: #435b38;
+}
+.approval-summary dd {
+  margin: 0;
+  font-weight: 600;
+  overflow-wrap: anywhere;
+}
+.approval-json summary {
+  cursor: pointer;
+  font-size: 0.75rem;
+  color: #435b38;
+}
+.approval-json pre {
+  margin: 6px 0 0;
+}
 .approval-actions {
   display: flex;
   gap: 8px;

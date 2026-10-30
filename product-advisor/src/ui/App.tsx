@@ -10,6 +10,7 @@ import {
   type Requirements,
 } from "../domain/catalog.js";
 import type { ConversationView } from "../domain/conversation.js";
+import { approvalSummary } from "../domain/approval.js";
 
 const errors: Record<string, string> = {
   advisor_not_configured:
@@ -95,6 +96,14 @@ const examples = [
     text: "Budget CNY 1000 for commuting headphones. I need active noise cancellation and good battery life.",
   },
 ];
+/** Every specification key of these products, known attributes first. */
+function specKeys(products: Product[]): string[] {
+  const keys = new Set(products.flatMap((p) => Object.keys(p.specs)));
+  return [
+    ...Object.keys(attributeInfo).filter((k) => keys.has(k)),
+    ...[...keys].filter((k) => !(k in attributeInfo)).sort(),
+  ];
+}
 function Icon({
   name,
 }: {
@@ -355,6 +364,7 @@ export function App() {
   const ranked = conversation?.shortlist.map((s) => s.product) ?? [];
   const products = ranked.length ? ranked : candidates;
   const pending = conversation?.approvals ?? [];
+  const knownProducts = evidences.flatMap((e) => e.result.products);
   const warnings = [...new Set(conversation?.warnings ?? [])];
   return (
     <div className="app-shell">
@@ -656,84 +666,116 @@ export function App() {
                     {statusNames[conversation.status]}
                   </div>
                 )}
-                {pending.map((a) => (
-                  <div className="approval" key={a.approval_id}>
-                    <h3>Approve this catalog query</h3>
-                    <p>
-                      {a.tool_name?.endsWith("compare_products")
-                        ? "This will retrieve and compare specifications for the selected products."
-                        : "This will retrieve full specifications for the selected product."}{" "}
-                      The query goes to the public demo catalog.
-                    </p>
-                    {a.arguments_preview && <pre>{a.arguments_preview}</pre>}
-                    {a.timeout_at && (
-                      <small>
-                        Deadline:
-                        {new Date(a.timeout_at).toLocaleTimeString("en-US")}
-                      </small>
-                    )}
-                    {a.signaled ? (
-                      <div>
-                        <p role="status">
-                          {a.deliveryUncertain
-                            ? "Delivery is unconfirmed. Keep the original decision."
-                            : "Decision submitted. Waiting for the tool state."}
-                        </p>
-                        {!!a.deliveryUncertain && (
-                          <button
-                            disabled={busy}
-                            onClick={() =>
-                              void action(async () => {
-                                await api(
-                                  `/conversations/${conversation!.id}/approvals/${a.approval_id}`,
-                                  { decision: a.decision },
-                                );
-                              })
-                            }
-                          >
-                            Resubmit original decision
-                          </button>
+                {pending.map((a) => {
+                  const summary = approvalSummary(
+                    a.tool_name,
+                    a.arguments_preview,
+                    knownProducts,
+                  );
+                  return (
+                    <div className="approval" key={a.approval_id}>
+                      <h3>Approve this catalog query</h3>
+                      <p>
+                        {a.tool_name?.endsWith("compare_products")
+                          ? "This will retrieve and compare specifications for the selected products."
+                          : "This will retrieve full specifications for the selected product."}{" "}
+                        The query goes to the public demo catalog.
+                      </p>
+                      <dl className="approval-summary">
+                        <dt>Action</dt>
+                        <dd>{summary.action}</dd>
+                        {!!summary.products.length && (
+                          <>
+                            <dt>
+                              {summary.products.length === 1
+                                ? "Product"
+                                : "Products"}
+                            </dt>
+                            <dd>{summary.products.join(", ")}</dd>
+                          </>
                         )}
-                      </div>
-                    ) : (
-                      <div className="approval-actions">
-                        {(!a.allowed_decisions ||
-                          a.allowed_decisions.includes("allow-once")) && (
-                          <button
-                            className="primary"
-                            disabled={busy}
-                            onClick={() =>
-                              void action(async () => {
-                                await api(
-                                  `/conversations/${conversation!.id}/approvals/${a.approval_id}`,
-                                  { decision: "allow-once" },
-                                );
-                              })
-                            }
-                          >
-                            Allow once
-                          </button>
+                        {summary.catalogVersion && (
+                          <>
+                            <dt>Catalog</dt>
+                            <dd>{summary.catalogVersion}</dd>
+                          </>
                         )}
-                        {(!a.allowed_decisions ||
-                          a.allowed_decisions.includes("deny")) && (
-                          <button
-                            disabled={busy}
-                            onClick={() =>
-                              void action(async () => {
-                                await api(
-                                  `/conversations/${conversation!.id}/approvals/${a.approval_id}`,
-                                  { decision: "deny" },
-                                );
-                              })
-                            }
-                          >
-                            Deny
-                          </button>
-                        )}
-                      </div>
-                    )}
-                  </div>
-                ))}
+                      </dl>
+                      {a.arguments_preview && (
+                        <details className="approval-json">
+                          <summary>Request JSON</summary>
+                          <pre>{a.arguments_preview}</pre>
+                        </details>
+                      )}
+                      {a.timeout_at && (
+                        <small>
+                          Deadline:
+                          {new Date(a.timeout_at).toLocaleTimeString("en-US")}
+                        </small>
+                      )}
+                      {a.signaled ? (
+                        <div>
+                          <p role="status">
+                            {a.deliveryUncertain
+                              ? "Delivery is unconfirmed. Keep the original decision."
+                              : "Decision submitted. Waiting for the tool state."}
+                          </p>
+                          {!!a.deliveryUncertain && (
+                            <button
+                              disabled={busy}
+                              onClick={() =>
+                                void action(async () => {
+                                  await api(
+                                    `/conversations/${conversation!.id}/approvals/${a.approval_id}`,
+                                    { decision: a.decision },
+                                  );
+                                })
+                              }
+                            >
+                              Resubmit original decision
+                            </button>
+                          )}
+                        </div>
+                      ) : (
+                        <div className="approval-actions">
+                          {(!a.allowed_decisions ||
+                            a.allowed_decisions.includes("allow-once")) && (
+                            <button
+                              className="primary"
+                              disabled={busy}
+                              onClick={() =>
+                                void action(async () => {
+                                  await api(
+                                    `/conversations/${conversation!.id}/approvals/${a.approval_id}`,
+                                    { decision: "allow-once" },
+                                  );
+                                })
+                              }
+                            >
+                              Allow once
+                            </button>
+                          )}
+                          {(!a.allowed_decisions ||
+                            a.allowed_decisions.includes("deny")) && (
+                            <button
+                              disabled={busy}
+                              onClick={() =>
+                                void action(async () => {
+                                  await api(
+                                    `/conversations/${conversation!.id}/approvals/${a.approval_id}`,
+                                    { decision: "deny" },
+                                  );
+                                })
+                              }
+                            >
+                              Deny
+                            </button>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
                 {warnings.map((w) => (
                   <p className="inline-warning" key={w}>
                     {errors[w] ??
@@ -890,6 +932,56 @@ export function App() {
                     Compare selected products
                   </button>
                 </div>
+              )}
+              {conversation?.details && (
+                <section
+                  className="comparison"
+                  aria-labelledby="details-heading"
+                >
+                  <h2 id="details-heading">Full specifications</h2>
+                  <div
+                    className="table-scroll"
+                    tabIndex={0}
+                    role="region"
+                    aria-label="Full product specifications, horizontally scrollable"
+                  >
+                    <table>
+                      <caption>
+                        Approved catalog query from{" "}
+                        {conversation.details.catalogVersion}
+                      </caption>
+                      <thead>
+                        <tr>
+                          <th scope="col">Specification</th>
+                          {conversation.details.result.products.map((p) => (
+                            <th scope="col" key={p.productId}>
+                              {p.name}
+                              <small>{formatMoney(p.priceMinor)}</small>
+                            </th>
+                          ))}
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {specKeys(conversation.details.result.products).map(
+                          (key) => (
+                            <tr key={key}>
+                              <th scope="row">
+                                {attributeInfo[key]?.label ?? key}
+                              </th>
+                              {conversation.details!.result.products.map(
+                                (p) => (
+                                  <td key={p.productId}>
+                                    {formatSpec(key, p.specs[key])}
+                                  </td>
+                                ),
+                              )}
+                            </tr>
+                          ),
+                        )}
+                      </tbody>
+                    </table>
+                  </div>
+                </section>
               )}
               {conversation?.comparison && (
                 <section

@@ -460,3 +460,84 @@ test("connection failure in a follow-up cannot turn an earlier receipt into a ne
     await f.close();
   }
 });
+
+test("details and comparison keep the shortlist and show their results", async () => {
+  const f = await fixture();
+  try {
+    f.fake.detailsAsMessage = true;
+    const c = await f.advisor.create(
+      "alice",
+      "Budget CNY 6500 for coding, with 16 GB RAM",
+      requirements,
+      "request-first",
+    );
+    await f.advisor.idle(c.id);
+    const shortlist = f.store
+      .get(c.id)
+      .shortlist.map((s) => s.product.productId);
+    assert.equal(shortlist.length, 3);
+    await f.advisor.details(
+      "alice",
+      c.id,
+      "lap-01",
+      "demo-2026-10-02-en",
+      "request-detail",
+    );
+    await waitFor(() => f.store.get(c.id).approvals.length === 1);
+    // The shortlist stays in place while the approval is pending.
+    assert.deepEqual(
+      f.store.get(c.id).shortlist.map((s) => s.product.productId),
+      shortlist,
+    );
+    const pending = f.store.get(c.id).approvals[0]!;
+    await f.advisor.decide("alice", c.id, pending.approval_id!, "allow-once");
+    await f.advisor.idle(c.id);
+    let saved = f.store.get(c.id);
+    assert.deepEqual(
+      saved.shortlist.map((s) => s.product.productId),
+      shortlist,
+    );
+    assert.deepEqual(
+      view(saved).details!.result.products.map((p) => p.productId),
+      ["lap-01"],
+    );
+    assert.match(
+      saved.messages.at(-1)!.text,
+      /^Full specifications for .+ are shown below the product cards\.$/,
+    );
+    await f.advisor.compare(
+      "alice",
+      c.id,
+      ["lap-01", "lap-02"],
+      "request-compare",
+    );
+    await waitFor(() => f.store.get(c.id).approvals.length === 1);
+    const compare = f.store.get(c.id).approvals[0]!;
+    await f.advisor.decide("alice", c.id, compare.approval_id!, "allow-once");
+    await f.advisor.idle(c.id);
+    saved = f.store.get(c.id);
+    assert.deepEqual(
+      saved.shortlist.map((s) => s.product.productId),
+      shortlist,
+    );
+    assert.equal(saved.comparison!.result.products.length, 2);
+    assert.ok(saved.details, "earlier full specifications stay visible");
+    assert.equal(
+      saved.messages.at(-1)!.text,
+      "The comparison is ready. See the specification comparison table.",
+    );
+    await f.advisor.message(
+      "alice",
+      c.id,
+      "Lower the budget to CNY 5000",
+      requirements,
+      "request-budget",
+    );
+    await f.advisor.idle(c.id);
+    saved = f.store.get(c.id);
+    assert.equal(saved.details, undefined);
+    assert.equal(saved.comparison, undefined);
+  } finally {
+    await f.close();
+  }
+});
