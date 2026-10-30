@@ -102,19 +102,29 @@ export async function verifyCatalog(url: string): Promise<void> {
   }
 }
 
+// A quick-tunnel hostname is published a few seconds after cloudflared
+// registers. Asking too early returns NXDOMAIN, and public resolvers cache
+// that answer for the zone's negative TTL (60 s for trycloudflare.com), so an
+// early miss can hide the record for a full minute. Waiting before the first
+// lookup avoids caching the miss; the deadline outlasts one negative TTL.
+export const TUNNEL_DNS_FIRST_LOOKUP_MS = 10_000;
+export const TUNNEL_DNS_TIMEOUT_MS = 90_000;
+
 export async function waitTunnelDns(
   url: string,
   fetcher: typeof fetch = fetch,
-  timeoutMs = 60_000,
+  timeoutMs = TUNNEL_DNS_TIMEOUT_MS,
+  firstLookupMs = TUNNEL_DNS_FIRST_LOOKUP_MS,
 ): Promise<void> {
   const host = new URL(url).hostname;
   if (!/^[a-z0-9-]+\.trycloudflare\.com$/.test(host))
     throw new FoundationError("unexpected_tunnel_hostname");
   const deadline = Date.now() + timeoutMs;
+  await new Promise((resolve) => setTimeout(resolve, firstLookupMs));
   while (Date.now() < deadline) {
     try {
-      // Ask Cloudflare before the first local lookup; early NXDOMAIN responses
-      // can otherwise remain in the machine's DNS cache after publication.
+      // Ask Cloudflare before the first local lookup, so the machine's own
+      // resolver never caches an early NXDOMAIN.
       const r = await fetcher(
         `https://cloudflare-dns.com/dns-query?name=${host}&type=A`,
         {
