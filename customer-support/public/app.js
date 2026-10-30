@@ -1,12 +1,6 @@
+import { escapeHtml as escape, renderMarkdown } from "./markdown.js";
+
 const $ = (selector) => document.querySelector(selector);
-const escape = (value) =>
-  String(value ?? "").replace(
-    /[&<>"']/g,
-    (character) =>
-      ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[
-        character
-      ],
-  );
 const date = (value) =>
   new Intl.DateTimeFormat("en-US", {
     month: "short",
@@ -128,7 +122,7 @@ function renderTimeline(messages, trace) {
       at: Date.parse(message.at),
       rank: message.role === "user" ? 0 : 2,
       index,
-      html: `<article class="message ${escape(message.role)}"><div class="message-header"><strong>${message.role === "user" ? "You" : "Customer Support"}</strong><time>${escape(date(message.at))}</time></div><div class="message-body">${escape(message.text)}</div></article>`,
+      html: `<article class="message ${escape(message.role)}"><div class="message-header"><strong>${message.role === "user" ? "You" : "Customer Support"}</strong><time>${escape(date(message.at))}</time></div>${message.role === "assistant" ? `<div class="message-body markdown">${renderMarkdown(message.text)}</div>` : `<div class="message-body">${escape(message.text)}</div>`}</article>`,
     })),
     ...trace.map((job, index) => ({
       at: Number.isFinite(Date.parse(job.requestedAt))

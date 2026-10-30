@@ -14,6 +14,7 @@ export function fixtureClient() {
   const sessionKeys = new Map<string, string>();
   const inputKeys = new Set<string>();
   const results = new Map<string, Record<string, unknown>[]>();
+  const lastInput = new Map<string, string>();
   let posts = 0,
     resolves = 0,
     failResolve = false,
@@ -82,8 +83,9 @@ export function fixtureClient() {
           idempotency_key: key,
         });
         emit(id, "run.started", {});
-        const text = String(event.content),
-          orderId = /ORD-\d{4}/.exec(text)?.[0] ?? "ORD-1001";
+        const text = String(event.content);
+        lastInput.set(id, text);
+        const orderId = /ORD-\d{4}/.exec(text)?.[0] ?? "ORD-1001";
         if (/ticket|refund|return|damage/i.test(text))
           request(id, "create_support_ticket", {
             order_id: orderId,
@@ -148,16 +150,16 @@ export function fixtureClient() {
         )
       ) {
         const ticket = values.find((value) => value.ticket)?.ticket as
-          | { id: string }
-          | undefined;
+          { id: string } | undefined;
         const shipment = values.find((value) => value.shipment)?.shipment as
-          | { status: string; estimatedDelivery: string }
-          | undefined;
+          { status: string; estimatedDelivery: string } | undefined;
+        // Replies use Markdown like a real model; hostile input is echoed into it on purpose.
+        const input = lastInput.get(call.session_id) ?? "";
         const text = ticket
-          ? `Your ticket ${ticket.id} is open. It records your request; it does not approve a refund.`
+          ? `Your ticket **${ticket.id}** is open. It records your request; it does not approve a refund.`
           : values.some((value) => value.code)
-            ? `The request was not completed: ${values.find((value) => value.code)!.code}. No ticket was created.`
-            : `Your shipment is ${shipment?.status}. Estimated delivery: ${shipment?.estimatedDelivery}. These are synthetic shop records.`;
+            ? `The request was not completed: \`${values.find((value) => value.code)!.code}\`. No ticket was created.${input.includes("<") ? `\n\nYou wrote: **${input}**` : ""}`
+            : `Your shipment is **${shipment?.status}**.\n\n- Estimated delivery: ${shipment?.estimatedDelivery}\n- These are *synthetic* shop records.`;
         emit(call.session_id, "agent.assistant", {
           message: { role: "assistant", content: [{ type: "text", text }] },
         });
