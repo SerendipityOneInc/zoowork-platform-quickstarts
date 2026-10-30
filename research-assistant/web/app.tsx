@@ -58,23 +58,29 @@ function Conversation({ id, initial, onChanged }: { id: string; initial?: { text
   const [view, setView] = useState<View>(), [fault, setFault] = useState(''), [draft, setDraft] = useState(() => localStorage.getItem(`research:draft:${id}`) ?? '')
   const [tab, setTab] = useState<'brief' | 'chat'>('brief'), [version, setVersion] = useState(''), [copied, setCopied] = useState(false)
   const [stopping, setStopping] = useState(false), [observing, setObserving] = useState(false)
-  const started = useRef(false), mounted = useRef(true), refreshing = useRef(false), timer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined)
+  const started = useRef(false), mounted = useRef(true), refreshing = useRef(false), again = useRef(false), timer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined)
+  const followup = useRef<HTMLTextAreaElement>(null)
   const { messages, sendMessage, setMessages, clearError, status, error } = useChat<ChatMessage>({ threadId: id })
   const transportBusy = status === 'submitted' || status === 'streaming'
   const transportRef = useRef(transportBusy); transportRef.current = transportBusy
   useEffect(() => { if (draft) localStorage.setItem(`research:draft:${id}`, draft); else localStorage.removeItem(`research:draft:${id}`) }, [id, draft])
   const refresh = useCallback(async () => {
-    if (refreshing.current) return
+    // A request made while one is in flight runs again afterwards, so the last update is never lost.
+    if (refreshing.current) { again.current = true; return }
     refreshing.current = true
     try {
-      const next = await api<View>(`/api/history?conversation=${encodeURIComponent(id)}`)
-      if (!mounted.current) return
-      setView(next); setFault(next.problem ? errors[next.problem] ?? 'The service rejected this input. Check the configuration before submitting again.' : ''); setObserving(false)
-      clearError()
-      if (!transportRef.current) setMessages(toMessages(next))
-      if (!running(next.status)) { localStorage.removeItem(`research:input:${id}`); onChanged() }
-    } catch (e) { if (mounted.current) setFault((e as Error).message) }
-    finally { refreshing.current = false }
+      do {
+        again.current = false
+        try {
+          const next = await api<View>(`/api/history?conversation=${encodeURIComponent(id)}`)
+          if (!mounted.current) return
+          setView(next); setFault(next.problem ? errors[next.problem] ?? 'The service rejected this input. Check the configuration before submitting again.' : ''); setObserving(false)
+          clearError()
+          if (!transportRef.current) setMessages(toMessages(next))
+          if (!running(next.status)) { localStorage.removeItem(`research:input:${id}`); onChanged() }
+        } catch (e) { if (mounted.current) setFault((e as Error).message) }
+      } while (again.current && mounted.current)
+    } finally { refreshing.current = false }
   }, [id, setMessages, clearError, onChanged])
   const submit = useCallback(async (text: string, requestId: string = crypto.randomUUID()) => {
     if (!text.trim()) return
@@ -87,11 +93,20 @@ function Conversation({ id, initial, onChanged }: { id: string; initial?: { text
   useEffect(() => {
     mounted.current = true; void refresh()
     const source = new EventSource(`/api/activity?conversation=${encodeURIComponent(id)}`)
-    source.onmessage = () => { clearTimeout(timer.current); timer.current = setTimeout(() => void refresh(), 200) }
+    source.onmessage = message => {
+      // Each message carries the current status and tool activity. Show it now; the slower
+      // history read that follows fills in messages and briefs.
+      try {
+        const live = JSON.parse(message.data) as { status: string; tools: ToolView[]; lastSeq: number }
+        setView(v => v && live.lastSeq > v.lastSeq ? { ...v, status: live.status, tools: live.tools, lastSeq: live.lastSeq } : v)
+      } catch {}
+      clearTimeout(timer.current); timer.current = setTimeout(() => void refresh(), 200)
+    }
     source.onerror = () => setObserving(true)
     const poll = setInterval(() => void refresh(), 5000)
     return () => { mounted.current = false; source.close(); clearInterval(poll); clearTimeout(timer.current) }
   }, [id, refresh])
+  useEffect(() => { if (view?.status) onChanged() }, [view?.status, onChanged])
   useEffect(() => { if (initial && !started.current) { started.current = true; void submit(initial.text, initial.requestId) } }, [initial, submit])
   useEffect(() => { if (!transportBusy && started.current) void refresh() }, [transportBusy, refresh])
   const latest = view?.briefs.at(-1)
@@ -103,6 +118,10 @@ function Conversation({ id, initial, onChanged }: { id: string; initial?: { text
     try { const r = await api<{ accepted: boolean }>(`/api/sessions/${id}/interrupt`, {}); if (!r.accepted) await refresh() }
     catch (e) { setFault((e as Error).message) }
     finally { setStopping(false) }
+  }
+  const askForNewVersion = () => {
+    setDraft(d => /^update the brief:/i.test(d.trimStart()) ? d : `Update the brief: ${d.trimStart()}`)
+    followup.current?.focus()
   }
   const copy = async () => { try { await navigator.clipboard.writeText(brief!.markdown); setCopied(true); setTimeout(() => setCopied(false), 2000) } catch { setFault('Clipboard access is unavailable. Use Export Markdown instead.') } }
   return <div className="workspace">
@@ -122,8 +141,8 @@ function Conversation({ id, initial, onChanged }: { id: string; initial?: { text
       <Activity tools={view?.tools ?? []} status={view?.status ?? (transportBusy ? 'queued' : 'idle')} />
     </main><Sources brief={brief} /></div>
     <footer className="composer"><form onSubmit={e => { e.preventDefault(); if (!busy) void submit(draft) }}>
-      <label htmlFor="followup">Continue research</label><textarea id="followup" value={draft} onChange={e => setDraft(e.target.value)} placeholder="Explore another angle, or describe how to update this brief…" rows={2} maxLength={12000} disabled={view?.archived} />
-      <div><button type="button" onClick={() => setDraft('Update the brief: ')} disabled={busy || view?.archived}>Update brief</button><p>{busy ? 'Research continues on the server, even if you close this page.' : 'Follow-ups use the research already saved in this session.'}</p>
+      <label htmlFor="followup">Continue research</label><textarea id="followup" ref={followup} value={draft} onChange={e => setDraft(e.target.value)} placeholder="Explore another angle, or describe how to update this brief…" rows={2} maxLength={12000} disabled={view?.archived} />
+      <div><button type="button" onClick={askForNewVersion} disabled={busy || view?.archived}>Ask for a new brief version</button><p>{busy ? 'Research continues on the server, even if you close this page.' : 'Short follow-ups are answered in Conversation. Ask for a new brief version to get a complete, updated brief.'}</p>
         {busy ? <button type="button" className="stop" onClick={() => void stop()} disabled={stopping}>{stopping ? 'Requesting stop…' : 'Stop research'}</button> : <button className="primary" disabled={!draft.trim() || view?.archived}>Send follow-up</button>}</div>
     </form></footer>
   </div>
