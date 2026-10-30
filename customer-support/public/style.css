@@ -23,6 +23,20 @@
 body {
   margin: 0;
 }
+/* Desktop: the page itself never scrolls. The header stays in place and each pane
+   (conversations, messages, order details) scrolls on its own. */
+@media (min-width: 681px) {
+  body {
+    height: 100dvh;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+  }
+  .topbar,
+  .notice {
+    flex: none;
+  }
+}
 button,
 input,
 textarea {
@@ -149,9 +163,15 @@ p {
 .workbench {
   display: grid;
   grid-template-columns: 220px minmax(360px, 1fr) 365px;
-  height: calc(100dvh - 76px);
+  grid-template-rows: minmax(0, 1fr);
+  flex: 1 1 auto;
+  min-height: 0;
+  width: 100%;
   max-width: 1700px;
-  margin: auto;
+  margin: 0 auto;
+}
+.workbench > * {
+  min-height: 0;
 }
 .sidebar {
   padding: 28px 18px;
@@ -310,6 +330,60 @@ p {
   white-space: pre-wrap;
   overflow-wrap: anywhere;
   line-height: 1.8;
+}
+.message-body.markdown {
+  white-space: normal;
+}
+.markdown > :first-child {
+  margin-top: 0;
+}
+.markdown > :last-child {
+  margin-bottom: 0;
+}
+.markdown p,
+.markdown ul,
+.markdown ol,
+.markdown pre {
+  margin: 0 0 10px;
+}
+.markdown ul,
+.markdown ol {
+  padding-left: 22px;
+}
+.markdown li + li {
+  margin-top: 2px;
+}
+.markdown strong {
+  font-weight: 650;
+}
+.markdown code {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 0.9em;
+  background: var(--canvas);
+  border-radius: 4px;
+  padding: 1px 5px;
+}
+.markdown pre {
+  background: var(--canvas);
+  border-radius: 8px;
+  padding: 10px 12px;
+  overflow-x: auto;
+  white-space: pre;
+  line-height: 1.5;
+}
+.markdown pre code {
+  background: none;
+  padding: 0;
+}
+.markdown a {
+  color: var(--green);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+.markdown hr {
+  border: 0;
+  border-top: 1px solid var(--line);
+  margin: 12px 0;
 }
 .message.user {
   margin-left: auto;
@@ -845,7 +919,7 @@ textarea::placeholder {
 @media (max-width: 900px) {
   .workbench {
     grid-template-columns: minmax(300px, 1fr) 330px;
-    grid-template-rows: auto 1fr;
+    grid-template-rows: auto minmax(0, 1fr);
   }
   .sidebar {
     grid-column: 1/-1;

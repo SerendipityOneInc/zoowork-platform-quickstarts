@@ -15,6 +15,12 @@ test("track an order, ask a follow-up, cancel and then confirm a ticket; reload 
   await expect(page.locator("#status")).toHaveText("Ready");
   await expect(page.locator("#shipment")).toContainText("Transit delay");
   await expect(page.locator("#messages")).toContainText("delayed");
+  // Agent Markdown is rendered, not shown as literal asterisks.
+  const reply = page.locator(".message.assistant .message-body").first();
+  await expect(reply.locator("strong")).toHaveText("delayed");
+  await expect(reply.locator("em")).toHaveText("synthetic");
+  await expect(reply.locator("li")).toHaveCount(2);
+  await expect(reply).not.toContainText("**");
   await expect(page.locator(".tool-step code")).toHaveText([
     "lookup_order",
     "lookup_shipment",
@@ -79,6 +85,9 @@ test("track an order, ask a follow-up, cancel and then confirm a ticket; reload 
   await page.reload();
   await expect(page.locator("#ticket-count")).toHaveText("1");
   await expect(page.locator("#messages")).toContainText(ticketId);
+  await expect(
+    page.locator(".message.assistant strong", { hasText: ticketId }),
+  ).toHaveCount(1);
   await expect(page.locator(".tool-step").last()).toContainText(ticketId);
   await expect(page.locator(".tool-step").last()).toContainText(
     "Result returned",
@@ -89,6 +98,25 @@ test("track an order, ask a follow-up, cancel and then confirm a ticket; reload 
     path: ".local/workbench-confirmed.png",
     fullPage: true,
   });
+  // The page never scrolls on desktop: the header stays visible and the panes scroll.
+  for (let index = 0; index < 3; index++) {
+    await send(page, "When should it arrive?");
+    await expect(page.locator("#status")).toHaveText("Ready");
+  }
+  const layout = await page.evaluate(() => {
+    const log = document.querySelector("#messages")!;
+    return {
+      page: document.documentElement.scrollHeight - window.innerHeight,
+      log: log.scrollHeight - log.clientHeight,
+      header: document.querySelector(".topbar")!.getBoundingClientRect().top,
+      composer: document.querySelector("#composer")!.getBoundingClientRect()
+        .bottom,
+    };
+  });
+  expect(layout.page).toBeLessThanOrEqual(0);
+  expect(layout.log).toBeGreaterThan(0);
+  expect(layout.header).toBe(0);
+  expect(layout.composer).toBeLessThanOrEqual(1000);
   expect(errors).toEqual([]);
 });
 test("unknown orders and hostile tool data render safely without a ticket write", async ({
@@ -129,6 +157,15 @@ test("unknown orders and hostile tool data render safely without a ticket write"
     await page.getByRole("button", { name: "Cancel request" }).click();
     await expect(page.locator("#status")).toHaveText("Ready");
     await expect(page.locator("#ticket-count")).toHaveText("0");
+    // The fixture echoes the payload inside Markdown bold in the Agent reply.
+    await expect(
+      page.locator(".message.assistant .message-body strong").last(),
+    ).toContainText(payload);
+    expect(
+      await page
+        .locator(".message.assistant script, .message.assistant img")
+        .count(),
+    ).toBe(0);
   }
   expect(dialogs).toEqual([]);
 });

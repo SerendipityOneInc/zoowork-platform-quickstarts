@@ -1,38 +1,29 @@
 # Customer Support
 
-A runnable English support workbench built with ZooWork Platform and the published
-`@zoowork-ai/sdk@0.13.0`. Ask about an order, inspect its shipment, continue the conversation,
-and create an after-sales ticket after reviewing its exact contents in the browser.
+A support workbench built on ZooWork Platform and the published TypeScript SDK
+(`@zoowork-ai/sdk`). Ask about an order, follow its shipment, continue the conversation, and
+create an after-sales ticket after you review its exact contents in the browser.
 
-The application creates its own Agent with a **Platform Project key**. It uses application-executed
-Custom Tools and durable Session events. All shop records are synthetic. Tickets record a request;
-they do not approve a refund, arrange a return or contact a carrier.
+The Agent uses three **Custom Tools** that this application runs on your own server:
+`lookup_order`, `lookup_shipment` and `create_support_ticket`. All shop records are synthetic.
+A ticket records a request; it does not approve a refund, arrange a return or contact a carrier.
 
-## Get your Project key
+## 1. Get a Project key
 
-The workbench runs a real Agent, so you need your own **Platform Project key** first:
+1. Sign in to [Platform Console](https://platform.zoowork.ai) and select a Project. The
+   **Default Project** is fine.
+2. Open **API Keys**, create a key and copy it. The Console shows it once. It starts with
+   `zwp_live_`. Organization keys that start with `zct_` are not accepted.
+3. Open **Billing** and check that the Organization has credits. Creating the Agent needs billing
+   to be set up, and every reply uses credits. All Projects in an Organization share one balance.
 
-1. Open [Platform Console](https://platform.zoowork.ai) and sign in. Complete account and
-   Organization setup if prompted.
-2. Select a Project. The **Default Project** is enough for this starter; you can also create
-   a separate Project for the app.
-3. Open **API Keys** for that Project and create a key. Copy the secret when it is shown;
-   the Console displays it once. This app requires a key beginning with `zwp_live_`.
-   Work/organization keys beginning with `zct_` are not accepted.
-4. Check **Billing** for the Organization. Runtime creation requires initialized billing and
-   model turns need sufficient credits. Projects in the same Organization share that wallet.
-   Key creation alone does not mean the runtime has credits. If billing setup needs recovery,
-   complete its retry in the Console before running the app.
-5. Put the key in your local server-side `.env` as shown below. Do not paste it into the chat,
-   browser JavaScript, screenshots or Git. You do not need an Agent ID: `npm run setup` creates
-   and starts this app's Agent through the published SDK.
+Keep the key on the server. Do not paste it into a chat, browser code, a screenshot or Git.
+You do not need an Agent ID: `npm run setup` creates this app's Agent.
 
-## Run with Platform
+## 2. Run it
 
-Use Node.js **22.20 or later**, on the latest security release of your line, and npm (tested on 24.22.1).
-Node.js 22 reports an experimental warning for its built-in SQLite driver; Node.js 24 does not.
-
-From a fresh checkout:
+Use Node.js **22.20 or later**, on the latest security release of your line, and npm.
+Node.js 22 prints an experimental warning for its built-in SQLite driver; Node.js 24 does not.
 
 ```sh
 git clone https://github.com/SerendipityOneInc/zoowork-platform-quickstarts.git
@@ -41,114 +32,99 @@ npm ci
 cp .env.example .env
 ```
 
-If you already cloned the repository, start from its `customer-support/` directory.
-Edit `.env` in your editor before continuing:
+Edit `.env` and set your key:
 
 ```dotenv
 ZOOWORK_API_KEY=zwp_live_replace_with_your_project_key
 PORT=4600
 ```
 
-`.env` is ignored by Git and loaded by the setup/server commands.
-`ZOOWORK_MODEL` is optional; leave it empty to use the Platform default model.
+`ZOOWORK_MODEL` is optional; leave it empty to use the Platform default model. Set it before the
+first `npm run setup`. `.env` is ignored by Git.
 
 ```sh
-npm run check
 npm run setup
 npm run dev
 ```
 
-Successful setup prints `Agent ready: <agent-id>`. The server prints
-`Customer Support: http://localhost:4600 (synthetic data)`. Open **http://localhost:4600**,
-choose **Track ORD-1001**, click **Send**, and look for `lookup_order` / `lookup_shipment` results and an Agent reply.
-Model turns consume your Organization credits; orders and tickets remain synthetic.
-`PORT` can select another local port.
+Setup prints `Agent ready: <agent-id>` and records the Agent in `.local/agent.json`. Running setup
+again reuses the same Agent. The server prints
+`Customer Support: http://localhost:4600 (synthetic data)`.
 
-The key stays in the server process; the browser receives neither the key nor an Agent ID.
-There is no Work Agent, channels API, sibling app import or local SDK override.
+Open **http://localhost:4600**. The server only answers on `localhost`; set `PORT` in `.env` to use
+another port.
 
-`setup` creates and starts this application's Agent using an exact request and idempotency key
-saved in `.local/agent.json`. Repeating setup reuses that Agent. Edit the model setting before
-initial setup. An Agent created by the previous lifecycle-only foundation needs cleanup followed
-by setup to get the three Custom Tools; configuration is never silently changed.
+## 3. Walkthrough
+
+1. Choose **Track ORD-1001** and select **Send**. The conversation shows the `lookup_order` and
+   `lookup_shipment` calls as they run, then the Agent's reply: a Trail Daypack whose shipment is
+   delayed, with an October 2 estimate. The first reply on a new Agent can take longer while the
+   Platform starts it.
+2. Ask **“What does the latest shipment event mean?”** The same conversation continues.
+3. Ask **“Create a delivery ticket for ORD-1001 because the shipment is delayed.”** The Agent calls
+   `create_support_ticket`, and the order panel shows the order, category and exact reason for you
+   to review.
+4. Choose **Cancel request**. No ticket is written, and the Agent is told the request was cancelled.
+   Ask for the ticket again and choose **Confirm & create ticket**. The ticket ID and **Open**
+   status appear in the ticket panel and in the Agent's reply.
+5. Reload the page. Messages, tickets and a pending confirmation are still there. You can also stop
+   and restart `npm run dev`; the app continues the same conversation without creating a new Agent
+   or Session.
+
+Other sample orders: ORD-1002 is a delivered bottle order and ORD-9999 does not exist. ORD-2001
+belongs to a different synthetic customer and returns the same `order_not_found` result as an
+unknown order, so the Agent cannot read other customers' orders.
+
+Each tool call appears in the conversation with its name, its business result, and whether it is
+waiting, confirmed, cancelled or failed. **Review ticket request** moves focus to the
+confirmation. **Tool call details** in the order panel lists call IDs, inputs and results.
+
+## How it works
+
+```text
+browser ── /api/conversations ──▶ this app's server ── createSession, postEvents ──▶ ZooWork Platform
+                                   │   ▲                                               │
+                                   │   └──── streamEvents: tool requests, replies ◀────┘
+                                   └── runs the tool against SQLite, then resolveCustomToolCall
+```
+
+- **Custom Tools.** When the Agent calls a tool, the Platform pauses the run and sends a
+  `requested` event. The server checks that the order belongs to the signed-in customer, runs the
+  tool against its database and returns the result with `resolveCustomToolCall`. The model never
+  chooses the customer.
+- **Confirmation before a write.** `create_support_ticket` waits for a click in the browser. The
+  ticket and its tool result are saved in one SQLite transaction before the result is sent to the
+  Platform, so a lost response can be resent without creating a second ticket. Cancelled and
+  expired requests create no ticket. A request expires after ten minutes.
+- **Saved state.** `.local/support.sqlite` stores the sample orders, conversations, messages,
+  tool results, tickets and the stream position of each Session. On restart, the server reads the
+  Session history from that position and resends any result the Platform has not received.
+- **Safe retries.** Every message is sent with an idempotency key. If a send fails or its response
+  is lost, **Recover conversation** first reads the Session history and only resends the same
+  message, with the same key, if the Platform never received it.
+- **Browser access.** Each browser gets an HttpOnly cookie, and every route checks that the
+  conversation belongs to it. Changes need a same-origin request with a CSRF token. Agent replies
+  are shown with basic Markdown formatting; all text is HTML-escaped first.
+
+This is a local, single-user sample, not a shop login system. Before real customers use it, replace
+the sample identity with your own authentication, connect the tools to your order service, and add
+your ticket policy. Keep the confirmation step and the save-before-resolve order.
 
 ## Troubleshooting
 
-Startup errors include a safe error code and the next action, without printing the key or provider body.
+Errors print a stable code and a next step. They never print the key or a provider response body.
 
-| Message | What to do |
+| Code | What to do |
 | --- | --- |
-| `platform_project_key_required` | Get a Project key in [Platform Console](https://platform.zoowork.ai), copy `.env.example` to `.env`, and fill `ZOOWORK_API_KEY` with the `zwp_live_` key. |
-| `run_setup_first` | Run `npm run setup`, then `npm run dev`. Setup creates the Agent for you. |
-| `http_401` | Check that the key was copied correctly and is active. Restart after editing `.env`. |
-| `http_402` | Check Organization billing and available credits in the Console before retrying. |
-| `http_403` | Check your account access, selected Project and key permissions. Recorded resources must use the same Project. |
-| `http_400` during setup | Check account setup, Organization billing and the selected model. This code can have several causes; retain `.local` state while investigating. |
-| `state_scope_mismatch` / recorded resource `http_404` | Use the original Project key. Do not delete `.local` to force recreation; see recovery and cleanup below. |
-| `agent_config_outdated_cleanup_then_setup` | Stop the server, run `npm run cleanup`, then `npm run setup` and `npm run dev`. Keep state if cleanup fails. |
-| `EADDRINUSE` / `request_or_runner_failed` when starting | Stop another process using port 4600 or set a free `PORT` in `.env`. The generic code can also mean a connection or runtime failure. |
-
-## Walkthrough
-
-1. Select **Track ORD-1001**, then send the prepared message. The Agent calls `lookup_order` and
-   `lookup_shipment`. The database shows a Trail Daypack, a delayed shipment and an October 2 estimate.
-2. Ask **“What does the latest shipment event mean?”** The same Session retains the conversation.
-3. Ask **“Create a delivery ticket for ORD-1001 because the shipment is delayed.”** The Agent calls
-   `create_support_ticket`. The workbench shows the order, category and exact reason for review.
-4. Choose **Cancel request**. No ticket is written, and an error result releases the paused tool.
-   Ask for another ticket and choose **Confirm & create ticket**. Its ID and **Open** status appear
-   in both the ticket panel and the Agent reply.
-5. Reload the page. Messages, ticket state and a pending confirmation survive. Stop and restart
-   `npm run dev` to resume the recorded Session and pending calls without creating new resources.
-
-ORD-1002 is a delivered bottle order. ORD-9999 is unknown. ORD-2001 belongs to a different
-synthetic customer and returns the same `order_not_found` result as an unknown order.
-Custom Tool calls appear directly in the conversation timeline, with their function names, business results and confirmation or failure states. **Review ticket request** moves focus to the protected confirmation. The closed **Tool call details** disclosure contains call IDs, input parameters, structured results and decisions.
-
-## Checks
-
-```sh
-npm ci
-npm run check
-npx playwright install chromium
-npm run test:browser
-# Alternatively, with an already-installed Google Chrome:
-PLAYWRIGHT_CHANNEL=chrome npm run test:browser
-```
-
-`check` typechecks the backend and tests, checks browser JavaScript syntax, and runs offline
-Node tests. Browser tests cover the complete workflow, reload, hostile tool data, mobile layout,
-empty conversation switching and keyboard focus during polling. They start their own server,
-`test/fixture-server.ts`, which runs the real HTTP routes, SQLite store and business handlers
-with a fake Platform transport and an in-memory database. It exists only for these tests and is
-not evidence of SDK integration. CI's `check` needs no key or browser.
-
-## Persistence and recovery
-
-- `.local/support.sqlite` stores fixture orders/shipments, browser identities, conversation ownership,
-  exact Session-create requests, user messages, tool jobs, tickets, results and durable event cursors.
-  The database is bound to the recorded app instance and Agent.
-- Each browser has an opaque HttpOnly cookie. Routes check conversation ownership. The handlers
-  independently check customer ownership; the model cannot select a customer or pass confirmation.
-  Mutation requests require a same-origin request and a CSRF token. The server binds to localhost.
-- A ticket and its tool result commit in one SQLite transaction **before** calling
-  `resolveCustomToolCall`. Duplicate call IDs return saved results. Equivalent confirmed requests
-  in the same conversation return the existing ticket. A failure to deliver a result cannot duplicate
-  the business write. A repeated decision cannot change a cancellation into a confirmation.
-- Confirmation expires at the tool deadline (ten minutes by default). Cancelled, expired and remotely
-  terminal calls create no ticket. The backend checks the deployment's pending calls before confirming.
-- Restart reads history and pending calls, scopes them to recorded Sessions and resubmits saved results.
-  A process lease prevents two app consumers from executing the same journal concurrently; a dead
-  process can be replaced without deleting business state. SQLite uses WAL and full synchronous commits.
-- Failed or ambiguous user inputs keep their exact body and idempotency key. **Recover conversation**
-  first reads history; if the input was not found, an explicit retry uses the saved key. Restart never
-  automatically posts new model inputs. Network errors retain state and do not print provider bodies.
-- Durable `agent.assistant` replies replace the displayed snapshot from saved messages. This app does
-  not concatenate preview deltas or rely on the preview event lane.
-
-This is a local single-process sample identity, not a shop login system. For a real application,
-replace the synthetic identity with authenticated customer ownership, replace the business store or
-handlers with your service, and add the shop's ticket policy. Keep the confirmation and result journal.
+| `platform_project_key_required` | Copy `.env.example` to `.env` and set `ZOOWORK_API_KEY` to a `zwp_live_` Project key. Restart after editing `.env`. |
+| `run_setup_first` | Run `npm run setup`, then `npm run dev`. |
+| `http_401` | The key was rejected. Check it was copied completely and is still active. |
+| `http_402` | Set up billing or add credits for the Organization in Platform Console. |
+| `http_403` | Check the selected Project and the key's permissions. |
+| `http_400` during setup | Check billing and the `ZOOWORK_MODEL` value. Keep `.local/` while you investigate. |
+| `state_scope_mismatch` / `http_404` for a recorded resource | `.local/` belongs to another key or Project. Restore the original key. Do not delete `.local/` to force a new Agent. |
+| `agent_config_outdated_cleanup_then_setup` | The recorded Agent was created by an older version of this app. Stop the server, run `npm run cleanup`, then `npm run setup` and `npm run dev`. |
+| `EADDRINUSE` / `request_or_runner_failed` at start | Another process uses the port. Stop it or set a free `PORT` in `.env`. The second code can also mean a connection problem. |
 
 ## Status and cleanup
 
@@ -158,26 +134,41 @@ npm run status
 npm run cleanup
 ```
 
-Cleanup checks the recorded Agent labels and verifies each **recorded** Session's metadata before
-removing it. It does not enumerate Projects or choose unrelated Sessions for deletion. A running
-app, ambiguous Session creation, changed labels/metadata or failed deletion blocks cleanup and keeps
-recovery state. Successful cleanup archives the business database as `.local/archived-<instance>.sqlite`.
-It stops/deletes the Agent and removes the active Agent record. A subsequent setup starts a fresh app
-instance; the archive is retained for inspection.
+Cleanup only touches the Agent and Sessions recorded in `.local/`, and checks their labels
+before deleting them. It never lists your Project to choose what to delete. If the server is
+running, a Session creation is uncertain, or a deletion fails, cleanup stops and keeps `.local/`
+so you can run it again. After success it stops and deletes the Agent and keeps the old database
+as `.local/archived-<instance>.sqlite`. The next `npm run setup` starts fresh.
 
-If a CLI was killed while holding `agent.json.lock`, confirm no setup/cleanup process is running
-before removing that lock. Never remove Agent records or databases to bypass uncertainty. For an
-ambiguous Session creation, restart the app and use **Recover conversation** with the same Project
-key to replay the recorded create body/key before attempting cleanup.
+If a command was killed while holding `.local/agent.json.lock`, make sure no setup or cleanup is
+running, then delete the lock. Do not delete the Agent record or the database to get past an error.
+
+## Checks
+
+```sh
+npm ci
+npm run check
+npx playwright install chromium
+npm run test:browser
+# Or, with Google Chrome already installed:
+PLAYWRIGHT_CHANNEL=chrome npm run test:browser
+```
+
+`check` runs the TypeScript check, a syntax check of the browser code and offline Node tests. It
+needs no key and makes no network request to ZooWork. The browser tests cover the full walkthrough,
+reload, Markdown rendering, hostile tool and model text, the desktop and mobile layouts, switching
+to an empty conversation, and keyboard focus. They start `test/fixture-server.ts`, which runs the
+real routes, SQLite store and tool handlers against an in-memory fake of the Platform. It exists
+only for these tests.
 
 ## Main files
 
 | File | Responsibility |
 | --- | --- |
-| `src/agent.ts` | Agent persona and three Custom Tool schemas |
-| `src/store.ts`, `src/tools.ts` | SQLite business data, ownership, confirmation and result journal |
-| `src/service.ts` | Session inputs, event consumer, pending recovery and result delivery |
-| `src/http.ts`, `scripts/server.ts` | Local browser API, cookie/CSRF checks and server lifecycle |
-| `public/` | English responsive workbench |
-| `src/platform.ts`, `src/cleanup.ts` | Agent setup, resource scope and recorded-resource cleanup |
-| `test/`, `e2e/` | Offline behavior and browser regressions |
+| `src/agent.ts` | Agent instructions and the three Custom Tool schemas |
+| `src/store.ts`, `src/tools.ts` | SQLite data, customer ownership, confirmation and saved tool results |
+| `src/service.ts` | Sending messages, reading the event stream, recovery and returning tool results |
+| `src/http.ts`, `scripts/server.ts` | Local browser API, cookie and CSRF checks, server start and stop |
+| `public/` | The workbench page; `markdown.js` formats Agent replies |
+| `src/platform.ts`, `src/cleanup.ts` | Agent setup and cleanup of recorded resources |
+| `test/`, `e2e/` | Offline tests and browser tests |

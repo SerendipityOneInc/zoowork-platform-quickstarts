@@ -12,6 +12,7 @@ import type { SupportService } from "./service.js";
 const files = new Map([
   ["/", ["index.html", "text/html"]],
   ["/app.js", ["app.js", "text/javascript"]],
+  ["/markdown.js", ["markdown.js", "text/javascript"]],
   ["/style.css", ["style.css", "text/css"]],
 ]);
 async function body(
