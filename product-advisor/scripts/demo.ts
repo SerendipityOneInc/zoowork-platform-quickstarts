@@ -1,3 +1,4 @@
+import { existsSync } from "node:fs";
 import { createServer as httpServer } from "node:http";
 import { setDefaultResultOrder } from "node:dns";
 import { resolve } from "node:path";
@@ -56,7 +57,9 @@ try {
         catalog = await localCatalog({
           port: process.env.MCP_PORT ? Number(process.env.MCP_PORT) : undefined,
           onUrl: (url) =>
-            console.log(`Checking catalog HTTPS endpoint: ${url}`),
+            console.log(
+              `Waiting for the catalog address to become reachable (usually about 15 seconds, at most 90): ${url}`,
+            ),
         });
         process.env.MCP_PUBLIC_URL = catalog.url;
         void catalog.exited.then(() => {
@@ -93,13 +96,13 @@ try {
       await app?.close();
       await catalog?.close();
       console.log(
-        "Local services stopped. Saved Agent/Session records remain; npm run cleanup removes them.",
+        existsSync(resolve(".local", "agent.json"))
+          ? "Local services stopped. The Agent and its conversations remain on Platform; npm run cleanup removes them."
+          : "Local services stopped. No Agent was created.",
       );
     }
   });
 } catch (error) {
-  console.error(
-    `FAIL: ${safeError(error)}; see README and retained .local state.`,
-  );
+  console.error(`FAIL: ${safeError(error)}; see Troubleshooting in README.md.`);
   process.exitCode = 1;
 }

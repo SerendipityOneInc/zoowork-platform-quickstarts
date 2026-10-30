@@ -18,6 +18,7 @@ import {
   AppError,
   parseReply,
   recommendations,
+  turnEvidence,
   type Conversation,
   type ConversationView,
   view,
@@ -148,6 +149,7 @@ export class Advisor {
     r: Requirements,
     requestId: string,
     instruction = "",
+    keepResults = false,
   ): Promise<ConversationView> {
     let c = this.store.get(id, visitor);
     if (c.pendingMessage?.requestId === requestId) {
@@ -173,8 +175,13 @@ export class Advisor {
       };
       c.messages.push({ id: requestId, role: "user", text });
       c.status = "running";
-      c.shortlist = [];
-      c.comparison = undefined;
+      // Details and comparisons act on the current shortlist; keep it and the
+      // earlier results visible. New requirements start a fresh result set.
+      if (!keepResults) {
+        c.shortlist = [];
+        c.comparison = undefined;
+        c.details = undefined;
+      }
       c.assistantBlocks = [];
       c.denied = false;
       c.warnings = [];
@@ -346,7 +353,8 @@ export class Advisor {
       `Compare specifications for ${selected.map((p) => p!.name).join(", ")}.`,
       c.requirements,
       requestId,
-      `Call compare_products with product IDs ${ids.join(", ")} and catalogVersion ${selected[0]!.catalogVersion}. Wait for native user approval. Keep the product set unchanged.`,
+      `Call compare_products with product IDs ${ids.join(", ")} and catalogVersion ${selected[0]!.catalogVersion}. Wait for native user approval. Keep the product set unchanged. Then reply with a message block; do not output a new recommendation.`,
+      true,
     );
   }
   async details(
@@ -371,7 +379,8 @@ export class Advisor {
       `View full specifications for ${p.name}.`,
       c.requirements,
       requestId,
-      `Call get_products with productIds ["${productId}"] and catalogVersion ${catalogVersion}. Wait for native user approval.`,
+      `Call get_products with productIds ["${productId}"] and catalogVersion ${catalogVersion}. Wait for native user approval. Then reply with a message block; do not output a new recommendation.`,
+      true,
     );
   }
   private watch(id: string): void {
@@ -635,6 +644,7 @@ export class Advisor {
           if (!Object.keys(c.hydration).length)
             c.warnings = c.warnings.filter((w) => w !== "evidence_unavailable");
           if (evidence.tool === "compare_products") c.comparison = evidence;
+          if (evidence.tool === "get_products") c.details = evidence;
         });
       } catch {
         this.store.update(id, (c) => {
@@ -696,7 +706,12 @@ export class Advisor {
             ? `Prepared ${c.shortlist.length} ${c.shortlist.length === 1 ? "candidate" : "candidates"} from catalog records. See the product cards for specifications and verified reasons.`
             : "No recommendation meets the confirmed requirements in this turn. Check the candidates and unmet requirements.",
         });
-      } else if (reply)
+      } else if (reply) {
+        // The model's message text is not shown: facts come only from tool
+        // results, so the app describes what this turn actually returned.
+        const returned = turnEvidence(c).reverse();
+        const compared = returned.find((e) => e.tool === "compare_products");
+        const detailed = returned.find((e) => e.tool === "get_products");
         c.messages.push({
           id: `reply-${c.lastSeq}`,
           role: "assistant",
@@ -705,17 +720,19 @@ export class Advisor {
               ? reply.question
               : c.denied
                 ? "This specification query was denied. Previously retrieved catalog summaries remain available."
-                : c.comparison
-                  ? "The remote comparison is ready. See the specifications table."
-                  : Object.values(c.evidence).some(
-                        (e) =>
-                          e.tool === "search_products" &&
-                          !e.result.products.length,
-                      )
-                    ? "No catalog products match these requirements. Adjust them before querying again."
-                    : "This turn ended. See the verified candidates and call states.",
+                : compared
+                  ? "The comparison is ready. See the specification comparison table."
+                  : detailed
+                    ? `Full specifications for ${detailed.result.products.map((p) => p.name).join(", ")} are shown below the product cards.`
+                    : returned.some(
+                          (e) =>
+                            e.tool === "search_products" &&
+                            !e.result.products.length,
+                        )
+                      ? "No catalog products match these requirements. Adjust them before querying again."
+                      : "This turn returned no new catalog results. Earlier results remain available.",
         });
-      else
+      } else
         c.messages.push({
           id: `reply-${c.lastSeq}`,
           role: "assistant",

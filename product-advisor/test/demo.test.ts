@@ -11,6 +11,8 @@ import {
   quickTunnel,
   tunnelEnvironment,
   waitTunnelDns,
+  TUNNEL_DNS_FIRST_LOOKUP_MS,
+  TUNNEL_DNS_TIMEOUT_MS,
 } from "../src/server/local-catalog.js";
 
 test("generated visitor secret survives concurrent startup and remains private", async () => {
@@ -128,6 +130,7 @@ test("tunnel startup waits for published DNS without exposing config to its reso
     "https://synthetic-demo.trycloudflare.com/mcp",
     fetcher,
     5000,
+    0,
   );
   assert.equal(queries.length, 2);
   assert.ok(
@@ -142,4 +145,17 @@ test("tunnel startup waits for published DNS without exposing config to its reso
     /unexpected_tunnel_hostname/,
   );
   assert.equal(queries.length, 2);
+});
+
+test("tunnel DNS waits before its first lookup and outlasts one negative-cache TTL", async () => {
+  const startedAt = Date.now();
+  let firstQueryAt = 0;
+  const fetcher = (async () => {
+    firstQueryAt ||= Date.now();
+    return Response.json({ Status: 0, Answer: [{ type: 1, data: "104.16.230.132" }] });
+  }) as typeof fetch;
+  await waitTunnelDns("https://synthetic-demo.trycloudflare.com/mcp", fetcher, 5000, 200);
+  assert.ok(firstQueryAt - startedAt >= 190);
+  // trycloudflare.com answers NXDOMAIN with a 60 s negative TTL.
+  assert.ok(TUNNEL_DNS_TIMEOUT_MS - TUNNEL_DNS_FIRST_LOOKUP_MS > 60_000);
 });

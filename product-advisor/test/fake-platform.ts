@@ -36,6 +36,8 @@ export class FakePlatform {
   ambiguousCreate = false;
   ambiguousPost = false;
   holdDecisions = false;
+  /** Reply to get_products with a message block, as production models do. */
+  detailsAsMessage = false;
   decisions = new Map<string, () => void>();
   client: Pick<
     ZooworkClient,
@@ -272,7 +274,7 @@ export class FakePlatform {
           true,
         );
         reply =
-          evidence && tool === "get_products"
+          evidence && tool === "get_products" && !this.detailsAsMessage
             ? {
                 type: "recommendation",
                 items: evidence.result.products.map((p) => ({
@@ -283,7 +285,11 @@ export class FakePlatform {
               }
             : {
                 type: "message",
-                message: evidence ? "Comparison complete" : "Denied",
+                message: !evidence
+                  ? "Denied"
+                  : tool === "get_products"
+                    ? "Full specifications retrieved"
+                    : "Comparison complete",
               };
       } else {
         const evidence = (await this.tool(id, "search_products", {

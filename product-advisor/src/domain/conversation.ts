@@ -70,6 +70,7 @@ export interface Conversation {
   warnings: string[];
   shortlist: ShortlistItem[];
   comparison?: Evidence;
+  details?: Evidence;
   assistantBlocks: string[];
   pendingReply?: string;
   denied: boolean;
@@ -93,6 +94,7 @@ export type ConversationView = Pick<
   | "warnings"
   | "shortlist"
   | "comparison"
+  | "details"
   | "selectedIds"
 >;
 export function view(c: Conversation): ConversationView {
@@ -109,6 +111,7 @@ export function view(c: Conversation): ConversationView {
     warnings,
     shortlist,
     comparison,
+    details,
     selectedIds,
   } = c;
   // Older snapshots predate deniedReason projection. Durable events retain
@@ -146,6 +149,7 @@ export function view(c: Conversation): ConversationView {
     warnings,
     shortlist,
     comparison,
+    details,
     selectedIds,
   };
 }
@@ -208,6 +212,20 @@ export function parseReply(
   } catch {
     return undefined;
   }
+}
+/** Evidence whose tool call ended during the current turn. */
+export function turnEvidence(c: Conversation): Evidence[] {
+  const receipts = new Set(
+    c.events
+      .filter(
+        (event) =>
+          event.seq > (c.turnStartSeq ?? -1) &&
+          event.eventType === "agent.tool" &&
+          event.payload.phase === "end",
+      )
+      .map((event) => c.tools[String(event.payload.toolCallId)]?.receiptId),
+  );
+  return Object.values(c.evidence).filter((e) => receipts.has(e.receiptId));
 }
 export function recommendations(
   c: Conversation,

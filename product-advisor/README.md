@@ -1,74 +1,116 @@
 # Product Advisor
 
-A complete Platform remote MCP example. Users enter a budget and requirements, search a catalog, review evidence-backed product cards, compare specifications, and adjust their requirements in the same conversation. Product facts come from successful remote MCP snapshots.
+A shopping assistant that gets its product facts from a remote MCP server. Users enter a budget
+and requirements, the Agent searches a catalog through MCP, and the app shows product cards,
+full specifications and side-by-side comparisons. Viewing full specifications and comparing
+products ask for your approval first.
 
-The interface, Agent responses, examples, catalog, and documentation are in English. Currency remains **CNY**. The catalog contains six invented laptops, six monitors, and six headphones. All names, prices, specifications, and illustrations are synthetic. There are no real merchant offers or purchase links. Missing specifications are displayed as “Not provided by catalog” and never treated as satisfying a hard requirement.
+All catalog data is invented: six laptops, six monitors and six headphones, priced in CNY. There
+are no real offers or purchase links. A specification the catalog does not provide is shown as
+"Not provided by catalog" and never counts as meeting a requirement.
 
-## Install and check offline
+## Requirements
 
-Requires Node.js **22.20 or later**, on the latest security release of your line, and npm. This directory installs independently, without sibling repositories or a local SDK override. The full local demo also requires `cloudflared` to make the bundled MCP accessible to the cloud Platform. It needs no additional account or key. On macOS run `brew install cloudflared`; see the [official installation instructions](https://developers.cloudflare.com/tunnel/get-started/) for other systems.
+- Node.js **22.20 or later**, on the latest security release of your line, and npm.
+- A ZooWork Platform **Project key** (`zwp_live_…`) and Organization credits. Create the key in
+  [Platform Console](https://platform.zoowork.ai) under your Project's **API Keys**. Every Agent
+  reply uses credits.
+- [`cloudflared`](https://developers.cloudflare.com/tunnel/get-started/) for the one-command demo.
+  On macOS: `brew install cloudflared`. It needs no Cloudflare account.
+
+## Run the demo
 
 ```sh
-npm ci
-npm run check
-npm run build
-```
-
-`check` runs TypeScript and offline tests. Tests use the official MCP client against a real local HTTP server. Platform lifecycle, events, and approvals use a test-only adapter and consume no model tokens. Checks need no credentials or Platform connection.
-
-Without a Project key, `npm run dev` opens an unconfigured interface and generates no mock recommendations.
-
-## Run the full demo with one key
-
-```sh
+git clone https://github.com/SerendipityOneInc/zoowork-platform-quickstarts.git
+cd zoowork-platform-quickstarts/product-advisor
 npm ci
 cp .env.example .env
-# Fill only ZOOWORK_API_KEY with your Platform Project key (zwp_live_).
+# Edit .env and set ZOOWORK_API_KEY=zwp_live_...
 npm run demo
-# Open http://localhost:4310
 ```
 
-This entry uses the real published SDK and Platform. It starts the bundled synthetic catalog, creates a temporary HTTPS tunnel, verifies tool discovery, creates or reuses the app-owned Agent, and starts the Web app. The Project key stays in the application process and is excluded from the tunnel process. Only the synthetic catalog is exposed publicly; the Web API is not tunneled. A private cookie secret is generated in `.local/cookie-secret` and reused on restart.
+Open **http://localhost:4310** when the terminal prints `Product Advisor: http://localhost:4310`.
 
-Local configuration and temporary tunnel addresses are not committed.
+The Agent runs on ZooWork Platform, so it cannot reach an MCP server on your `localhost`.
+`npm run demo` therefore:
 
-The temporary hostname changes on restart. The launcher saves an exact pending resource before updating the same owned Agent through the SDK. Ambiguous results retain the original request for recovery instead of creating a replacement Agent. Ctrl+C closes the local Web server, MCP, and tunnel; remote Agent/Session records and local history remain. Use `npm run cleanup` to remove the recorded remote resources.
+1. starts the bundled catalog MCP server locally,
+2. opens a temporary public HTTPS address for it with a Cloudflare Quick Tunnel,
+3. waits until that address resolves and answers (usually about 15 seconds, at most 90),
+4. creates this app's Agent, or points the existing one at the new address,
+5. starts the web app.
 
-Quick Tunnels are intended for local demos, with no stable address or uptime guarantee. This MCP uses JSON responses for Streamable HTTP. The Web application's SSE stays local. [Quick Tunnel limitations](https://developers.cloudflare.com/tunnel/get-started/quick-tunnels/) make it unsuitable for other servers that require remote SSE. If you already host this MCP, set `MCP_PUBLIC_URL` to skip the bundled server and tunnel.
+Only the synthetic catalog is reachable through the tunnel. The web app and your key stay on
+your machine; the key is not passed to `cloudflared`.
 
-## Probe the MCP server
+The tunnel address changes on every start, and Quick Tunnels have no uptime guarantee. Press
+Ctrl+C to stop the web app, the catalog and the tunnel. The Agent and its conversations stay on
+Platform until you run `npm run cleanup`.
+
+## Walkthrough
+
+1. Choose the **Laptop · CNY 6500** example (office work and coding, at least 16 GB RAM) and
+   select **Find products**. The catalog search drops products that are over budget, have too
+   little RAM or are unavailable. Up to three picks appear as cards.
+2. Select **View full specifications** on a card. An approval card names the product and the
+   catalog version. Choose **Allow once**: a **Full specifications** table appears below the
+   cards. Choose **Deny** instead and nothing is fetched; the cards keep their search results.
+3. Tick **Compare** on two to four products of the same category, then **Compare selected
+   products** and approve. A **Specification comparison** table appears.
+4. Send **Lower the budget to CNY 5000.** as a follow-up. The app updates the budget, the Agent
+   searches again, and only products within the new budget are recommended.
+5. Expand **View MCP calls and request JSON** to see each tool call, its arguments and whether
+   it ran, was denied or is waiting for approval.
+6. Reload the page and open the conversation from the sidebar. Its messages, approvals,
+   specifications and comparison come back.
+
+Product facts on the page always come from catalog tool results, not from the Agent's wording.
+If the Agent's final answer cannot be read, the verified candidates stay on the page with a short
+explanation; the app does not start another paid turn to fix it.
+
+## The catalog MCP server
+
+| Tool | Input | Returns |
+| --- | --- | --- |
+| `search_products` | category, budget in CNY minor units, typed filters, optional exact model name, limit | Matching product summaries and the catalog version |
+| `get_products` | 1–4 product IDs and the catalog version | Full specifications; unknown fields stay `null` |
+| `compare_products` | 2–4 IDs from one category and version, optional attributes | A specification table with each product's values |
+
+Amounts are integer minor units: CNY 6500 is `650000`. The tools accept no user identity and no
+external URL. The Agent is configured so `search_products` runs without asking, while
+`get_products` and `compare_products` always ask for approval.
+
+Each successful tool result includes a `receiptId`. The app uses it to read that exact result
+from the catalog server's `/evidence/:receiptId` route and shows those facts on the page. Results
+stay readable on the server for at least 24 hours and are saved locally once read.
+
+Try the server on its own:
 
 ```sh
-# Terminal A, in this directory.
+# Terminal A
 npm run mcp:dev
-# Terminal B.
+# Terminal B
 npm run mcp:probe -- http://localhost:4311/mcp
 ```
 
-The standalone server listens on `localhost:4311` by default. The probe checks initialization, discovery of all three tools, an actual search, receipt extraction from a short preview, and retrieval of the full result. This proves local MCP operation, not cloud Platform access to localhost.
+The probe initializes an MCP session, lists the three tools, runs a search and reads its full
+result. It shows that the server works locally; Platform still needs a public HTTPS address.
 
-| Tool | Input | Result |
-| --- | --- | --- |
-| `search_products` | category, budget in CNY minor units, typed filters, optional model query, limit | Filtered summaries, price, key specifications, total, version, receipt |
-| `get_products` | 1–4 product IDs and exact catalogVersion | Full facts, with unknown fields retained as null |
-| `compare_products` | 2–4 IDs in the same category and version, optional attributes | A specification matrix with each product's original values |
+### Host the catalog yourself
 
-Amounts are integer minor units: CNY 6500 is `650000`. Tools accept no user identity or arbitrary external URL. Comparison returns facts without speculative scores. The model ranks candidates; the application validates the facts.
-
-## Make the catalog accessible to Platform
-
-Engine executes MCP remotely and cannot access a developer's localhost. The current Project-key API supports public, unauthenticated HTTP MCP. The public gateway does not allow configuring authenticated MCP credentials, so this server exposes only public synthetic facts.
-
-`npm run demo` prepares a temporary development tunnel automatically. For separate hosting, use a Node host or an authorized tunnel with these routes under the same HTTPS origin:
+An Agent created with a Platform Project key connects to MCP servers that need no
+authentication, so this server only exposes synthetic, public data. To skip the tunnel, host the catalog behind HTTPS and
+set `MCP_PUBLIC_URL` in `.env`. Serve these routes from the same origin:
 
 - `POST /mcp`: stateless Streamable HTTP with JSON responses.
-- `GET /health`: catalog version and synthetic marker.
-- `GET /evidence/:receiptId`: read an already executed result without a new tool call.
-- `/unavailable/mcp`: intentionally unhandled, returning 404 for controlled failure verification.
+- `GET /health`: catalog version and a synthetic-data marker.
+- `GET /evidence/:receiptId`: an earlier tool result, without running the tool again.
 
-The TLS proxy must preserve MCP headers such as `Accept`, `Content-Type`, and `MCP-Protocol-Version`, and the request body. Do not redirect `/mcp` to a login page or another origin. If using a path prefix, forward evidence paths consistently. Engine still applies its egress and DNS checks.
+Your proxy must forward the request body and the `Accept`, `Content-Type` and
+`MCP-Protocol-Version` headers, and must not redirect `/mcp` to a login page or another origin.
 
-The directory includes a standalone MCP Docker image. These commands build and run it locally; they do not deploy it:
+The directory includes a Docker image for the MCP server. These commands build and run it
+locally; they do not deploy it:
 
 ```sh
 docker build -t product-advisor-mcp .
@@ -77,78 +119,99 @@ docker run --rm -p 127.0.0.1:4311:4311 \
   product-advisor-mcp
 ```
 
-The image runs as a non-root user. Its volume stores receipts and private audit records. It listens on `0.0.0.0:4311` inside the container; the host port is loopback-only. Public hosting requires an authorized TLS proxy. Use `MCP_ALLOWED_HOSTS` to constrain Host. Incoming Origin is rejected by default; allow selected browser MCP clients with `MCP_ALLOWED_ORIGINS`. Platform server-to-server requests normally omit Origin.
+The image runs as a non-root user and stores results in the volume. Inside the container it
+listens on `0.0.0.0:4311`; the command above publishes it on loopback only. Use
+`MCP_ALLOWED_HOSTS` to restrict the `Host` header. Requests with an `Origin` header are rejected
+unless listed in `MCP_ALLOWED_ORIGINS`; Platform's requests do not send one. Check a public
+deployment with `npm run mcp:probe -- https://your-host.example/mcp`.
 
-Probe your public endpoint with `npm run mcp:probe -- https://your-authorized-host.example/mcp`. A local read probe is still separate from an actual Platform turn.
-
-## Manual setup and hosting
+With `MCP_PUBLIC_URL` set, run the app without the demo launcher:
 
 ```sh
-cp .env.example .env
-# Set server-side ZOOWORK_API_KEY and MCP_PUBLIC_URL.
-# APP_COOKIE_SECRET is optional; it is generated and saved when omitted.
-# Default APP_ORIGIN is http://localhost:4310.
 npm run setup
 npm run dev
 ```
 
-The key must be a Platform Project key (`zwp_live_`). The gateway determines Org/Project/owner tenancy. Setup creates the app's own Agent and saves its exact resource, creation key, and returned ID in `.local/agent.json`. Repeating setup reuses that state. Do not supply an existing Work Agent ID.
+After changing `MCP_PUBLIC_URL`, `ZOOWORK_MODEL` or the Agent instructions in `src/agent.ts`,
+stop the app and run `npm run configure`, then `npm run dev`. Do not change the Agent while a
+conversation is running.
 
-The Agent declares the `catalog` MCP server, direct exposure, and three exact tools. Search is `always_allow`; details and comparison are `always_ask` with `requireConfirmation: true`.
+## Configuration
 
-After changing the URL, model, or persona, stop the local app and run:
+| Variable | Default | Meaning |
+| --- | --- | --- |
+| `ZOOWORK_API_KEY` | none | Required. Platform Project key (`zwp_live_…`). |
+| `ZOOWORK_MODEL` | Platform default | Model for the Agent, read when the Agent is created or configured. |
+| `MCP_PUBLIC_URL` | tunnel | A hosted catalog. `npm run demo` skips the tunnel when set. |
+| `APP_ORIGIN` | `http://localhost:4310` | Exact browser origin. Write requests from any other origin are rejected. Do not mix `localhost` and `127.0.0.1`. |
+| `APP_COOKIE_SECRET` | generated | Signs the visitor cookie. Generated once into `.local/cookie-secret` when unset. |
+| `MCP_HOST`, `MCP_PORT` | `localhost`, `4311` | Listener for `npm run mcp:dev`. |
+| `MCP_ALLOWED_HOSTS`, `MCP_ALLOWED_ORIGINS` | none | Comma-separated allow lists for the MCP server. |
 
-```sh
-npm run configure
-npm run dev
-```
+Keep the key in `.env` on the server. Never put it in browser code, chat, logs or Git.
 
-Configure verifies owned labels, saves the exact pending resource, and sends an update. An uncertain response is recovered with that same resource rather than assuming new environment values were applied. Do not change the Agent during an active turn.
+## Approvals and failures
 
-For a local production build:
-
-```sh
-npm run build
-npm start
-```
-
-`APP_ORIGIN` must match the browser's exact origin. Write APIs validate Origin. Use `localhost` consistently; do not mix it with `127.0.0.1`. `APP_HOST` and `PORT` control the server listener. Public Web hosting additionally needs real authentication, HTTPS, access policy, and operations configuration. The demo cookie only establishes local visitor ownership.
-
-The production server and offline UI harness limit page/static requests to 300 per IP per minute. Excess requests return 429 and `Retry-After`. API and SSE requests do not count toward this page limit.
-
-## Walkthrough
-
-1. Choose the Laptop / CNY 6500 example, with office/coding needs and at least 16 GB RAM. Real catalog filtering excludes over-budget, insufficient-memory, and unavailable products.
-2. Review up to three recommendations. Cards show catalog prices, budget differences, known specifications, unknown fields, and evidence. Facts are hydrated from receipts rather than copied from the model's text.
-3. Choose **View full specifications** and allow once or deny the native approval. Select 2–4 products of the same version, choose **Compare selected products**, approve, and view the remote specification matrix.
-4. Follow up with **Lower the budget to CNY 5000.** The backend applies the explicit budget change. New recommendations must meet the new budget; earlier snapshots keep their original conditions and prices.
-5. Expand **View MCP calls and request JSON** for tool names, real arguments, approval/returned/unexecuted states, and receipts. Debug stays a compact text disclosure. The offline harness explicitly labels simulated Platform events.
-6. Reload and restore the conversation from history. SQLite retains tool states, approvals, comparison selection, and evidence. The persistent cookie secret preserves visitor identity across restarts.
-
-The form defines confirmed hard requirements. Explicit English budget, RAM, and maximum-weight statements also update those requirements. Ambiguous changes require clarification or editing the form. The model has no strict JSON-output API; an invalid final block leaves validated candidates available with an explanation, without an automatic paid repair turn.
-
-## Approval and failure recovery
-
-| State | Application behavior |
+| Situation | What the app does |
 | --- | --- |
-| tool phase=blocked without deniedReason | Not executed; await the native approval for the same Session |
-| tool deniedReason=approval-denied | Denied and shown as “Not executed”; the actual event sequence has no tool-end |
-| resolve returns signaled / 202 | Show “Decision submitted” and wait for native approval/execution events; submission is not execution |
-| Denial / timeout | No substitute local tool or receipt read for the denied action; keep successful search summaries |
-| Uncertain approval delivery | Persist the original decision; only that decision may be resubmitted |
-| approvals API returns 501 | Show native approvals unavailable and stop waiting; never simulate approval |
-| MCP connection/authentication failed | Show the catalog failure; no new recommendation without new evidence |
-| Missing/expired receipt | Persist a hydration job; bounded read retries or explicit read recovery |
-| Uncertain message delivery | Keep the exact request/key; Resume delivery reuses it without creating a new paid turn |
-| Event stream interrupted | Resume cursor and replay REST events, deduplicate by seq, pair tools by toolCallId |
+| A tool call waits for approval | Shows the approval card with the product names; nothing runs until you decide |
+| You deny | Marks the call "Not executed" and keeps earlier search results |
+| You allow | Shows "Decision submitted" until the tool actually returns |
+| Nobody decides in time | The call is denied; earlier results stay |
+| The catalog is unreachable | Shows the failure; no new recommendation without a new successful search |
+| The result cannot be read yet | Retries a few times; **Recover** retries again later |
+| A message may not have arrived | Keeps the exact request; **Resume delivery** resends it without starting a second paid turn |
+| The connection drops | Reconnects and continues from the last event it saw |
 
-Remote receipts are retained for at least 24 hours. Once hydrated, local snapshots preserve history independently of remote availability. Engine currently limits `resultPreview` to 512 characters. The receipt appears near the start of structuredContent. The backend extracts a constrained ID only from a successful tool-end event and reads evidence from the fixed configured origin. A model-generated receipt or URL cannot replace execution evidence.
+Each new recommendation must come from a successful search in the same turn. While the catalog
+is unreachable, earlier results stay readable but cannot back a new recommendation.
 
-Each new recommendation must cite a successful receipt from that turn. During connection failure, earlier snapshots remain readable but cannot support a new recommendation. Concurrent follow-ups in one conversation accept only one active request and preserve its saved body.
+## Troubleshooting
 
-Public receipts contain only synthetic facts, with no user text, visitor identity, Session, runtime context, or key. Private audit retains bounded runtime coordinates for correlation; context is not authentication. The browser receives no Project key and cannot select an arbitrary Agent/Session/actor.
+Errors print a stable code and never the key.
 
-## Offline browser verification
+| Code | What to do |
+| --- | --- |
+| `platform_project_key_required` | Set `ZOOWORK_API_KEY` in `.env` to a `zwp_live_` Project key. |
+| `cloudflared_required` | Install `cloudflared` (`brew install cloudflared` on macOS), or set `MCP_PUBLIC_URL`. |
+| `tunnel_start_timeout` / `tunnel_exited` | `cloudflared` could not open a tunnel. Check your network, then run `npm run demo` again. |
+| `tunnel_dns_not_ready` | The tunnel address did not resolve within 90 seconds. Run `npm run demo` again; each start gets a new address. If it keeps failing, check that your network allows `https://cloudflare-dns.com`. |
+| `public_catalog_unreachable` | The address resolved but did not answer. A VPN or proxy may block `*.trycloudflare.com`; try without it, or host the catalog and set `MCP_PUBLIC_URL`. |
+| `catalog_tool_set_mismatch` | The MCP server at `MCP_PUBLIC_URL` is not this catalog. Check the URL. |
+| `request_or_runner_failed` | A request failed without a more specific code. At startup with `MCP_PUBLIC_URL` set, check that the URL is this catalog's `/mcp` endpoint; otherwise check your network and run the command again. |
+| `mcp_public_url_required` / `public_https_mcp_url_required` | `npm run setup` and `npm run configure` need `MCP_PUBLIC_URL` set to a public `https://…/mcp` address. Use `npm run demo` for the tunnel. |
+| `run_setup_first` | Run `npm run demo`, or `npm run setup` with `MCP_PUBLIC_URL`. |
+| `http_401` | The key was rejected. Check it was copied completely. |
+| `http_402` | Add credits for the Organization in Platform Console. |
+| `http_403` | Check the key's Project and permissions. |
+| `http_400` during setup | Check billing and the `ZOOWORK_MODEL` value. Keep `.local/`. |
+| `state_scope_mismatch` / `agent_label_mismatch` | `.local/` belongs to another key or app. Restore the original `.env`; do not delete `.local/` to force a new Agent. |
+| `recorded_conversations_require_recovery` | Conversations are recorded but the Agent record is missing. Restore `.local/agent.json` or run `npm run cleanup` with the original key. |
+| `state_locked_review_before_retry` | Another setup, demo or cleanup is running. If none is, delete the `.lock` file in `.local/`. |
+| `EADDRINUSE` | Port 4310 is in use. Stop the other process, or set `APP_ORIGIN` to another `http://localhost:<port>`. |
+
+## Clean up
+
+```sh
+# Stop npm run demo or npm run dev first.
+npm run cleanup
+```
+
+Cleanup deletes the conversations this app recorded, then stops and deletes its Agent. It only
+uses IDs saved in `.local/` and checks their labels; it never lists your Project to choose what
+to delete. If anything is uncertain or fails, it keeps `.local/` so you can run it again. Local
+conversation records are removed only after the Agent is deleted.
+
+## Checks
+
+```sh
+npm ci
+npm run check
+npm run build
+```
+
+`check` runs TypeScript and offline tests. They use a real local MCP server and a fake Platform,
+need no key and spend no credits.
 
 ```sh
 npm run build
@@ -156,21 +219,15 @@ npm run test:ui
 # http://localhost:4390
 ```
 
-This test-only harness uses mock Platform lifecycle/events/approvals and an actual HTTP MCP catalog. It needs no key, is excluded from the production bundle, and never serves as a live fallback. It demonstrates shopping, denial, approved comparison, budget follow-ups, reload, and responsive layout. It is not proof of deployed Platform MCP or approval behavior.
+`test:ui` serves the interface against the same fake Platform for checking layout and flows. It
+is labeled as an offline test, is not part of the production build and is never used as a
+fallback for the real app.
 
-## Cleanup
+## Files
 
-```sh
-# Stop the local Web app before cleaning recorded Sessions and Agent.
-npm run cleanup
-```
-
-Cleanup uses only recorded IDs, matching Agent labels, and matching Session metadata. Ambiguous creation or failed deletion retains recovery state. Never scan a Project to choose resources, delete `.local`, or create a replacement Agent automatically. SQLite conversation records are cleared only after Agent stop/delete succeeds.
-
-## Structure
-
-- `mcp/`, `data/`: standalone read-only MCP and original catalog.
-- `src/server/`: SDK Sessions, native approvals, receipt hydration, same-origin API.
-- `src/storage/`: SQLite conversation ledger and receipt/audit stores.
-- `src/ui/`, `public/products/`: interface and original SVG illustrations.
-- `test/`: domain, HTTP MCP, approval, delivery recovery, ownership, and foundation checks.
+- `mcp/`, `data/`: the read-only catalog MCP server and its data.
+- `src/agent.ts`: the Agent's instructions, MCP connection and tool permissions.
+- `src/server/`: Sessions, approvals, reading tool results, and the local web API.
+- `src/storage/`: SQLite records for conversations and tool results.
+- `src/ui/`, `public/products/`: the interface and product illustrations.
+- `test/`: offline tests.
