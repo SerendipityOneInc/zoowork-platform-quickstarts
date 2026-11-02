@@ -40,6 +40,8 @@ export type EvalOutcome = {
   sources: string[];
   unverified: string[];
   searches: number;
+  /** What the Agent searched for. The evidence is deleted with the Session, so a failure shows it. */
+  queries: string[];
   searchFailed?: string;
 };
 
@@ -131,15 +133,20 @@ export function loadQuestions(corpus?: readonly SourceDocument[], cwd = process.
 /** What the chat would show for the run in this view. */
 export function outcomeOf(view: SessionView): EvalOutcome {
   const turn = view.turns.findLast((t): t is RunTurn => t.role === "assistant");
-  if (!turn) return { status: "no_run", reply: "", sources: [], unverified: [], searches: 0 };
+  if (!turn) return { status: "no_run", reply: "", sources: [], unverified: [], searches: 0, queries: [] };
   const { citations, searches, searchFailed } = runSources(turn, view);
   const texts = turn.parts.flatMap((part) => (part.type === "text" && part.text.trim() ? [part.text] : []));
+  const queries = turn.parts.flatMap((part) => {
+    const query = part.type === "tool" ? view.tools[part.toolCallId]?.args.query : undefined;
+    return typeof query === "string" ? [query] : [];
+  });
   return {
     status: turn.status,
     reply: (texts.at(-1) ?? "").trim(),
     sources: citations.sources.map((s) => s.key),
     unverified: citations.unverified,
     searches,
+    queries,
     ...(searchFailed ? { searchFailed } : {}),
   };
 }
@@ -269,7 +276,11 @@ export function formatResult({ pass, kind, id, seconds, reason, outcome }: EvalR
   const line = `${pass ? "PASS" : "FAIL"}  ${kind.padEnd(12)} ${id}  ${facts.join("  ")}`;
   if (pass) return [line];
   const reply = outcome?.reply.replace(/\s+/g, " ").slice(0, 200);
-  return [`${line}  reason=${reason}`, ...(reply ? [`      reply: ${reply}`] : [])];
+  return [
+    `${line}  reason=${reason}`,
+    ...(reply ? [`      reply: ${reply}`] : []),
+    ...(outcome?.queries.length ? [`      searched: ${outcome.queries.join(" | ")}`] : []),
+  ];
 }
 
 export function formatSummary(results: readonly EvalResult[], total: number): string {

@@ -214,6 +214,7 @@ refusal. The command prints one line per question and a total, and exits non-zer
 PASS  direct       export-link-expiry  9s  searches=1  sources=exports/export-links.md
 FAIL  not_in_docs  gantt-charts  12s  searches=2  sources=getting-started/what-is-fernwick.md  reason=source_on_refusal:getting-started/what-is-fernwick.md
       reply: Fernwick organizes work into projects and tasks. [1]
+      searched: gantt charts
 Passed 14 of 15. Searches: 19.
 ```
 

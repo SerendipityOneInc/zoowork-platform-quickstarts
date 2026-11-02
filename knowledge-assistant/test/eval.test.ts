@@ -40,6 +40,7 @@ const outcome = (over: Partial<EvalOutcome> = {}): EvalOutcome => ({
   sources: ["exports/export-links.md"],
   unverified: [],
   searches: 1,
+  queries: ["export links"],
   ...over,
 });
 
@@ -129,7 +130,14 @@ const event = (seq: number, eventType: string, payload: Record<string, unknown>)
 const finished = (status = "succeeded") => event(9, "run.finished", { status });
 const reply = (text: string) => event(5, "agent.assistant", { message: { content: [{ type: "text", text }] } });
 const searched = () =>
-  event(4, "agent.custom_tool_use", { phase: "resolved", callId: "cc_1", toolCallId: "tc_1", name: "search_knowledge", outcome: "completed" });
+  event(4, "agent.custom_tool_use", {
+    phase: "resolved",
+    callId: "cc_1",
+    toolCallId: "tc_1",
+    name: "search_knowledge",
+    input: { query: "export link expiry" },
+    outcome: "completed",
+  });
 
 const savedSearch = (sessionId: string, over: Partial<EvidenceCall> = {}): EvidenceCall => ({
   callId: "cc_1",
@@ -204,6 +212,7 @@ test("an answer is scored from what the chat would show, using the run's saved s
   assert.deepEqual(result!.outcome?.sources, ["exports/export-links.md"]);
   assert.equal(result!.outcome?.reply, "They last 24 hours. [1]");
   assert.equal(result!.outcome?.searches, 1);
+  assert.deepEqual(result!.outcome?.queries, ["export link expiry"]);
   assert.deepEqual([t.worker.started, t.worker.woken, t.worker.stopped], [1, 1, 1]);
 });
 
@@ -292,6 +301,7 @@ test("output names the failure and shows the reply; a pass stays on one line", (
   const failed = formatResult({ id: "a", kind: "synonym", pass: false, reason: "fragment_missing:x", seconds: 3, outcome: outcome({ reply: "A\nreply" }) });
   assert.match(failed[0]!, /^FAIL .*reason=fragment_missing:x$/);
   assert.equal(failed[1], "      reply: A reply");
+  assert.equal(failed[2], "      searched: export links");
 });
 
 test("outcomeOf has nothing to report before a run", () => {
