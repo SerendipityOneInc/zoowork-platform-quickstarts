@@ -11,6 +11,11 @@ const REQUEST_TIMEOUT_MS = 30_000;
 const RETRY_DELAY_MS = 500;
 /** How many passages one search hands to the Agent. */
 export const MAX_PASSAGES = 6;
+// Vector scores rate every passage about the same product as similar, so reranking
+// reads the question and each passage together. The floor drops only clear misses:
+// no score separates "answerable" from "not in the docs", so the Agent decides that.
+const RERANK_MODEL = "@cf/baai/bge-reranker-base";
+const MIN_RERANK_SCORE = 0.01;
 
 export type CloudflareConfig = { accountId: string; apiToken: string };
 
@@ -137,7 +142,12 @@ export function connectKnowledge(
         call(`${instance}/search`, {
           method: "POST",
           headers: { "content-type": "application/json" },
-          body: JSON.stringify({ messages: [{ role: "user", content: query }] }),
+          body: JSON.stringify({
+            messages: [{ role: "user", content: query }],
+            ai_search_options: {
+              reranking: { enabled: true, model: RERANK_MODEL, match_threshold: MIN_RERANK_SCORE },
+            },
+          }),
         });
       let body: unknown;
       try {

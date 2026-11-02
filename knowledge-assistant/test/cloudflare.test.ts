@@ -71,7 +71,12 @@ test("search sends the query and the token, and retries a server error once", as
   assert.equal(passages.length, 2);
   assert.equal(calls.length, 2);
   assert.match(calls[0]!.url, /\/accounts\/acc\/ai-search\/namespaces\/default\/instances\/kb\/search$/);
-  assert.deepEqual(JSON.parse(calls[0]!.init.body as string), { messages: [{ role: "user", content: "export links" }] });
+  assert.deepEqual(JSON.parse(calls[0]!.init.body as string), {
+    messages: [{ role: "user", content: "export links" }],
+    ai_search_options: {
+      reranking: { enabled: true, model: "@cf/baai/bge-reranker-base", match_threshold: 0.01 },
+    },
+  });
   assert.equal((calls[0]!.init.headers as Record<string, string>).authorization, "Bearer secret-token");
 });
 

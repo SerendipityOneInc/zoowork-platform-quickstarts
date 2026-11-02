@@ -112,8 +112,9 @@ passages the search returned. When a reply cites a document, the server looks it
 The check is per run. A follow-up question has to search again to cite something, which is why the
 Agent's instructions tell it to.
 
-Passages that the search returned but the reply did not cite are not shown. Weak matches are
-normal in a search result, and the Agent decides what is relevant.
+Passages that the search returned but the reply did not cite are not shown. A question about this
+product can still return passages that do not answer it, because they are about the same product.
+The search only drops clear misses, and the Agent decides whether the passages answer the question.
 
 A failed search is a failure, not an empty result. The Agent is told the search failed and replies
 that it cannot answer, and the page shows the error code in red. "Nothing found" and "the service
@@ -182,8 +183,11 @@ new and changed files and removes deleted ones. The document's path under `corpu
 and `tools` must include `search_knowledge`. `app.config.ts` is sent to the browser. Never put keys
 or private data in it.
 
-AI Search's default settings are used: hybrid search, keyword terms all required, and a minimum
-score of 0.4. The similarity cache is off, because it stores answers it generates, and this app
+AI Search's default settings are used for retrieval: hybrid search, keyword terms all required, and
+a minimum vector score of 0.4. Each search also turns on reranking with `@cf/baai/bge-reranker-base`,
+which puts the best passage first and drops passages scoring below 0.01. Reranking adds some time to
+each search. No score reliably tells whether the docs answer a question, so don't use a higher
+minimum for that. The similarity cache is off, because it stores answers it generates, and this app
 only uses search. To tune retrieval, see
 [AI Search configuration](https://developers.cloudflare.com/ai-search/configuration/). Content in
 Chinese, Japanese or Korean needs the `trigram` tokenizer, set when the instance is created in
