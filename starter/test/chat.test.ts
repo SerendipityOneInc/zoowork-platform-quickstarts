@@ -96,7 +96,8 @@ test("interrupt reports whether a run was in flight; an archived Session takes n
   const rt = await runtime();
   const { id } = await createSession(rt, { threadId: "chat-1", text: "hi" });
   assert.deepEqual(await interruptSession(rt, id, { idempotencyKey: "stop-0001" }), { accepted: false });
-  await sendMessage(rt, id, { text: "hi", idempotencyKey: "msg-0001" });
+  // A message that asks for approval: the run waits for a decision, so it is still in flight below.
+  await sendMessage(rt, id, { text: "needs approval", idempotencyKey: "msg-0001" });
   assert.deepEqual(await interruptSession(rt, id, { idempotencyKey: "stop-0002" }), { accepted: true });
 
   const archived = await archiveSession(rt, id);
