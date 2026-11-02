@@ -1,9 +1,9 @@
 # ZooWork Platform Quickstarts
 
 Example applications built with [ZooWork Platform](https://platform.zoowork.ai) and the
-published [TypeScript SDK](https://www.npmjs.com/package/@zoowork-ai/sdk). Each one needs only a
-Platform Project key and creates its own Agent through the SDK. Each directory installs and runs
-on its own.
+published [TypeScript SDK](https://www.npmjs.com/package/@zoowork-ai/sdk). Each one needs a
+Platform Project key and creates its own Agent through the SDK. Knowledge Assistant also needs a
+Cloudflare account. Each directory installs and runs on its own.
 
 **To build your own Agent, start with [Starter](starter/).** It is a minimal chat app with no
 business logic: define the Agent in one file, run setup, and chat with it locally. It is the
@@ -17,6 +17,7 @@ companion workspace for the [Publish your Agent guide](https://zoowork.ai/guides
 | [Customer Support](customer-support/) | Track orders and shipments; confirm and save support tickets | Custom Tools, durable Sessions and recovery |
 | [Product Advisor](product-advisor/) | Search, compare and shortlist products | Remote MCP and approvals |
 | [Research Assistant](research-assistant/) | Research a topic and continue a saved, sourced brief | Vercel Chat SDK |
+| [Knowledge Assistant](knowledge-assistant/) | Ask questions about your documents and check the sources | Custom Tools, connecting a knowledge service (Cloudflare AI Search) |
 
 ## Run an application
 
@@ -39,7 +40,8 @@ npm run dev
 ```
 
 `setup` creates and starts the Agent; you do not create one in the Console. Each application's
-README covers its own URL, walkthrough and troubleshooting.
+README covers its own URL, walkthrough and troubleshooting. Knowledge Assistant's README also
+covers its Cloudflare token and account ID.
 
 Setup records resource IDs in the ignored `.local/` directory and reuses them on the next run.
 Keep `.local/` after an error. To remove an application's Agent, stop its server and run
