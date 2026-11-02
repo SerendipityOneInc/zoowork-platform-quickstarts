@@ -29,14 +29,18 @@ export function isTransient(error: unknown): boolean {
   return isTransportFailure(error);
 }
 
-const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
+export const sleep = (ms: number) => new Promise<void>((resolve) => setTimeout(resolve, ms));
 
 /** Run `attempt`, and once more after `delayMs` if it failed in transit. */
-export async function retryOnce<T>(attempt: () => Promise<T>, delayMs = RETRY_DELAY_MS): Promise<T> {
+export async function retryOnce<T>(
+  attempt: () => Promise<T>,
+  delayMs = RETRY_DELAY_MS,
+  isRetryable: (error: unknown) => boolean = isTransient,
+): Promise<T> {
   try {
     return await attempt();
   } catch (error) {
-    if (!isTransient(error)) throw error;
+    if (!isRetryable(error)) throw error;
     await sleep(delayMs);
     return attempt();
   }

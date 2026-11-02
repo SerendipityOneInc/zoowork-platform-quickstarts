@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { mkdir, mkdtemp, writeFile } from "node:fs/promises";
+import { access, mkdir, mkdtemp, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { test } from "node:test";
@@ -8,8 +8,8 @@ import { loadAgentDefinition } from "../lib/zoowork/agent-definition";
 import { applyAgent, type LifecycleClient } from "../lib/zoowork/lifecycle";
 import { knowledgeStatePath, saveKnowledgeState } from "../lib/knowledge/setup";
 import { createFakePlatform } from "./fake-platform";
-import { createPlatformRuntime } from "../lib/zoowork/runtime";
-import { agentStatePath, loadAgentState, newAgentState, saveAgentState } from "../lib/zoowork/state";
+import { createPlatformRuntime, getRuntime } from "../lib/zoowork/runtime";
+import { agentStatePath, loadAgentState, newAgentState, saveAgentState, webPidPath } from "../lib/zoowork/state";
 
 const agentMd = (thinking?: string) =>
   ["---", "name: Test", "model: m1", ...(thinking ? [`thinking: ${thinking}`] : []), "tools: [search_knowledge]", "---", "", "Be helpful.", ""].join("\n");
@@ -86,4 +86,25 @@ test("the web status check notices that agent.json now records a different Agent
   const runtime = await createPlatformRuntime({ ...createFakePlatform(), getAgent: platform.client.getAgent }, cwd);
   await saveAgentState(path, { ...newAgentState(definition()), agentId: "agt_other" });
   await assert.rejects(runtime.checkAgent!(), /agent_changed_restart_dev/);
+});
+
+test("missing Cloudflare settings fail before the server records itself, on every attempt", async () => {
+  const { cwd, writeAgent, definition } = await project();
+  await writeAgent();
+  await saveAgentState(agentStatePath(cwd), { ...newAgentState(definition()), agentId: "agt_1" });
+  const saved = { ...process.env };
+  const before = process.cwd();
+  const listeners = process.listenerCount("exit");
+  process.env.ZOOWORK_API_KEY = "zwp_live_test";
+  delete process.env.CLOUDFLARE_API_TOKEN;
+  delete process.env.CLOUDFLARE_ACCOUNT_ID;
+  process.chdir(cwd);
+  try {
+    for (let attempt = 0; attempt < 3; attempt++) await assert.rejects(getRuntime(), /cloudflare_credentials_required/);
+    assert.equal(process.listenerCount("exit"), listeners);
+    await assert.rejects(access(webPidPath(cwd)), /ENOENT/);
+  } finally {
+    process.chdir(before);
+    process.env = saved;
+  }
 });

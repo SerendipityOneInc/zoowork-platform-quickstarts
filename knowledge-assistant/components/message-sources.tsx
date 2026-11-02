@@ -13,7 +13,7 @@ import type { RunSources } from "@/lib/chat/reducer";
 export function MessageSources() {
   const sources = useAuiState((s) => (s.message.metadata?.custom as { sources?: RunSources } | undefined)?.sources);
   if (!sources?.finished) return null;
-  const { citations, searches, searchFailed } = sources;
+  const { citations, searchFailed, uncited } = sources;
   return (
     <div data-slot="message-sources" className="mt-3 flex flex-col gap-2 px-2 text-sm">
       {searchFailed && (
@@ -54,9 +54,7 @@ export function MessageSources() {
           </span>
         </p>
       )}
-      {searches > 0 && !searchFailed && citations.sources.length === 0 && citations.unverified.length === 0 && (
-        <p className="text-muted-foreground text-xs">No sources: this reply does not cite the docs.</p>
-      )}
+      {uncited && <p className="text-muted-foreground text-xs">No sources: this reply does not cite the docs.</p>}
     </div>
   );
 }

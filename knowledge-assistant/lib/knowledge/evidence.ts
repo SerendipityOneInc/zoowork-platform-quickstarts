@@ -28,6 +28,8 @@ export interface EvidenceStore {
   get(callId: string): Promise<EvidenceCall | undefined>;
   forRun(sessionId: string, runId: string): Promise<EvidenceCall[]>;
   save(call: EvidenceCall): Promise<void>;
+  /** Forget a deleted conversation's queries and passages. */
+  removeSession(sessionId: string): Promise<void>;
 }
 
 type EvidenceFile = { version: 1; calls: EvidenceCall[] };
@@ -42,7 +44,7 @@ export function fileEvidenceStore(path: string): EvidenceStore {
     return next;
   };
 
-  async function read(): Promise<EvidenceFile> {
+  async function load(): Promise<EvidenceFile> {
     let raw: string;
     try {
       raw = await readFile(path, "utf8");
@@ -59,6 +61,15 @@ export function fileEvidenceStore(path: string): EvidenceStore {
     throw new AppError("invalid_local_state", 500);
   }
 
+  // Every replayed event reads this, and only this process writes it.
+  let cached: EvidenceFile | undefined;
+  const read = async () => (cached ??= await load());
+  const write = async (file: EvidenceFile) => {
+    cached = undefined;
+    await writePrivateJson(path, file);
+    cached = file;
+  };
+
   return {
     async get(callId) {
       return (await read()).calls.find((c) => c.callId === callId);
@@ -70,9 +81,15 @@ export function fileEvidenceStore(path: string): EvidenceStore {
       return serial(async () => {
         const file = await read();
         const index = file.calls.findIndex((c) => c.callId === call.callId);
-        if (index === -1) file.calls.push(call);
-        else file.calls[index] = call;
-        await writePrivateJson(path, file);
+        const calls = index === -1 ? [...file.calls, call] : file.calls.with(index, call);
+        await write({ ...file, calls });
+      });
+    },
+    removeSession(sessionId) {
+      return serial(async () => {
+        const file = await read();
+        const calls = file.calls.filter((c) => c.sessionId !== sessionId);
+        if (calls.length !== file.calls.length) await write({ ...file, calls });
       });
     },
   };

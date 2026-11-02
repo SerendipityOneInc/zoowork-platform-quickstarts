@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { mkdtemp } from "node:fs/promises";
+import { mkdtemp, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { test } from "node:test";
@@ -25,7 +25,9 @@ const pending = (over: Partial<CustomToolCallRecord> = {}): CustomToolCallRecord
 
 type Resolved = { callId: string; input: { content: { type: string; value?: unknown }[]; isError?: boolean } };
 
-async function setup(search: (query: string) => Promise<Passage[]>, calls: CustomToolCallRecord[] = [pending()]) {
+type SetupOptions = { detail?: Partial<CustomToolCallRecord>; receipt?: Partial<CustomToolCallRecord> };
+
+async function setup(search: (query: string) => Promise<Passage[]>, calls: CustomToolCallRecord[] = [pending()], options: SetupOptions = {}) {
   const dir = await mkdtemp(join(tmpdir(), "knowledge-worker-"));
   const evidence = fileEvidenceStore(join(dir, "evidence.json"));
   const resolved: Resolved[] = [];
@@ -43,11 +45,11 @@ async function setup(search: (query: string) => Promise<Passage[]>, calls: Custo
     },
     client: {
       listCustomToolCalls: async () => calls,
-      getCustomToolCall: async (_agentId, callId) => pending({ call_id: callId, run_id: "run_from_detail" }),
+      getCustomToolCall: async (_agentId, callId) => pending({ call_id: callId, run_id: "run_from_detail", ...options.detail }),
       resolveCustomToolCall: async (_agentId, callId, input) => {
         if (failResolve) throw new TypeError("fetch failed");
         resolved.push({ callId, input });
-        return { ...pending({ call_id: callId }), signaled: true };
+        return { ...pending({ call_id: callId }), signaled: true, ...options.receipt };
       },
     },
   });
@@ -70,6 +72,31 @@ test("the run comes from the call's own record when the pending list leaves it o
   const t = await setup(async () => [passage], [listed as CustomToolCallRecord]);
   await t.worker.poll();
   assert.equal((await t.evidence.forRun("ses_mine", "run_from_detail")).length, 1);
+});
+
+test("a call that ended after the list was read is not searched or answered", async () => {
+  const { run_id: _omitted, ...listed } = pending();
+  const t = await setup(async () => [passage], [listed as CustomToolCallRecord], { detail: { status: "timeout" } });
+  await t.worker.poll();
+  assert.deepEqual(t.searches, []);
+  assert.deepEqual(t.resolved, []);
+  assert.equal(await t.evidence.get("cc_1"), undefined);
+});
+
+test("a result the run never received is not evidence, so citations cannot use it", async () => {
+  const t = await setup(async () => [passage], [pending()], { receipt: { signaled: false, status: "timeout" } });
+  await t.worker.poll();
+  const saved = await t.evidence.get("cc_1");
+  assert.equal(saved?.status, "failed");
+  assert.equal(saved?.code, "search_timeout");
+  assert.deepEqual(saved?.passages, []);
+  assert.equal(saved?.delivered, true);
+});
+
+test("a repeated send to a call that already got this result keeps the evidence", async () => {
+  const t = await setup(async () => [passage], [pending()], { receipt: { signaled: false, status: "completed" } });
+  await t.worker.poll();
+  assert.deepEqual((await t.evidence.get("cc_1"))?.passages, [passage]);
 });
 
 test("nothing found is a normal result, not an error", async () => {
@@ -123,4 +150,25 @@ test("calls from other Sessions and other tools are left alone", async () => {
   await t.worker.poll();
   assert.deepEqual(t.searches, []);
   assert.deepEqual(t.resolved, []);
+});
+
+test("deleting a conversation removes its queries and passages, and only those", async () => {
+  const t = await setup(async () => [passage]);
+  await t.worker.poll();
+  await t.evidence.save({ callId: "cc_other", sessionId: "ses_other", query: "q", status: "ok", passages: [], requestedAt: "t" });
+  await t.evidence.removeSession("ses_mine");
+  assert.equal(await t.evidence.get("cc_1"), undefined);
+  assert.equal((await t.evidence.get("cc_other"))?.sessionId, "ses_other");
+});
+
+test("evidence is read from disk once, and a save is seen at once", async () => {
+  const dir = await mkdtemp(join(tmpdir(), "knowledge-evidence-"));
+  const path = join(dir, "evidence.json");
+  const evidence = fileEvidenceStore(path);
+  const call = { callId: "cc_1", sessionId: "s", query: "q", status: "ok" as const, passages: [], requestedAt: "t" };
+  await evidence.save(call);
+  await writeFile(path, "not json");
+  assert.equal((await evidence.get("cc_1"))?.callId, "cc_1", "the second read did not parse the file again");
+  await evidence.save({ ...call, callId: "cc_2" });
+  assert.equal((await evidence.get("cc_2"))?.callId, "cc_2");
 });

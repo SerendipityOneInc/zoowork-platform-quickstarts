@@ -5,8 +5,9 @@ import type { AgentResource } from "@zoowork-ai/sdk";
 import { AppError } from "./errors";
 
 /**
- * Local state lives in the ignored `.local/` directory. It holds resource IDs
- * and recovery facts, never credentials. Keep it after any failed or uncertain
+ * Local state lives in the ignored `.local/` directory. It holds resource IDs,
+ * recovery facts and, in evidence.json, what each run searched for and received.
+ * It never holds credentials. Keep it after any failed or uncertain
  * operation: it is what lets setup and cleanup act only on resources this
  * app created.
  */

@@ -1,9 +1,10 @@
 import { readFile, rename } from "node:fs/promises";
 import { join } from "node:path";
-import { AppError, isCode } from "../zoowork/errors";
+import { AppError, errorCode, isCode } from "../zoowork/errors";
+import { sleep as defaultSleep } from "../zoowork/retry";
 import { LOCAL_DIR, writePrivateJson } from "../zoowork/state";
 import type { CorpusDocument } from "./corpus";
-import type { IndexStats, KnowledgeIndex, Retriever } from "./retriever";
+import type { KnowledgeIndex, Retriever } from "./retriever";
 
 /** What this app created on the knowledge service. It holds IDs and hashes, never credentials. */
 export interface KnowledgeState {
@@ -49,20 +50,35 @@ export type PrepareOptions = {
   probeTimeoutMs?: number;
 };
 
-const wait = (ms: number) => new Promise<void>((resolve) => setTimeout(resolve, ms));
-
-async function waitUntilIndexed(index: KnowledgeIndex, total: number, options: PrepareOptions): Promise<void> {
-  const { log = () => {}, sleep = wait, pollMs = 3_000, indexTimeoutMs = 600_000 } = options;
+/**
+ * Wait until every document in the corpus is searchable. A failed document stops
+ * the wait and is forgotten, so the next run uploads it again; the code shows
+ * which one failed and why, because an empty file fails the same way each time.
+ */
+async function waitUntilIndexed(
+  index: KnowledgeIndex,
+  path: string,
+  state: KnowledgeState,
+  corpus: CorpusDocument[],
+  options: PrepareOptions,
+): Promise<void> {
+  const { log = () => {}, sleep = defaultSleep, pollMs = 3_000, indexTimeoutMs = 600_000 } = options;
   let last = "";
   for (let waited = 0; waited <= indexTimeoutMs; waited += pollMs) {
     // Uploads are queued a moment after the request returns.
     await sleep(pollMs);
-    const stats: IndexStats = await index.stats();
-    if (stats.error > 0) throw new AppError("knowledge_indexing_failed");
-    const line = `Indexing: ${stats.completed} of ${total} documents done`;
+    const documents = new Map((await index.documents()).map((doc) => [doc.key, doc]));
+    const failed = corpus.flatMap((doc) => (documents.get(doc.key)?.state === "failed" ? [documents.get(doc.key)!] : []));
+    if (failed.length) {
+      for (const doc of failed) delete state.uploaded[doc.key];
+      await saveKnowledgeState(path, state);
+      throw new AppError(`knowledge_indexing_failed: ${failed.map((doc) => `${doc.key} (${doc.reason ?? "unknown"})`).join(", ")}`);
+    }
+    const ready = corpus.filter((doc) => documents.get(doc.key)?.state === "ready").length;
+    const line = `Indexing: ${ready} of ${corpus.length} documents done`;
     if (line !== last) log(line);
     last = line;
-    if (stats.queued === 0 && stats.running === 0 && stats.completed >= total) return;
+    if (ready === corpus.length) return;
   }
   throw new AppError("knowledge_indexing_timeout");
 }
@@ -72,7 +88,7 @@ async function waitUntilSearchable(
   probe: { query: string; key: string },
   options: PrepareOptions,
 ): Promise<void> {
-  const { sleep = wait, pollMs = 3_000, probeTimeoutMs = 180_000 } = options;
+  const { sleep = defaultSleep, pollMs = 3_000, probeTimeoutMs = 180_000 } = options;
   for (let waited = 0; waited <= probeTimeoutMs; waited += pollMs) {
     const passages = await retriever.search(probe.query);
     if (passages.some((p) => p.key === probe.key)) return;
@@ -99,8 +115,14 @@ export async function prepareKnowledge(
 ): Promise<{ state: KnowledgeState; changed: number }> {
   const { log = () => {} } = options;
   if (state.deleteRequestedAt) throw new AppError("cleanup_incomplete_run_cleanup");
+  if (!corpus.some((doc) => doc.key === probe.key)) throw new AppError("knowledge_probe_not_in_corpus");
   await saveKnowledgeState(path, state);
-  await knowledge.ensure();
+  if (!(await knowledge.exists())) {
+    // Creating one here would leave an empty index that looks ready: the record
+    // says everything was uploaded. Other credentials also see "not there".
+    if (state.createdAt) throw new AppError("knowledge_index_missing");
+    await knowledge.create();
+  }
   state.createdAt ??= new Date().toISOString();
   await saveKnowledgeState(path, state);
 
@@ -123,7 +145,7 @@ export async function prepareKnowledge(
     await saveKnowledgeState(path, state);
   }
 
-  await waitUntilIndexed(knowledge, corpus.length, options);
+  await waitUntilIndexed(knowledge, path, state, corpus, options);
   log("Indexed. Waiting for the search to answer.");
   await waitUntilSearchable(knowledge, probe, options);
   state.readyAt = new Date().toISOString();
@@ -131,26 +153,76 @@ export async function prepareKnowledge(
   return { state, changed: changed.length + removed.length };
 }
 
+/** The service answered and refused, so the request did nothing. Anything else may have worked. */
+const refused = (error: unknown) => error instanceof AppError && /_http_4\d\d$/.test(error.code);
+
 /**
- * Delete the recorded index, then move the record aside. A 404 means "already
- * deleted" only if the create never happened or this app sent the delete,
- * because other credentials also get 404.
+ * Delete the recorded index, then move the record aside. "Not there" means
+ * "already deleted" only if the create never happened or this app sent the
+ * delete, because other credentials also see "not there". After a timeout the
+ * delete may have worked, so the record of sending it stays.
  */
 export async function removeKnowledge(knowledge: Pick<KnowledgeIndex, "destroy">, path: string, state: KnowledgeState): Promise<void> {
   const sentBefore = !!state.deleteRequestedAt;
   state.deleteRequestedAt ??= new Date().toISOString();
   await saveKnowledgeState(path, state);
+  const forgetRequest = async () => {
+    if (sentBefore) return;
+    delete state.deleteRequestedAt;
+    await saveKnowledgeState(path, state);
+  };
+  let existed: boolean;
   try {
-    await knowledge.destroy();
+    existed = await knowledge.destroy();
   } catch (error) {
-    const gone = isCode(error, "cloudflare_http_404") && (sentBefore || !state.createdAt);
-    if (!gone) {
-      if (!sentBefore) {
-        delete state.deleteRequestedAt;
-        await saveKnowledgeState(path, state);
-      }
-      throw error;
-    }
+    if (refused(error)) await forgetRequest();
+    throw error;
+  }
+  if (!existed && !sentBefore && state.createdAt) {
+    await forgetRequest();
+    throw new AppError("knowledge_index_missing");
   }
   await rename(path, path.replace(/\.json$/, `.retired-${state.instanceId}.json`));
+}
+
+/**
+ * `npm run cleanup`. A setup that stopped before the Agent was created (for
+ * example, no credits) must not leave the paid index behind, so the index goes
+ * even then, and the Agent's state is reported afterwards. Evidence goes first:
+ * once the index record is retired, a rerun of cleanup no longer reaches it.
+ */
+export async function cleanupAll(steps: {
+  agent?: () => Promise<void>;
+  evidence: () => Promise<void>;
+  knowledge?: () => Promise<void>;
+}): Promise<void> {
+  let unfinishedAgent: unknown;
+  try {
+    await steps.agent?.();
+  } catch (error) {
+    if (!isCode(error, "agent_creation_uncertain_run_setup_again")) throw error;
+    unfinishedAgent = error;
+  }
+  if (steps.knowledge) {
+    await steps.evidence();
+    await steps.knowledge();
+  }
+  if (unfinishedAgent) throw unfinishedAgent;
+}
+
+/** What `npm run status` prints about the index. A failure here must not hide the Agent's status. */
+export async function knowledgeStatusLines(
+  connect: () => Pick<KnowledgeIndex, "documents">,
+  state: KnowledgeState,
+): Promise<string[]> {
+  const lines = [`Knowledge:  ${state.instanceId}`];
+  try {
+    const documents = await connect().documents();
+    const count = (name: string) => documents.filter((doc) => doc.state === name).length;
+    lines.push(`Documents:  ${count("ready")} indexed, ${count("pending")} waiting, ${count("failed")} failed`);
+  } catch (error) {
+    lines.push(`Documents:  unavailable (${errorCode(error)})`);
+  }
+  lines.push(`Search:     ${state.readyAt ? "ready" : "not ready; run npm run setup"}`);
+  return lines;
 }

@@ -45,6 +45,7 @@ import {
   createContext,
   useContext,
   useState,
+  useSyncExternalStore,
   type ComponentType,
   type FC,
   type PropsWithChildren,
@@ -284,7 +285,13 @@ const ThreadWelcome: FC = () => {
   );
 };
 
+const noSubscribe = () => () => {};
+
 const ThreadSuggestions: FC = () => {
+  // Server-rendered buttons ignore clicks until hydration, so show them afterwards.
+  const hydrated = useSyncExternalStore(noSubscribe, () => true, () => false);
+  if (!hydrated) return null;
+
   return (
     <div className="aui-thread-welcome-suggestions flex w-full flex-col">
       <ThreadPrimitive.Suggestions>
