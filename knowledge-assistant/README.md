@@ -151,19 +151,27 @@ To replace Cloudflare with a service that already has your documents:
    };
    ```
 
-2. In `lib/zoowork/runtime.ts`, use it in `createRuntime()`: replace
-   `connectKnowledge(knowledge!.instanceId)` with `myRetriever`, and remove the
-   `loadKnowledgeState` lines in `createRuntime()` and `createPlatformRuntime()`.
-3. In `scripts/agent.ts`, remove the `prepareKnowledge` step from setup and the `knowledge` parts
-   of `status` and `cleanup`.
+2. In `lib/zoowork/runtime.ts`, in `createRuntime()`, replace the `config` line and the
+   `createPlatformRuntime` line with `const runtime = await createPlatformRuntime(client, process.cwd());`,
+   and replace `connectKnowledge(knowledgeInstanceId, config)` with `myRetriever`. In
+   `createPlatformRuntime()`, remove the `knowledge` lines and `knowledgeInstanceId`, change its return
+   type to `Promise<Runtime>`, and remove the imports that are now unused.
+3. In `scripts/agent.ts`, remove the `prepareKnowledge` step from setup and the `knowledge` parts of
+   `status`. In `cleanup`, replace the `cleanupAll({ ... })` call with the body of its `agent` step,
+   inside `if (state) { ... }`. Remove the imports that are now unused.
 4. Delete `lib/knowledge/cloudflare.ts`, `corpus.ts` and `setup.ts`, their tests
    (`test/cloudflare.test.ts`, `test/corpus.test.ts`, `test/knowledge-setup.test.ts`), the
    `corpus/` directory, and the `CLOUDFLARE_*` lines in `.env`. In `test/runtime.test.ts`, remove
-   the two lines that use `saveKnowledgeState`. The `cloudflare_*` messages in `scripts/agent.ts`
-   and `lib/chat/notices.ts` can go too.
+   the two lines that use `saveKnowledgeState` and the test named "missing Cloudflare settings…".
+   The `cloudflare_*` messages in `scripts/next-step.ts` and `lib/chat/notices.ts` can go too.
 5. Update `agent/agent.md` and `app.config.ts` for your product, then run `npm run setup`.
 
 The search worker, the citation check, the sources panel and the Agent's tool stay the same.
+
+To keep `npm run setup` uploading documents to another service, implement `KnowledgeIndex` from
+`lib/knowledge/retriever.ts` as well, and pass it where `scripts/agent.ts` calls `connectKnowledge`.
+`destroy()` returns `false` if the index is not there. A failure whose code ends in `_http_4xx` means
+the service refused and nothing changed; cleanup treats any other failure as "it may have worked".
 
 To keep Cloudflare and use your own documents, replace the files in `corpus/` instead, change
 `PROBE` in `lib/knowledge/corpus.ts` to a question they answer, and run `npm run setup`. It uploads
@@ -191,7 +199,7 @@ minimum for that. The similarity cache is off, because it stores answers it gene
 only uses search. To tune retrieval, see
 [AI Search configuration](https://developers.cloudflare.com/ai-search/configuration/). Content in
 Chinese, Japanese or Korean needs the `trigram` tokenizer, set when the instance is created in
-`ensure()`.
+`create()`.
 
 ## Before you go public
 
@@ -234,18 +242,23 @@ Errors print a stable code and never a key, a token or a provider response body.
 | `cloudflare_credentials_required` | Set `CLOUDFLARE_API_TOKEN` and `CLOUDFLARE_ACCOUNT_ID` in `.env`. Restart `npm run dev`. |
 | `cloudflare_http_400` | Cloudflare refused the request. An invalid token also returns this, so check `CLOUDFLARE_API_TOKEN` first. |
 | `cloudflare_http_401` / `cloudflare_http_403` | Check the token, that it has **AI Search:Edit** and **AI Search:Run**, and that `CLOUDFLARE_ACCOUNT_ID` is the right account. |
-| `cloudflare_http_404` | Cloudflare does not have the recorded instance. Check that `.env` and `.local/` belong together. Do not delete `.local/`. |
+| `cloudflare_http_404` | Cloudflare does not have something the app recorded. Check that `.env` and `.local/` belong together. Do not delete `.local/`. |
 | `cloudflare_http_429` | Rate limited. Wait a minute and try again. |
 | `cloudflare_http_5xx` / `cloudflare_invalid_response` | A problem on Cloudflare's side. Searches are retried once. Run the command again; `.local/` keeps the progress. |
+| `cloudflare_unreachable` / `cloudflare_timeout` | The server could not get an answer from Cloudflare. Check your connection and try again. |
+| `knowledge_index_missing` | The recorded instance is not on this account. If `.env` changed, restore it. If the instance was deleted, delete only `.local/knowledge.json` and run `npm run setup` to build a new one, then restart `npm run dev`. |
 | `knowledge_indexing_timeout` | Indexing took more than ten minutes. Run `npm run setup` again to keep waiting. |
-| `knowledge_indexing_failed` | A document could not be indexed. Check the instance's **Items** tab in the Cloudflare dashboard. |
-| `knowledge_not_searchable` | Indexing finished but the test question found nothing. Run setup again in a few minutes. If you changed `corpus/`, check `PROBE` in `lib/knowledge/corpus.ts`. |
+| `knowledge_indexing_failed: <document> (<reason>)` | Cloudflare could not index that document, for example `file_content_empty`. Fix or remove it in `corpus/` and run `npm run setup`, which uploads it again. A temporary failure needs no fix. |
+| `knowledge_probe_not_in_corpus` | `PROBE` in `lib/knowledge/corpus.ts` names a document that is not in `corpus/`. Change it to a question your documents answer. |
+| `knowledge_not_searchable` | Indexing finished but the test question found nothing. Run setup again in a few minutes. If you changed `corpus/`, check that `PROBE` in `lib/knowledge/corpus.ts` is a question they answer. |
 | `corpus_missing` | Put Markdown documents in `corpus/`. |
 | `run_setup_first` | Run `npm run setup`, then reload the page. |
+| `agent_creation_uncertain_run_setup_again` | Setup stopped before the Agent was confirmed. Cleanup still removes the AI Search instance. If setup failed with an error such as `http_402`, nothing else is left. Otherwise run `npm run setup` to finish it, then `npm run cleanup`. |
 | `agent_changed_restart_dev` | `.local/` now records a different Agent than the running server uses. Restart `npm run dev`. |
 | `invalid_agent_definition: …` | Fix the named problem in `agent/agent.md`, and keep `search_knowledge` in `tools`. |
 | `agent_update_not_confirmed` | Run `npm run status`, check the changed values and run setup again. |
 | `cleanup_incomplete_run_cleanup` | A cleanup stopped partway. Run `npm run cleanup` to finish it, then `npm run setup`. |
+| `search_timeout` / `search_cancelled` | The Agent went on without that search, so the reply cannot cite it. Ask again. |
 | `session_creation_uncertain_retry_cleanup` | A conversation create could not be confirmed. Keep `.local/`, check the connection and key, and run cleanup again. |
 | `request_failed` / `timeout_or_cancelled` | The server could not reach ZooWork Platform. Check your connection and try again. |
 | `http_401` / `http_403` | Check `ZOOWORK_API_KEY` and its Project. |

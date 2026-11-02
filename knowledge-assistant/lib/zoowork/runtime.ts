@@ -1,6 +1,6 @@
 import { rmSync, writeFileSync } from "node:fs";
 import { createZooworkClient, type ZooworkClient } from "@zoowork-ai/sdk";
-import { connectKnowledge } from "../knowledge/cloudflare";
+import { connectKnowledge, readCloudflareConfig } from "../knowledge/cloudflare";
 import { evidencePath, fileEvidenceStore, type EvidenceStore } from "../knowledge/evidence";
 import { knowledgeStatePath, loadKnowledgeState } from "../knowledge/setup";
 import { createSearchWorker } from "../knowledge/worker";
@@ -64,13 +64,12 @@ export function getRuntime(): Promise<Runtime> {
 async function createRuntime(): Promise<Runtime> {
   // Calls that are safe to repeat are retried once on a network failure.
   const client = withTransientRetry(createZooworkClient({ apiKey: readApiKey() }));
-  const cwd = process.cwd();
-  const runtime = await createPlatformRuntime(client, cwd);
-  const knowledge = await loadKnowledgeState(knowledgeStatePath(cwd));
+  const config = readCloudflareConfig();
+  const { knowledgeInstanceId, ...runtime } = await createPlatformRuntime(client, process.cwd());
   const worker = createSearchWorker({
     client,
     agentId: runtime.agentId,
-    retriever: connectKnowledge(knowledge!.instanceId),
+    retriever: connectKnowledge(knowledgeInstanceId, config),
     evidence: runtime.evidence,
     ownsSession: async (id) => !!(await runtime.sessions.get(id)),
   });
@@ -85,7 +84,7 @@ async function createRuntime(): Promise<Runtime> {
 export async function createPlatformRuntime(
   client: ChatClient & Pick<ZooworkClient, "getAgent">,
   cwd = process.cwd(),
-): Promise<Runtime> {
+): Promise<Runtime & { knowledgeInstanceId: string }> {
   const statePath = agentStatePath(cwd);
   const state = await loadAgentState(statePath);
   if (!state) throw new AppError("run_setup_first", 503);
@@ -97,6 +96,7 @@ export async function createPlatformRuntime(
   return {
     client,
     agentId,
+    knowledgeInstanceId: knowledge.instanceId,
     instance: state.instance,
     sessions: fileSessionStore(sessionsPath(cwd), { instance: state.instance, agentId }),
     evidence: fileEvidenceStore(evidencePath(cwd)),

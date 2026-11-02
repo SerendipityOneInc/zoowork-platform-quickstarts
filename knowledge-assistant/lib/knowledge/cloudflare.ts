@@ -1,6 +1,7 @@
 import { randomBytes } from "node:crypto";
-import { AppError, isTransportFailure } from "../zoowork/errors";
-import type { IndexStats, KnowledgeIndex, Passage, Retriever } from "./retriever";
+import { AppError, isCode, isTransportFailure } from "../zoowork/errors";
+import { RETRY_DELAY_MS, retryOnce } from "../zoowork/retry";
+import type { IndexedDocument, KnowledgeIndex, Passage, Retriever } from "./retriever";
 
 // Every Cloudflare call in this app is in this file. It uses the AI Search
 // REST API, so the app does not run on Cloudflare and needs no Workers binding.
@@ -8,7 +9,7 @@ import type { IndexStats, KnowledgeIndex, Passage, Retriever } from "./retriever
 
 const NAMESPACE = "default";
 const REQUEST_TIMEOUT_MS = 30_000;
-const RETRY_DELAY_MS = 500;
+const ITEMS_PER_PAGE = 50;
 /** How many passages one search hands to the Agent. */
 export const MAX_PASSAGES = 6;
 // Vector scores rate every passage about the same product as similar, so reranking
@@ -22,7 +23,7 @@ export type CloudflareConfig = { accountId: string; apiToken: string };
 export function readCloudflareConfig(env: Record<string, string | undefined> = process.env): CloudflareConfig {
   const accountId = env.CLOUDFLARE_ACCOUNT_ID?.trim();
   const apiToken = env.CLOUDFLARE_API_TOKEN?.trim();
-  if (!accountId || !apiToken || apiToken.startsWith("replace_with")) {
+  if (!accountId || !apiToken || [accountId, apiToken].some((value) => value.startsWith("replace_with"))) {
     throw new AppError("cloudflare_credentials_required", 500);
   }
   return { accountId, apiToken };
@@ -37,8 +38,12 @@ type Chunk = {
   item?: { key?: unknown };
 };
 
+/** A chunk from the middle of a document has no document title, so fall back to the file name. */
 function titleOf(text: string, key: string): string {
-  return /^#{1,3}\s+(.+)$/m.exec(text)?.[1]?.trim() ?? key;
+  const heading = /^#\s+(.+)$/.exec(text.trimStart().split("\n", 1)[0]!)?.[1]?.trim();
+  if (heading) return heading;
+  const name = (key.split("/").pop() ?? key).replace(/\.[^.]+$/, "").replace(/[-_]+/g, " ").trim();
+  return name ? name[0]!.toUpperCase() + name.slice(1) : key;
 }
 
 /** Search results as passages. A chunk without text or a document key cannot be cited, so it is dropped. */
@@ -60,7 +65,20 @@ export function toPassages(body: unknown): Passage[] {
 }
 
 const isRetryable = (error: unknown) =>
-  isTransportFailure(error) || (error instanceof AppError && /^cloudflare_http_5\d\d$/.test(error.code));
+  error instanceof AppError && /^cloudflare_(unreachable|timeout|http_5\d\d)$/.test(error.code);
+
+type Item = { id?: string; key?: string; status?: string; error?: string | null };
+
+// Anything else, such as `skipped`, is final without being searchable. Setup
+// reports it by name instead of waiting for a change that will not come.
+const PENDING_STATUSES = new Set(["queued", "running", "outdated"]);
+
+function toDocument(item: Item): IndexedDocument | undefined {
+  if (!item.key) return undefined;
+  if (item.status === "completed") return { key: item.key, state: "ready" };
+  if (PENDING_STATUSES.has(item.status ?? "")) return { key: item.key, state: "pending" };
+  return { key: item.key, state: "failed", reason: item.error || item.status || "unknown" };
+}
 
 /**
  * The knowledge service for one AI Search instance. Errors carry a status code
@@ -76,29 +94,39 @@ export function connectKnowledge(
   const instance = `${base}/${encodeURIComponent(instanceId)}`;
 
   async function call(url: string, init: RequestInit = {}): Promise<unknown> {
-    const response = await fetchImpl(url, {
-      ...init,
-      headers: { ...init.headers, authorization: `Bearer ${config.apiToken}` },
-      signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
-    });
+    let response: Response;
+    try {
+      response = await fetchImpl(url, {
+        ...init,
+        headers: { ...init.headers, authorization: `Bearer ${config.apiToken}` },
+        signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
+      });
+    } catch (error) {
+      if (!isTransportFailure(error)) throw error;
+      throw new AppError((error as Error).name === "TimeoutError" ? "cloudflare_timeout" : "cloudflare_unreachable", 502);
+    }
     if (!response.ok) throw new AppError(`cloudflare_http_${response.status}`, 502);
     return response.json().catch(() => {
       throw new AppError("cloudflare_invalid_response", 502);
     });
   }
 
-  const hasCode = (error: unknown, code: string) => error instanceof AppError && error.code === code;
+  const itemsOf = (body: unknown) => (body as { result?: Item[] } | null)?.result ?? [];
 
-  const itemsOf = (body: unknown) => (body as { result?: { id?: string }[] } | null)?.result ?? [];
+  const retried = <T>(attempt: () => Promise<T>) => retryOnce(attempt, retryDelayMs, isRetryable);
 
   return {
-    async ensure() {
+    async exists() {
       try {
-        await call(instance);
-        return;
+        await retried(() => call(instance));
+        return true;
       } catch (error) {
-        if (!hasCode(error, "cloudflare_http_404")) throw error;
+        if (isCode(error, "cloudflare_http_404")) return false;
+        throw error;
       }
+    },
+
+    async create() {
       try {
         await call(base, {
           method: "POST",
@@ -109,7 +137,7 @@ export function connectKnowledge(
         });
       } catch (error) {
         // A lost response from an earlier run: the recorded name already exists.
-        if (!hasCode(error, "cloudflare_http_409")) throw error;
+        if (!isCode(error, "cloudflare_http_409")) throw error;
       }
     },
 
@@ -126,19 +154,31 @@ export function connectKnowledge(
       }
     },
 
-    async stats(): Promise<IndexStats> {
-      const body = (await call(`${instance}/stats`)) as { result?: Partial<IndexStats> } | null;
-      const s = body?.result;
-      if (!s) throw new AppError("cloudflare_invalid_response", 502);
-      return { completed: s.completed ?? 0, queued: s.queued ?? 0, running: s.running ?? 0, error: s.error ?? 0 };
+    async documents() {
+      const documents: IndexedDocument[] = [];
+      for (let page = 1; ; page += 1) {
+        const body = (await retried(() => call(`${instance}/items?page=${page}&per_page=${ITEMS_PER_PAGE}`))) as {
+          result?: Item[];
+          result_info?: { total_count?: number };
+        } | null;
+        if (!Array.isArray(body?.result)) throw new AppError("cloudflare_invalid_response", 502);
+        documents.push(...body.result.flatMap((item) => toDocument(item) ?? []));
+        if (body.result.length < ITEMS_PER_PAGE) return documents;
+      }
     },
 
     async destroy() {
-      await call(instance, { method: "DELETE" });
+      try {
+        await call(instance, { method: "DELETE" });
+        return true;
+      } catch (error) {
+        if (isCode(error, "cloudflare_http_404")) return false;
+        throw error;
+      }
     },
 
     async search(query) {
-      const attempt = () =>
+      const body = await retried(() =>
         call(`${instance}/search`, {
           method: "POST",
           headers: { "content-type": "application/json" },
@@ -148,15 +188,8 @@ export function connectKnowledge(
               reranking: { enabled: true, model: RERANK_MODEL, match_threshold: MIN_RERANK_SCORE },
             },
           }),
-        });
-      let body: unknown;
-      try {
-        body = await attempt();
-      } catch (error) {
-        if (!isRetryable(error)) throw error;
-        await new Promise((resolve) => setTimeout(resolve, retryDelayMs));
-        body = await attempt();
-      }
+        }),
+      );
       return toPassages(body);
     },
   };

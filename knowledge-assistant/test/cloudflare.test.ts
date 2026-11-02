@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 import { connectKnowledge, MAX_PASSAGES, readCloudflareConfig, toPassages } from "../lib/knowledge/cloudflare";
+import { searchTool } from "../lib/knowledge/search-tool";
 
 const config = { accountId: "acc", apiToken: "secret-token" };
 
@@ -49,7 +50,7 @@ const json = (body: unknown, status = 200) => new Response(JSON.stringify(body),
 test("search results map to passages with the document key to cite", () => {
   assert.deepEqual(toPassages(searchBody), [
     { key: "exports/export-links.md", title: "Export links", text: searchBody.result.chunks[0]!.text, score: 1 },
-    { key: "teams/invite-members.md", title: "teams/invite-members.md", text: searchBody.result.chunks[1]!.text, score: 0.984 },
+    { key: "teams/invite-members.md", title: "Invite members", text: searchBody.result.chunks[1]!.text, score: 0.984 },
   ]);
 });
 
@@ -80,9 +81,16 @@ test("search sends the query and the token, and retries a server error once", as
   assert.equal((calls[0]!.init.headers as Record<string, string>).authorization, "Bearer secret-token");
 });
 
-test("a network failure is retried once, then reported", async () => {
+test("a network failure is retried once, then reported as Cloudflare's, not the Platform's", async () => {
   const { impl, calls } = fakeFetch([new TypeError("fetch failed"), new TypeError("fetch failed")]);
-  await assert.rejects(connectKnowledge("kb", config, impl, 0).search("q"), TypeError);
+  await assert.rejects(connectKnowledge("kb", config, impl, 0).search("q"), /cloudflare_unreachable/);
+  assert.equal(calls.length, 2);
+});
+
+test("a timeout is retried once, then reported with its own code", async () => {
+  const timeout = () => Object.assign(new Error("timed out"), { name: "TimeoutError" });
+  const { impl, calls } = fakeFetch([timeout(), timeout()]);
+  await assert.rejects(connectKnowledge("kb", config, impl, 0).search("q"), /cloudflare_timeout/);
   assert.equal(calls.length, 2);
 });
 
@@ -95,26 +103,70 @@ test("a refused request is not retried, and errors carry only a status code", as
   assert.equal(calls.length, 1);
 });
 
-test("ensure leaves an existing instance alone and creates a missing one without the cache", async () => {
-  const existing = fakeFetch([json({ result: { id: "kb" } })]);
-  await connectKnowledge("kb", config, existing.impl).ensure();
-  assert.equal(existing.calls.length, 1);
-
-  const missing = fakeFetch([new Response("", { status: 404 }), json({ result: { id: "kb" } }, 201)]);
-  await connectKnowledge("kb", config, missing.impl).ensure();
-  assert.equal(missing.calls[1]!.init.method, "POST");
-  assert.deepEqual(JSON.parse(missing.calls[1]!.init.body as string), { id: "kb", cache: false });
+test("exists tells a missing instance from a failed check", async () => {
+  assert.equal(await connectKnowledge("kb", config, fakeFetch([json({ result: { id: "kb" } })]).impl).exists(), true);
+  assert.equal(await connectKnowledge("kb", config, fakeFetch([new Response("", { status: 404 })]).impl).exists(), false);
+  const refused = fakeFetch([new Response("", { status: 403 })]);
+  await assert.rejects(connectKnowledge("kb", config, refused.impl).exists(), /cloudflare_http_403/);
 });
 
-test("ensure accepts a name a lost response already created", async () => {
-  const { impl } = fakeFetch([new Response("", { status: 404 }), new Response("", { status: 409 })]);
-  await connectKnowledge("kb", config, impl).ensure();
+test("create turns the similarity cache off", async () => {
+  const { impl, calls } = fakeFetch([json({ result: { id: "kb" } }, 201)]);
+  await connectKnowledge("kb", config, impl).create();
+  assert.equal(calls[0]!.init.method, "POST");
+  assert.deepEqual(JSON.parse(calls[0]!.init.body as string), { id: "kb", cache: false });
 });
 
-test("stats reads the counters setup waits on", async () => {
-  const body = { result: { queued: 1, running: 2, completed: 3, error: 0, engine: { vectorize: { vectorsCount: 0 } } } };
-  const { impl } = fakeFetch([json(body)]);
-  assert.deepEqual(await connectKnowledge("kb", config, impl).stats(), { completed: 3, queued: 1, running: 2, error: 0 });
+test("create accepts a name a lost response already created", async () => {
+  await connectKnowledge("kb", config, fakeFetch([new Response("", { status: 409 })]).impl).create();
+});
+
+test("destroy says whether the instance was there", async () => {
+  assert.equal(await connectKnowledge("kb", config, fakeFetch([json({ result: {} })]).impl).destroy(), true);
+  assert.equal(await connectKnowledge("kb", config, fakeFetch([new Response("", { status: 404 })]).impl).destroy(), false);
+});
+
+test("documents maps each item status, including one setup must not wait for", async () => {
+  const items = [
+    { id: "1", key: "ready.md", status: "completed", error: null },
+    { id: "2", key: "queued.md", status: "queued", error: null },
+    { id: "3", key: "running.md", status: "running", error: null },
+    { id: "4", key: "outdated.md", status: "outdated", error: null },
+    { id: "5", key: "empty.md", status: "error", error: "file_content_empty" },
+    { id: "6", key: "skipped.md", status: "skipped", error: null },
+  ];
+  const { impl, calls } = fakeFetch([json({ result: items, result_info: { total_count: 6 } })]);
+  assert.deepEqual(await connectKnowledge("kb", config, impl).documents(), [
+    { key: "ready.md", state: "ready" },
+    { key: "queued.md", state: "pending" },
+    { key: "running.md", state: "pending" },
+    { key: "outdated.md", state: "pending" },
+    { key: "empty.md", state: "failed", reason: "file_content_empty" },
+    { key: "skipped.md", state: "failed", reason: "skipped" },
+  ]);
+  assert.match(calls[0]!.url, /\/items\?page=1&per_page=50$/);
+});
+
+test("documents reads every page", async () => {
+  const page = (start: number, count: number) =>
+    Array.from({ length: count }, (_, i) => ({ id: `${start + i}`, key: `${start + i}.md`, status: "completed" }));
+  const { impl, calls } = fakeFetch([json({ result: page(0, 50) }), json({ result: page(50, 3) })]);
+  assert.equal((await connectKnowledge("kb", config, impl).documents()).length, 53);
+  assert.equal(calls.length, 2);
+});
+
+test("documents retries a passing failure, so a long wait survives one bad read", async () => {
+  const { impl, calls } = fakeFetch([new Response("", { status: 502 }), json({ result: [] })]);
+  assert.deepEqual(await connectKnowledge("kb", config, impl, 0).documents(), []);
+  assert.equal(calls.length, 2);
+});
+
+test("a chunk's title comes from its document heading, or else from the file name", () => {
+  const title = (text: string, key = "billing/annual-refunds.md") =>
+    toPassages({ result: { chunks: [{ text, item: { key } }] } })[0]!.title;
+  assert.equal(title("# Refunds\n\nWithin 30 days."), "Refunds");
+  assert.equal(title("Later text\n\n### Step 2\n\nMore."), "Annual refunds");
+  assert.equal(title("```sh\n# a comment\n```"), "Annual refunds");
 });
 
 test("upload sends the document key as the file name", async () => {
@@ -139,4 +191,12 @@ test("the credentials are required, and the example values do not count", () => 
     () => readCloudflareConfig({ CLOUDFLARE_ACCOUNT_ID: "acc", CLOUDFLARE_API_TOKEN: "replace_with_your_cloudflare_api_token" }),
     /cloudflare_credentials_required/,
   );
+  assert.throws(
+    () => readCloudflareConfig({ CLOUDFLARE_ACCOUNT_ID: "replace_with_your_cloudflare_account_id", CLOUDFLARE_API_TOKEN: "t" }),
+    /cloudflare_credentials_required/,
+  );
+});
+
+test("the Agent waits longer for a search than a search with its retry can take", () => {
+  assert.ok(searchTool.timeoutMs! > 2 * 30_000 + 15_000 + 1_000);
 });

@@ -85,6 +85,7 @@ export async function deleteSession(runtime: Runtime, id: string): Promise<void>
   } catch (error) {
     if (!isNotFound(error)) throw error;
   }
+  await runtime.evidence.removeSession(id);
   await runtime.sessions.remove(id);
 }
 

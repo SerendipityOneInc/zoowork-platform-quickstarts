@@ -13,5 +13,7 @@ export const searchTool: CustomToolDeclaration = {
     required: ["query"],
     additionalProperties: false,
   },
-  timeoutMs: 60_000,
+  // Longer than a search with its retry takes, and long enough that a restarted
+  // server can still answer a search left waiting. This is the Platform's default.
+  timeoutMs: 600_000,
 };

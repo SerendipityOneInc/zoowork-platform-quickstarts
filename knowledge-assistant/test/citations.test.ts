@@ -26,6 +26,15 @@ test("a source shows its best passages, without repeats", () => {
   assert.deepEqual(citations.sources[0]!.excerpts, ["high", "low"]);
 });
 
+test("several sources in one marker, and small formatting changes, are each read as a key", () => {
+  const text = "A [source: a.md, b.md] B [source: `c.md`] C [source: corpus/d.md] D [source: a.md; made-up.md]";
+  const passages = ["a.md", "b.md", "c.md", "d.md"].map((key) => passage(key));
+  assert.deepEqual(citedKeys(text), ["a.md", "b.md", "c.md", "d.md", "made-up.md"]);
+  const citations = verifyCitations(text, passages);
+  assert.deepEqual(citations.unverified, ["made-up.md"]);
+  assert.equal(renderCitations(text, citations), "A [1][2] B [3] C [4] D [1][unverified source]");
+});
+
 test("with no passages, every citation is unverified", () => {
   assert.deepEqual(verifyCitations("x [source: a.md]", []), { sources: [], unverified: ["a.md"] });
 });
@@ -35,6 +44,7 @@ function store(calls: EvidenceCall[]): EvidenceStore {
     get: async (id) => calls.find((c) => c.callId === id),
     forRun: async (sessionId, runId) => calls.filter((c) => c.sessionId === sessionId && c.runId === runId),
     save: async () => {},
+    removeSession: async () => {},
   };
 }
 
@@ -128,8 +138,67 @@ test("a failed search is a failure, not an empty result", async () => {
   assert.equal(runSources(turn, view).searchFailed, "cloudflare_http_500");
 });
 
-test("a search the Platform timed out shows as failed", async () => {
-  const timedOut: WireEvent = { ...resolved(2, "run_1"), payload: { ...resolved(2, "run_1").payload, outcome: "timeout" } };
-  const { view } = await play([requested(1, "run_1"), timedOut], store([]));
-  assert.equal(view.tools.tc_1!.phase, "failed");
+const timedOut = (seq: number): WireEvent => ({ ...resolved(seq, "run_1"), payload: { ...resolved(seq, "run_1").payload, outcome: "timeout" } });
+
+test("a search the Platform timed out shows as failed, with or without saved evidence", async () => {
+  for (const calls of [[], [call({})]]) {
+    const { view, turn } = await play([requested(1, "run_1"), timedOut(2), finished(3, "run_1")], store(calls));
+    assert.equal(view.tools.tc_1!.phase, "failed");
+    assert.equal(runSources(turn, view).searchFailed, "search_timeout");
+  }
+});
+
+test("a later search that worked clears the failure of an earlier one", async () => {
+  const again: WireEvent = { ...resolved(4, "run_1"), payload: { ...resolved(4, "run_1").payload, callId: "cc_2", toolCallId: "tc_2" } };
+  const events = [requested(1, "run_1"), resolved(2, "run_1", true), again, assistant(5, "run_1", "Yes [source: exports/export-links.md]."), finished(6, "run_1")];
+  const { view, turn } = await play(events, store([call({ status: "failed", code: "cloudflare_http_500", passages: [] }), call({ callId: "cc_2" })]));
+  const sources = runSources(turn, view);
+  assert.equal(sources.searchFailed, undefined);
+  assert.equal(sources.citations.sources.length, 1);
+});
+
+test("a reply that skipped the search still says it cites nothing", async () => {
+  const { view, turn } = await play([assistant(1, "run_1", "Yes, I think so."), finished(2, "run_1")], store([]));
+  const sources = runSources(turn, view);
+  assert.equal(sources.searches, 0);
+  assert.equal(sources.uncited, true);
+});
+
+test("a reply is not called uncited while it runs, after a stop, or when the search failed", async () => {
+  const running = await play([assistant(1, "run_1", "Working.")], store([]));
+  assert.equal(runSources(running.turn, running.view).uncited, false);
+  const stopped: WireEvent = { seq: 2, runId: "run_1", eventType: "run.finished", payload: { status: "aborted" } };
+  const aborted = await play([assistant(1, "run_1", "Part"), stopped], store([]));
+  assert.equal(runSources(aborted.turn, aborted.view).uncited, false);
+  const failed = await play(
+    [requested(1, "run_1"), resolved(2, "run_1", true), assistant(3, "run_1", "I could not search."), finished(4, "run_1")],
+    store([call({ status: "failed", code: "cloudflare_http_500", passages: [] })]),
+  );
+  assert.equal(runSources(failed.turn, failed.view).uncited, false);
+});
+
+test("a replay does not use a search that came after the reply, so it shows what live showed", async () => {
+  const reply = { ...assistant(1, "run_1", "Yes [source: exports/export-links.md]."), createdAt: "2026-11-02T00:00:05Z" };
+  const later = call({ requestedAt: "2026-11-02T00:00:09Z" });
+  assert.deepEqual((await enrichEvent(store([later]), "s1", reply)).citations, { sources: [], unverified: ["exports/export-links.md"] });
+  const earlier = call({ requestedAt: "2026-11-02T00:00:01Z" });
+  assert.equal((await enrichEvent(store([earlier]), "s1", reply)).citations?.sources.length, 1);
+});
+
+test("unreadable evidence leaves citations unverified instead of breaking the chat", async () => {
+  const broken: EvidenceStore = {
+    ...store([]),
+    forRun: async () => Promise.reject(new Error("invalid_local_state")),
+    get: async () => Promise.reject(new Error("invalid_local_state")),
+  };
+  const logged = console.error;
+  console.error = () => {};
+  try {
+    const reply = await enrichEvent(broken, "s1", assistant(1, "run_1", "Yes [source: a.md]."));
+    assert.deepEqual(reply.citations, { sources: [], unverified: ["a.md"] });
+    const search = await enrichEvent(broken, "s1", resolved(2, "run_1"));
+    assert.equal(search.search, undefined);
+  } finally {
+    console.error = logged;
+  }
 });

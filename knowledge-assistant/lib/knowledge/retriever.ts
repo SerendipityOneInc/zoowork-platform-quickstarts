@@ -17,15 +17,23 @@ export interface Retriever {
   search(query: string): Promise<Passage[]>;
 }
 
-export type IndexStats = { completed: number; queued: number; running: number; error: number };
+/** Where one document stands in the index. `pending` includes a document the index does not list yet. */
+export type IndexedDocument = {
+  key: string;
+  state: "pending" | "ready" | "failed";
+  /** Why a document failed, as a short code that is safe to print. */
+  reason?: string;
+};
 
 /** A corpus this app uploads and later removes. Not needed for a service that is already populated. */
 export interface KnowledgeIndex {
-  /** Create the index if it does not exist. Safe to repeat. */
-  ensure(): Promise<void>;
+  exists(): Promise<boolean>;
+  /** Create the index. Safe to repeat if an earlier response was lost. */
+  create(): Promise<void>;
   /** Add a document, or replace the one with the same key. */
   upload(key: string, text: string): Promise<void>;
   removeDocument(key: string): Promise<void>;
-  stats(): Promise<IndexStats>;
-  destroy(): Promise<void>;
+  documents(): Promise<IndexedDocument[]>;
+  /** Delete the index. Returns false if it was not there. */
+  destroy(): Promise<boolean>;
 }

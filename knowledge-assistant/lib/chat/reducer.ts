@@ -66,6 +66,8 @@ export type RunSources = {
   searches: number;
   searchFailed?: string;
   finished: boolean;
+  /** The run finished and its reply cites nothing, with no failed search to explain why. */
+  uncited: boolean;
 };
 
 export type Turn = UserTurn | RunTurn;
@@ -84,7 +86,7 @@ export const emptyView = (): SessionView => ({ lastSeq: 0, turns: [], tools: {},
 
 const ERROR_MAX = 500;
 
-const isObject = (value: unknown): value is Record<string, unknown> =>
+export const isObject = (value: unknown): value is Record<string, unknown> =>
   !!value && typeof value === "object" && !Array.isArray(value);
 
 const str = (value: unknown): string | undefined => (typeof value === "string" && value ? value : undefined);
@@ -393,12 +395,16 @@ export function runSources(turn: RunTurn, view: SessionView): RunSources {
     const search = part.type === "tool" ? view.tools[part.toolCallId]?.search : undefined;
     return search ? [search] : [];
   });
-  const failed = searches.find((s) => s.status === "failed");
+  // A search that worked after one that failed means the reply had the docs.
+  const failed = searches.some((s) => s.status === "ok") ? undefined : searches.find((s) => s.status === "failed");
+  const searchFailed = failed ? (failed.code ?? "search_failed") : undefined;
+  const cited = turn.citations.sources.length > 0 || turn.citations.unverified.length > 0;
   return {
     citations: turn.citations,
     searches: searches.length,
-    ...(failed ? { searchFailed: failed.code ?? "search_failed" } : {}),
+    ...(searchFailed ? { searchFailed } : {}),
     finished: turn.status !== "running",
+    uncited: turn.status === "succeeded" && !searchFailed && !cited,
   };
 }
 

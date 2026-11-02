@@ -18,8 +18,15 @@ const EXCERPTS_PER_SOURCE = 3;
 
 export const emptyCitations = (): Citations => ({ sources: [], unverified: [] });
 
+/** The keys in one marker. Models also write several at once, in backticks, or with the folder name. */
+const keysIn = (raw: string) =>
+  raw
+    .split(/[,;]/)
+    .map((key) => key.trim().replace(/^[`'"]+|[`'"]+$/g, "").replace(/^corpus\//, ""))
+    .filter(Boolean);
+
 export function citedKeys(text: string): string[] {
-  return [...new Set([...text.matchAll(MARKER)].map((m) => m[1]!.trim()))];
+  return [...new Set([...text.matchAll(MARKER)].flatMap((m) => keysIn(m[1]!)))];
 }
 
 export function verifyCitations(text: string, passages: readonly PassageLike[]): Citations {
@@ -49,8 +56,12 @@ export function mergeCitations(into: Citations, next: Citations): Citations {
 
 /** Replace each marker with its source number, or with a visible flag if it did not check out. */
 export function renderCitations(text: string, citations: Citations): string {
-  return text.replace(MARKER, (_match, raw: string) => {
-    const index = citations.sources.findIndex((s) => s.key === raw.trim());
-    return index === -1 ? "[unverified source]" : `[${index + 1}]`;
-  });
+  return text.replace(MARKER, (_match, raw: string) =>
+    keysIn(raw)
+      .map((key) => {
+        const index = citations.sources.findIndex((s) => s.key === key);
+        return index === -1 ? "[unverified source]" : `[${index + 1}]`;
+      })
+      .join(""),
+  );
 }

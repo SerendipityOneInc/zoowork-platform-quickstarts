@@ -8,7 +8,7 @@ const QUERY_MAX = 500;
 /** Poll quickly around a message, and rarely otherwise, to pick up calls left by a restart. */
 const FAST_MS = 800;
 const SLOW_MS = 15_000;
-const FAST_WINDOW_MS = 10 * 60_000;
+const FAST_WINDOW_MS = 2 * 60_000;
 
 type ToolClient = Pick<ZooworkClient, "listCustomToolCalls" | "getCustomToolCall" | "resolveCustomToolCall">;
 
@@ -68,16 +68,24 @@ export function createSearchWorker({ client, agentId, retriever, evidence, ownsS
       if (saved?.delivered) return;
       if (!saved) {
         // The pending list leaves out the run. Citations are checked per run, so read it first.
-        const { run_id } = call.run_id ? call : await client.getCustomToolCall(agentId, call.call_id);
-        saved = await runSearch({ ...call, ...(run_id ? { run_id } : {}) }, retriever);
+        const current = call.run_id ? call : await client.getCustomToolCall(agentId, call.call_id);
+        // It timed out or was cancelled after the list was read. Nothing would receive a result.
+        if (current.status !== "pending") return;
+        saved = await runSearch({ ...call, ...(current.run_id ? { run_id: current.run_id } : {}) }, retriever);
         await evidence.save(saved);
       }
-      await client.resolveCustomToolCall(agentId, call.call_id, {
+      const receipt = await client.resolveCustomToolCall(agentId, call.call_id, {
         content: [{ type: "json", value: toolResult(saved) }],
         isError: saved.status === "failed",
         resolvedBy: "knowledge-assistant",
       });
-      await evidence.save({ ...saved, delivered: true });
+      // The run moved on without this result, so it must not count as evidence.
+      const missed = receipt.signaled === false && (receipt.status === "timeout" || receipt.status === "cancelled");
+      await evidence.save(
+        missed
+          ? { ...saved, status: "failed", code: `search_${receipt.status}`, passages: [], delivered: true }
+          : { ...saved, delivered: true },
+      );
     } finally {
       inFlight.delete(call.call_id);
     }
