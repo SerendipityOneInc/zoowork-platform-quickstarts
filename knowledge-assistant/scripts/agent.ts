@@ -15,6 +15,7 @@
 import { createZooworkClient } from "@zoowork-ai/sdk";
 import { connectKnowledge, newInstanceId, readCloudflareConfig } from "../lib/knowledge/cloudflare";
 import { loadCorpus, PROBE } from "../lib/knowledge/corpus";
+import { clearEvalState, evalStores } from "../lib/knowledge/eval";
 import { evidencePath, retireEvidence } from "../lib/knowledge/evidence";
 import {
   cleanupAll,
@@ -109,8 +110,11 @@ async function main(command: string | undefined) {
     await cleanupAll({
       ...(state && {
         agent: async () => {
-          const sessions = fileSessionStore(sessionsPath(), { instance: state.instance, agentId: state.agentId ?? "" });
-          const { sessionsDeleted } = await cleanupAgent(client, path, state, sessions);
+          const scope = { instance: state.instance, agentId: state.agentId ?? "" };
+          const sessions = fileSessionStore(sessionsPath(), scope);
+          const { sessionsDeleted } = await cleanupAgent(client, path, state, sessions, () =>
+            clearEvalState({ ...evalStores(scope), client, agentId: scope.agentId }, state.instance),
+          );
           console.log(`Deleted ${sessionsDeleted} conversation(s), then stopped and deleted Agent ${state.agentId}.`);
         },
       }),

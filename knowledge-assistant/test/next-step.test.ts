@@ -19,6 +19,13 @@ test("a stopped setup explains what is left, and a missing index how to rebuild 
   assert.match(nextStep("cloudflare_unreachable"), /Cloudflare/);
 });
 
+test("eval failures say what to do", () => {
+  assert.match(nextStep("web_server_running"), /Stop npm run dev/);
+  assert.match(nextStep("invalid_eval_question:gantt-charts"), /eval\/questions\.json/);
+  assert.match(nextStep("agent_definition_changed"), /npm run setup/);
+  assert.match(nextStep("agent_not_running"), /npm run setup/);
+});
+
 test("an unknown code keeps .local/", () => {
   assert.match(nextStep("something_new"), /keep \.local/);
 });

@@ -164,7 +164,12 @@ To replace Cloudflare with a service that already has your documents:
    `corpus/` directory, and the `CLOUDFLARE_*` lines in `.env`. In `test/runtime.test.ts`, remove
    the two lines that use `saveKnowledgeState` and the test named "missing Cloudflare settings…".
    The `cloudflare_*` messages in `scripts/next-step.ts` and `lib/chat/notices.ts` can go too.
-5. Update `agent/agent.md` and `app.config.ts` for your product, then run `npm run setup`.
+5. In `scripts/eval.ts`, remove the `config`, `knowledge` and `corpus` lines, call `loadQuestions()`
+   with no argument, and replace `connectKnowledge(...)` with `myRetriever`. The questions are then
+   checked for shape only, because there are no local documents to compare them with.
+6. Update `agent/agent.md` and `app.config.ts` for your product, then run `npm run setup`. If you
+   change the sentence the Agent refuses with, change `REFUSAL` in `lib/knowledge/eval.ts` to match.
+   Write your own questions in `eval/questions.json`. See [Check the answers](#check-the-answers).
 
 The search worker, the citation check, the sources panel and the Agent's tool stay the same.
 
@@ -176,6 +181,50 @@ the service refused and nothing changed; cleanup treats any other failure as "it
 To keep Cloudflare and use your own documents, replace the files in `corpus/` instead, change
 `PROBE` in `lib/knowledge/corpus.ts` to a question they answer, and run `npm run setup`. It uploads
 new and changed files and removes deleted ones. The document's path under `corpus/` is its key.
+Then replace the questions in `eval/questions.json`.
+
+## Check the answers
+
+`npm run eval` asks a fixed set of questions and checks each answer. Run it after you change
+`agent/agent.md`, the documents or the search settings, to see whether answers got worse.
+
+```sh
+# Stop npm run dev first.
+npm run eval
+```
+
+It sends each question to the real Agent in a new conversation, answers its searches with the same
+code as the chat, and applies the same citation check. So it **uses model and search credits**, about
+as much as asking those questions in the chat. It is not part of `npm run check` or CI, which stay
+offline.
+
+The questions are in `eval/questions.json`. Each one has a `kind`:
+
+| Kind | What it checks | It passes when |
+| --- | --- | --- |
+| `direct` | A question using the document's own words | Each `expect` entry: the `source` is a checked citation and the `fragment` is in the reply |
+| `synonym` | The same, in different words | The same |
+| `multi_source` | An answer that needs two documents | The same, for both documents |
+| `not_in_docs` | Something the documents do not cover | The reply starts with "The Fernwick docs do not cover this." and has no checked source |
+
+A failed run or search counts as a failure and shows its code. It never counts as a correct
+refusal. The command prints one line per question and a total, and exits non-zero if anything failed:
+
+```text
+PASS  direct       export-link-expiry  9s  searches=1  sources=exports/export-links.md
+FAIL  not_in_docs  gantt-charts  12s  searches=2  sources=getting-started/what-is-fernwick.md  reason=source_on_refusal:getting-started/what-is-fernwick.md
+      reply: Fernwick organizes work into projects and tasks. [1]
+Passed 14 of 15. Searches: 19.
+```
+
+The result of one run is not a guarantee: the model can answer differently each time, so run it
+more than once before you trust a change.
+
+When you replace `corpus/`, write new questions. `npm run eval` and `npm run check` both refuse a
+question that does not match the documents: every `source` must exist, every `fragment` must be in
+that document, and every `absent` term of a `not_in_docs` question must appear in no document. Each
+question has its own Session, deleted afterwards along with what the search returned. If the command
+is killed, the next `npm run eval` or `npm run cleanup` removes what it left.
 
 ## Make it yours
 
@@ -266,7 +315,10 @@ Errors print a stable code and never a key, a token or a provider response body.
 | `http_400` during setup | Check billing and any `model` in `agent/agent.md`. Keep `.local/`. |
 | `state_scope_mismatch` / `agent_label_mismatch` | `.local/` belongs to another key or Project. Restore the original `.env`. Do not delete `.local/`. |
 | `state_locked_review_before_retry` | Another setup or cleanup is running. If none is, delete `.local/agent.json.lock`. |
-| `web_server_running` | Stop `npm run dev` before `npm run cleanup`. |
+| `web_server_running` | Stop `npm run dev` before `npm run cleanup` or `npm run eval`. |
+| `agent_not_running` | The Agent is stopped. Run `npm run setup`. |
+| `agent_definition_changed` | `agent/agent.md` differs from the Agent. Run `npm run setup`, then `npm run eval`. |
+| `invalid_eval_question:<id>` / `eval_questions_missing` | Fix that question in `eval/questions.json`. See [Check the answers](#check-the-answers). |
 | `local_only_add_authentication_first` | You opened the app through a host other than `localhost`. See [Before you go public](#before-you-go-public). |
 | `EADDRINUSE` | Another process uses port 3000. Run `npm run dev -- --port 3001`. |
 
@@ -313,7 +365,8 @@ history and live updates, one pure reducer for every view, and idempotent sends.
 | `lib/knowledge/evidence.ts`, `citations.ts`, `enrich.ts` | What each run received, and checking citations against it |
 | `lib/zoowork/`, `lib/chat/`, `app/api/` | Agent setup, Sessions and the chat, as in Starter |
 | `components/message-sources.tsx`, `components/tool-uis/search-knowledge.tsx` | Sources under a reply, and the search card |
-| `scripts/` | `setup` / `status` / `cleanup` / `models` |
+| `lib/knowledge/eval.ts`, `eval/questions.json` | The fixed questions and how answers are scored |
+| `scripts/` | `setup` / `status` / `cleanup` / `models` / `eval` |
 | `test/` | Offline tests and the in-memory fakes they use |
 
 ## Checks

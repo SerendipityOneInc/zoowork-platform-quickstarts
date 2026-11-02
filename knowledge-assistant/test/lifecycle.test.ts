@@ -250,6 +250,20 @@ test("cleanup deletes only recorded Sessions, then stops and deletes the Agent, 
   assert.ok(files.some((f) => f.startsWith("sessions.retired-")));
 });
 
+test("cleanup runs its extra step after the ownership check and before anything is deleted", async () => {
+  const dir = await tempDir();
+  const path = join(dir, "agent.json");
+  const p = fakePlatform();
+  const { agentId, state } = await applyAgent(p.client, path, undefined, resource());
+  const sessions = fileSessionStore(join(dir, "sessions.json"), { instance: state.instance, agentId });
+  let callsSeen: string[] = [];
+  await cleanupAgent(p.client, path, state, sessions, async () => {
+    callsSeen = [...p.calls];
+  });
+  assert.equal(callsSeen.at(-1), "getAgent");
+  assert.ok(!callsSeen.includes("stopAgent") && !callsSeen.includes("deleteAgent"));
+});
+
 test("a failed cleanup keeps local state", async () => {
   const dir = await tempDir();
   const path = join(dir, "agent.json");

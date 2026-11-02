@@ -25,7 +25,7 @@ export function resumeCursor(request: Request): string | undefined {
   return undefined;
 }
 
-function toWire(event: SessionEvent): WireEvent {
+export function toWire(event: SessionEvent): WireEvent {
   return {
     seq: event.seq,
     eventType: event.eventType,
