@@ -75,7 +75,7 @@ test("search sends the query and the token, and retries a server error once", as
   assert.deepEqual(JSON.parse(calls[0]!.init.body as string), {
     messages: [{ role: "user", content: "export links" }],
     ai_search_options: {
-      reranking: { enabled: true, model: "@cf/baai/bge-reranker-base", match_threshold: 0.01 },
+      reranking: { enabled: true, model: "@cf/baai/bge-reranker-base", match_threshold: 0 },
     },
   });
   assert.equal((calls[0]!.init.headers as Record<string, string>).authorization, "Bearer secret-token");
