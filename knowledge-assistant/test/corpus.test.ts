@@ -3,6 +3,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { test } from "node:test";
 import { loadCorpus, PROBE } from "../lib/knowledge/corpus";
+import { loadQuestions } from "../lib/knowledge/eval";
 import { SEARCH_TOOL } from "../lib/knowledge/search-tool";
 import { loadAgentDefinition } from "../lib/zoowork/agent-definition";
 
@@ -25,4 +26,13 @@ test("the Agent is declared with the search tool and allowed to use only it", ()
   const { resource } = loadAgentDefinition();
   assert.deepEqual(resource.custom_tools?.map((t) => t.name), [SEARCH_TOOL]);
   assert.deepEqual(resource.tool_policy, { allow: [SEARCH_TOOL] });
+});
+
+test("the eval questions match the corpus and cover each kind", () => {
+  const questions = loadQuestions(loadCorpus());
+  assert.ok(questions.length >= 12);
+  assert.deepEqual([...new Set(questions.map((q) => q.kind))].sort(), ["direct", "multi_source", "not_in_docs", "synonym"]);
+  for (const q of questions) {
+    if (q.kind === "multi_source") assert.ok(new Set(q.expect.map((e) => e.source)).size >= 2, q.id);
+  }
 });

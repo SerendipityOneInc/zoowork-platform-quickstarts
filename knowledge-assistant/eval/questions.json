@@ -1,0 +1,101 @@
+{
+  "version": 1,
+  "questions": [
+    {
+      "id": "export-link-expiry",
+      "kind": "direct",
+      "question": "How long do export links last?",
+      "expect": [{ "source": "exports/export-links.md", "fragment": "24 hours" }]
+    },
+    {
+      "id": "export-error-code",
+      "kind": "direct",
+      "question": "What does ERR_EXPORT_410 mean?",
+      "expect": [{ "source": "exports/export-links.md", "fragment": "expired" }]
+    },
+    {
+      "id": "recovery-codes",
+      "kind": "direct",
+      "question": "How many recovery codes does each account get?",
+      "expect": [{ "source": "security/two-factor-authentication.md", "fragment": "10" }]
+    },
+    {
+      "id": "webhook-retries",
+      "kind": "direct",
+      "question": "How many times is a failed webhook delivery retried?",
+      "expect": [{ "source": "integrations/webhooks.md", "fragment": "5 times" }]
+    },
+    {
+      "id": "yearly-money-back",
+      "kind": "synonym",
+      "question": "Can I get my money back on a yearly subscription?",
+      "expect": [{ "source": "billing/refunds.md", "fragment": "30 days" }]
+    },
+    {
+      "id": "invitation-stops-working",
+      "kind": "synonym",
+      "question": "How long until an invitation to join stops working?",
+      "expect": [{ "source": "teams/invite-members.md", "fragment": "7 days" }]
+    },
+    {
+      "id": "text-message-login",
+      "kind": "synonym",
+      "question": "Can I sign in with a code sent by text message?",
+      "expect": [{ "source": "security/two-factor-authentication.md", "fragment": "SMS" }]
+    },
+    {
+      "id": "phone-without-signal",
+      "kind": "synonym",
+      "question": "Can I still see my work on my phone when I have no signal?",
+      "expect": [{ "source": "tasks/offline-mode.md", "fragment": "assigned tasks" }]
+    },
+    {
+      "id": "export-link-and-limit",
+      "kind": "multi_source",
+      "question": "How long do export links last, and how many exports does the Team plan allow each month?",
+      "expect": [
+        { "source": "exports/export-links.md", "fragment": "24 hours" },
+        { "source": "exports/export-limits.md", "fragment": "100" }
+      ]
+    },
+    {
+      "id": "team-price-and-templates",
+      "kind": "multi_source",
+      "question": "What does the Team plan cost per member when billed annually, and how many project templates can it keep?",
+      "expect": [
+        { "source": "billing/plans.md", "fragment": "$8" },
+        { "source": "projects/project-templates.md", "fragment": "50" }
+      ]
+    },
+    {
+      "id": "gantt-charts",
+      "kind": "not_in_docs",
+      "question": "Does Fernwick have Gantt charts?",
+      "absent": ["gantt"]
+    },
+    {
+      "id": "salesforce-integration",
+      "kind": "not_in_docs",
+      "question": "Does Fernwick integrate with Salesforce?",
+      "absent": ["salesforce"]
+    },
+    {
+      "id": "stock-price",
+      "kind": "not_in_docs",
+      "question": "What is the Fernwick stock price?",
+      "absent": ["stock", "share price"]
+    },
+    {
+      "id": "saml-single-sign-on",
+      "kind": "not_in_docs",
+      "question": "Does Fernwick support single sign-on with SAML?",
+      "absent": ["saml", "sso", "single sign-on"]
+    },
+    {
+      "id": "api-rate-limit",
+      "kind": "not_in_docs",
+      "question": "How many API requests per minute does Fernwick allow?",
+      "absent": ["api", "rate limit", "per minute"]
+    }
+  ]
+}

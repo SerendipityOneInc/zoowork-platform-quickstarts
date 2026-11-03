@@ -255,6 +255,8 @@ export async function cleanupAgent(
   path: string,
   state: AgentState,
   sessions: SessionStore,
+  /** Runs once the Agent is confirmed as this app's, before anything is deleted. */
+  beforeDelete?: () => Promise<void>,
 ): Promise<{ sessionsDeleted: number }> {
   if (!state.agentId) throw new AppError("agent_creation_uncertain_run_setup_again");
   let sessionsDeleted = 0;
@@ -268,6 +270,7 @@ export async function cleanupAgent(
       gone = true;
     }
     if (!gone) {
+      await beforeDelete?.();
       // A create whose response was lost may have made a Session; resolve it
       // first so it is deleted too. Any doubt stops cleanup with state kept.
       await recoverPendingCreates(client, state.agentId, sessions, { strict: true });
