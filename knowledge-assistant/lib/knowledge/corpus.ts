@@ -6,6 +6,8 @@ import { AppError } from "../zoowork/errors";
 export type CorpusDocument = { key: string; text: string; hash: string };
 
 export const CORPUS_DIR = "corpus";
+/** A note about the corpus at its top level. Setup never uploads it, so it is never searched or cited. */
+export const CORPUS_NOTE = "README.md";
 
 /** A question the corpus answers, and the document that answers it. Setup waits until it works. */
 export const PROBE = { query: "How long do export links last?", key: "exports/export-links.md" };
@@ -27,6 +29,7 @@ export function loadCorpus(cwd = process.cwd()): CorpusDocument[] {
   } catch {
     throw new AppError("corpus_missing");
   }
+  files = files.filter((file) => relative(root, file) !== CORPUS_NOTE);
   if (!files.length) throw new AppError("corpus_missing");
   return files.sort().map((file) => {
     const text = readFileSync(file, "utf8");
