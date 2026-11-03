@@ -13,10 +13,13 @@ const ITEMS_PER_PAGE = 50;
 /** How many passages one search hands to the Agent. */
 export const MAX_PASSAGES = 6;
 // Vector scores rate every passage about the same product as similar, so reranking
-// reads the question and each passage together. The floor drops only clear misses:
-// no score separates "answerable" from "not in the docs", so the Agent decides that.
+// reads the question and each passage together and puts the best one first. It
+// filters nothing: a correct document can rank first with a score below 0.01, and
+// a passage that never reaches the Agent cannot be recovered, while an extra one
+// can be ignored. The threshold is sent as 0 because omitting it applies the
+// service's own minimum, which drops those documents too.
 const RERANK_MODEL = "@cf/baai/bge-reranker-base";
-const MIN_RERANK_SCORE = 0.01;
+const RERANK_KEEP_ALL = 0;
 
 export type CloudflareConfig = { accountId: string; apiToken: string };
 
@@ -185,7 +188,7 @@ export function connectKnowledge(
           body: JSON.stringify({
             messages: [{ role: "user", content: query }],
             ai_search_options: {
-              reranking: { enabled: true, model: RERANK_MODEL, match_threshold: MIN_RERANK_SCORE },
+              reranking: { enabled: true, model: RERANK_MODEL, match_threshold: RERANK_KEEP_ALL },
             },
           }),
         }),

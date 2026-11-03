@@ -5,7 +5,8 @@ The Agent runs on ZooWork Platform. The documents are searched by a knowledge se
 app calls: here [Cloudflare AI Search](https://developers.cloudflare.com/ai-search/), behind one
 small interface you can replace with your own RAG.
 
-The sample documents describe **Fernwick**, a fictional project tracker. Ask something, and the
+The sample documents describe **Fernwick**, a fictional project tracker. They are synthetic sample
+content written for this demo; `corpus/README.md` says so and is never uploaded. Ask something, and the
 Agent searches the docs, answers, and cites them. Open a source to read the passage it used. Ask
 something the docs do not cover, and it says so instead of guessing.
 
@@ -114,7 +115,7 @@ Agent's instructions tell it to.
 
 Passages that the search returned but the reply did not cite are not shown. A question about this
 product can still return passages that do not answer it, because they are about the same product.
-The search only drops clear misses, and the Agent decides whether the passages answer the question.
+The search does not filter them out, and the Agent decides whether the passages answer the question.
 
 A failed search is a failure, not an empty result. The Agent is told the search failed and replies
 that it cannot answer, and the page shows the error code in red. "Nothing found" and "the service
@@ -181,6 +182,8 @@ the service refused and nothing changed; cleanup treats any other failure as "it
 To keep Cloudflare and use your own documents, replace the files in `corpus/` instead, change
 `PROBE` in `lib/knowledge/corpus.ts` to a question they answer, and run `npm run setup`. It uploads
 new and changed files and removes deleted ones. The document's path under `corpus/` is its key.
+`corpus/README.md` is the one file it skips, so keep notes about the documents there rather than
+inside them: text in a document is searched and can be cited.
 Then replace the questions in `eval/questions.json`.
 
 ## Check the answers
@@ -243,9 +246,12 @@ or private data in it.
 
 AI Search's default settings are used for retrieval: hybrid search, keyword terms all required, and
 a minimum vector score of 0.4. Each search also turns on reranking with `@cf/baai/bge-reranker-base`,
-which puts the best passage first and drops passages scoring below 0.01. Reranking adds some time to
-each search. No score reliably tells whether the docs answer a question, so don't use a higher
-minimum for that. The similarity cache is off, because it stores answers it generates, and this app
+which puts the best passage first. Reranking adds some time to each search. Its minimum score is set
+to 0, so it only reorders: a correct document can rank first with a score below 0.01, and a passage
+the Agent never receives cannot be recovered, while it can ignore an extra one. Leaving the minimum
+out applies AI Search's own default, which drops those documents as well. No score reliably tells
+whether the docs answer a question, so don't add a minimum for that; run `npm run eval` after any
+retrieval change. The similarity cache is off, because it stores answers it generates, and this app
 only uses search. To tune retrieval, see
 [AI Search configuration](https://developers.cloudflare.com/ai-search/configuration/). Content in
 Chinese, Japanese or Korean needs the `trigram` tokenizer, set when the instance is created in
